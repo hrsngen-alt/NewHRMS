@@ -95,20 +95,22 @@ async function syncUserRecords(user: User): Promise<string | null> {
     }
 
     // 4. Ensure roles are set correctly
-    const isSystemAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
-    const targetRole = isSystemAdmin ? "admin" : "employee";
-
-    const { data: currentRoles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-    const hasTargetRole = currentRoles?.some(r => r.role === targetRole);
-
-    if (!hasTargetRole) {
-      await supabase.from("user_roles").upsert({ 
-        user_id: user.id, 
-        role: targetRole 
-      }, { onConflict: 'user_id,role' });
+    const { data: existingRoles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+    const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase());
+    
+    // Check if current role matches our ADMIN_EMAILS list
+    const hasAdminRole = existingRoles?.some(r => r.role === "admin");
+    
+    if (isAdminEmail && !hasAdminRole) {
+      console.log("[Auth] Promoting user to admin based on email list...");
+      // Remove any old roles and set as admin
+      await supabase.from("user_roles").delete().eq("user_id", user.id);
+      await supabase.from("user_roles").insert({ user_id: user.id, role: "admin" });
+    } else if (!existingRoles || existingRoles.length === 0) {
+      await supabase.from("user_roles").insert({ user_id: user.id, role: "employee" });
     }
 
-    console.log("[Auth] Sync complete for:", email, "Role:", targetRole);
+    console.log("[Auth] Sync complete for:", email, "Role:", isAdminEmail ? "admin" : "employee");
     return null;
   } catch (err) {
     console.error("[Auth] Sync failed:", err);
