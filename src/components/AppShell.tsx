@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText, 
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 type NavItem = { to: string; label: string; icon: any; adminOnly?: boolean; external?: boolean };
 const nav: NavItem[] = [
@@ -41,6 +48,65 @@ const essNav: NavItem[] = [
   { to: "/documents", label: "Policy Hub", icon: FolderOpen },
   { to: "/expenses", label: "Expense Claims", icon: Receipt },
 ];
+
+function NavContent({ role, location, onNavClick }: { role: string | null, location: any, onNavClick?: () => void }) {
+  return (
+    <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 custom-scrollbar py-4">
+      <nav className="space-y-1">
+        <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Main Menu</p>
+        {nav.filter((n) => !n.adminOnly || role === "admin").map((n) => {
+          const active = location.pathname.startsWith(n.to);
+          const content = (
+            <>
+              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110", active ? "text-white" : "text-muted-foreground/40")} /> 
+              {n.label}
+            </>
+          );
+
+          if (n.external) {
+            return (
+              <a key={n.to} href={n.to} target="_blank" rel="noreferrer"
+                className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-white">
+                {content}
+              </a>
+            );
+          }
+
+          return (
+            <Link key={n.to} to={n.to} onClick={onNavClick}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
+                active 
+                  ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                  : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-white"
+              )}>
+              {content}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <nav className="space-y-1">
+        <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Employee Services</p>
+        {essNav.map((n) => {
+          const active = location.pathname.startsWith(n.to);
+          return (
+            <Link key={n.to} to={n.to} onClick={onNavClick}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
+                active 
+                  ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                  : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-white"
+              )}>
+              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110", active ? "text-white" : "text-muted-foreground/40")} /> 
+              {n.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
 
 export function AppShell({ children }: { children?: ReactNode }) {
   const qc = useQueryClient();
@@ -124,60 +190,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           </div>
         </Link>
         
-        <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 custom-scrollbar">
-          <nav className="space-y-1">
-            <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 uppercase tracking-widest">Main Menu</p>
-            {nav.filter((n) => !n.adminOnly || role === "admin").map((n) => {
-              const active = location.pathname.startsWith(n.to);
-              const content = (
-                <>
-                  <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110", active ? "text-white" : "text-sidebar-foreground/40")} /> 
-                  {n.label}
-                </>
-              );
-
-              if (n.external) {
-                return (
-                  <a key={n.to} href={n.to} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group text-sidebar-foreground hover:bg-sidebar-accent hover:text-white">
-                    {content}
-                  </a>
-                );
-              }
-
-              return (
-                <Link key={n.to} to={n.to}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
-                    active 
-                      ? "bg-primary text-white shadow-lg shadow-primary/30" 
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
-                  )}>
-                  {content}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <nav className="space-y-1">
-            <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 uppercase tracking-widest">Employee Services</p>
-            {essNav.map((n) => {
-              const active = location.pathname.startsWith(n.to);
-              return (
-                <Link key={n.to} to={n.to}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
-                    active 
-                      ? "bg-primary text-white shadow-lg shadow-primary/30" 
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
-                  )}>
-                  <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110", active ? "text-white" : "text-sidebar-foreground/40")} /> 
-                  {n.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        <NavContent role={role} location={location} />
 
         <div className="space-y-4 border-t border-sidebar-border/50 pt-8 mt-6">
           <Link to="/profile" className="flex items-center gap-3 px-2 group hover:opacity-80 transition-opacity">
@@ -196,17 +209,43 @@ export function AppShell({ children }: { children?: ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-x-hidden flex flex-col">
-        <header className="flex items-center justify-between border-b bg-card/40 px-8 py-5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
-          <div className="md:hidden flex items-center gap-2">
-             <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-                <SparklesIcon className="size-4 text-white" />
+        <header className="flex items-center justify-between border-b bg-card/40 px-4 md:px-8 py-5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
+          <div className="flex items-center gap-4">
+             <Sheet>
+               <SheetTrigger asChild>
+                 <Button variant="outline" size="icon" className="md:hidden rounded-xl border-2 shadow-sm">
+                   <Menu className="size-5" />
+                 </Button>
+               </SheetTrigger>
+               <SheetContent side="left" className="w-[300px] p-6 flex flex-col">
+                 <SheetHeader className="text-left mb-6">
+                   <SheetTitle className="flex items-center gap-3">
+                     <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
+                       <SparklesIcon className="size-5 text-white" />
+                     </div>
+                     <span className="font-display font-black text-xl">Pulse HR</span>
+                   </SheetTitle>
+                 </SheetHeader>
+                 <NavContent role={role} location={location} onNavClick={() => {}} />
+                 <div className="mt-auto pt-6 border-t">
+                    <button onClick={() => signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
+                      <LogOut className="size-5" /> Sign out
+                    </button>
+                 </div>
+               </SheetContent>
+             </Sheet>
+
+             <div className="md:hidden flex items-center gap-2">
+                <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
+                   <SparklesIcon className="size-4 text-white" />
+                </div>
+                <span className="font-display font-black text-lg text-foreground">Pulse HR</span>
              </div>
-             <span className="font-display font-black text-lg text-foreground">Pulse HR</span>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-6">
-             <div className="h-4 w-px bg-border" />
-             <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{location.pathname.replace('/', '').replace('-', ' ') || 'Dashboard'}</div>
+             
+             <div className="hidden md:flex items-center gap-6">
+                <div className="h-4 w-px bg-border" />
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{location.pathname.replace('/', '').replace('-', ' ') || 'Dashboard'}</div>
+             </div>
           </div>
 
           <div className="flex items-center gap-3">
