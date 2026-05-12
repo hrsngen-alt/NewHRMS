@@ -143,18 +143,16 @@ function AttendancePage() {
       const pos = await new Promise<GeolocationPosition>((res, rej) => {
         navigator.geolocation.getCurrentPosition(res, rej, { 
           enableHighAccuracy: true,
-          timeout: 5000,
+          timeout: 10000, // Wait up to 10 seconds for user to click "Allow"
           maximumAge: 0
         });
       });
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
     } catch (e) {
-      if (!isMarketing) {
-        setIsPunching(false);
-        return toast.error("Location access is required for office check-ins.");
-      }
-      toast.warning("Field check-in: Location captured as approximate.");
+      console.error("GPS Error:", e);
+      setIsPunching(false);
+      return toast.error("GPS is mandatory. Please enable location in your browser settings and click 'Allow'.");
     }
 
     try {
