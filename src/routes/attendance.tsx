@@ -135,7 +135,28 @@ function AttendancePage() {
 
   const [isPunching, setIsPunching] = useState(false);
   const punch = async (type: "in" | "out") => {
-    if (!myEmployee) return toast.error("No employee profile linked.");
+    let currentEmployee = myEmployee;
+
+    // Auto-create employee record for admins if missing
+    if (!currentEmployee && isAdmin) {
+      console.log("[Attendance] Admin has no employee record, creating one...");
+      const { data: newEmp, error: createError } = await (supabase.from("employees") as any).insert({
+        full_name: user?.user_metadata?.full_name || "System Admin",
+        email: user?.email,
+        employee_code: "ADMIN-" + Math.random().toString(36).substring(7).toUpperCase(),
+        department: "Management",
+        user_id: user?.id
+      }).select().single();
+      
+      if (createError) {
+        console.error("Failed to auto-create admin employee:", createError);
+        return toast.error("Could not link your admin account to an employee profile.");
+      }
+      currentEmployee = newEmp;
+      await qc.invalidateQueries({ queryKey: ["my-employee"] });
+    }
+
+    if (!currentEmployee) return toast.error("No employee profile linked.");
     setIsPunching(true);
     
     let lat, lng;
@@ -158,7 +179,7 @@ function AttendancePage() {
     try {
       if (type === "in") {
         const { error } = await (supabase.from("attendance") as any).insert({ 
-          employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
+          employee_id: currentEmployee.id, date: today, check_in: new Date().toISOString(), 
           status: "present", check_in_lat: lat, check_in_lng: lng,
           metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
         });
