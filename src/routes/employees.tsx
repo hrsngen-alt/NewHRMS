@@ -25,6 +25,7 @@ function EmployeesPage() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
   const isAdmin = role === "admin";
@@ -302,6 +303,32 @@ function EmployeesPage() {
               <Upload className="size-4" /> Import
             </Button>
             
+            {selectedIds.size > 0 && (
+              <Button 
+                className="gap-2 bg-indigo-600 hover:bg-indigo-700 animate-in zoom-in duration-200"
+                disabled={busy}
+                onClick={async () => {
+                  const pending = employees.filter(e => selectedIds.has(e.id) && !e.user_id);
+                  if (pending.length === 0) return toast.info("Selected employees already have accounts!");
+                  if (!confirm(`Send welcome invites to ${pending.length} selected employees?`)) return;
+                  
+                  setBusy(true);
+                  let success = 0;
+                  for (const emp of pending) {
+                    const { error } = await supabase.auth.resetPasswordForEmail(emp.email, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    if (!error) success++;
+                  }
+                  toast.success(`Sent ${success} invites!`);
+                  setSelectedIds(new Set());
+                  setBusy(false);
+                }}
+              >
+                <Users className="size-4" /> Invite Selected ({selectedIds.size})
+              </Button>
+            )}
+
             <Button 
               variant="outline" 
               className="gap-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50" 
@@ -489,6 +516,19 @@ function EmployeesPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
+                {isAdmin && (
+                  <TableHead className="w-12">
+                    <input 
+                      type="checkbox" 
+                      className="size-4 rounded border-gray-300"
+                      checked={selectedIds.size === filtered.length && filtered.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedIds(new Set(filtered.map(e => e.id)));
+                        else setSelectedIds(new Set());
+                      }}
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Code</TableHead>
                 <TableHead>Employee Name</TableHead>
                 <TableHead>Work Email</TableHead>
@@ -499,7 +539,22 @@ function EmployeesPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((e) => (
-                <TableRow key={e.id} className="group hover:bg-primary/5">
+                <TableRow key={e.id} className={cn("group hover:bg-primary/5", selectedIds.has(e.id) && "bg-primary/5")}>
+                  {isAdmin && (
+                    <TableCell>
+                      <input 
+                        type="checkbox" 
+                        className="size-4 rounded border-gray-300"
+                        checked={selectedIds.has(e.id)}
+                        onChange={() => {
+                          const next = new Set(selectedIds);
+                          if (next.has(e.id)) next.delete(e.id);
+                          else next.add(e.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-mono text-xs">{e.employee_code}</TableCell>
                   <TableCell className="font-semibold">{e.full_name}</TableCell>
                   <TableCell className="text-muted-foreground">{e.email}</TableCell>
@@ -508,6 +563,25 @@ function EmployeesPage() {
                   {isAdmin && (
                     <TableCell>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                        {!e.user_id && (
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            title="Invite to Portal" 
+                            disabled={busy}
+                            onClick={async () => {
+                              setBusy(true);
+                              const { error } = await supabase.auth.resetPasswordForEmail(e.email, {
+                                redirectTo: `${window.location.origin}/reset-password`,
+                              });
+                              if (error) toast.error(error.message);
+                              else toast.success("Invite sent!");
+                              setBusy(false);
+                            }}
+                          >
+                            <Plus className="size-4 text-indigo-600" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" title="View Profile" onClick={() => setViewingEmployee(e)}>
                           <Eye className="size-4 text-primary" />
                         </Button>
