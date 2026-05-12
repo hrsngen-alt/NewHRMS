@@ -302,6 +302,34 @@ function EmployeesPage() {
               <Upload className="size-4" /> Import
             </Button>
             
+            <Button 
+              variant="outline" 
+              className="gap-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50" 
+              disabled={busy || employees.length === 0}
+              onClick={async () => {
+                const pending = employees.filter(e => !e.user_id);
+                if (pending.length === 0) return toast.info("All employees already have accounts!");
+                if (!confirm(`Send welcome invites to ${pending.length} employees?`)) return;
+                
+                setBusy(true);
+                let success = 0;
+                let failed = 0;
+
+                for (const emp of pending) {
+                  const { error } = await supabase.auth.resetPasswordForEmail(emp.email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) failed++;
+                  else success++;
+                }
+
+                toast.success(`Onboarding complete! ${success} invited, ${failed} failed.`);
+                setBusy(false);
+              }}
+            >
+              <Users className="size-4" /> Invite All
+            </Button>
+            
             {/* View Employee Dialog */}
             <Dialog open={!!viewingEmployee} onOpenChange={(val) => { if (!val) setViewingEmployee(null); }}>
               <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
@@ -452,7 +480,7 @@ function EmployeesPage() {
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
               {departments.map(d => (
-                <SelectItem key={d} value={d}>{d}</SelectItem>
+                <SelectItem key={d} value={d || "none"}>{d}</SelectItem>
               ))}
             </SelectContent>
           </Select>
