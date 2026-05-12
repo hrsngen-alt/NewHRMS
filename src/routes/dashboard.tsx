@@ -9,7 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, A
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, Suspense, lazy } from "react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -202,7 +202,8 @@ function Dashboard() {
         supabase.from("payslips").select("net_pay"),
       ]);
       // Locations table is optional — don't block on it
-      const loc = await supabase.from("company_locations" as any).select("*").then(r => r).catch(() => ({ data: [] }));
+      const { data: locData } = await supabase.from("company_locations" as any).select("*");
+      const loc = { data: locData || [] };
 
       const deptMap: Record<string, number> = {};
       (emp.data ?? []).forEach((e) => { const d = e.department || "Unassigned"; deptMap[d] = (deptMap[d] ?? 0) + 1; });
