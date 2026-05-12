@@ -71,7 +71,7 @@ function DevResetPage() {
         
         <div className="mt-6 rounded-xl bg-amber-50 p-4 border border-amber-100">
           <p className="text-[10px] text-amber-700 font-bold leading-relaxed uppercase tracking-tight">
-            Tip: If you have access to the Supabase Dashboard, it is faster to reset it there under "Authentication > Users".
+            Tip: If you have access to the Supabase Dashboard, it is faster to reset it there under "Authentication &gt; Users".
           </p>
         </div>
       </div>
