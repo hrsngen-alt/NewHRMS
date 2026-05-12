@@ -79,7 +79,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   useEffect(() => {
     // Only navigate if we're not already on the login page to avoid loops
+    // Also check if we're actually logged out and not just loading
     if (!loading && !user && location.pathname !== "/login") {
+      console.log("[AppShell] User not authenticated, redirecting to login...");
       navigate({ to: "/login" });
     }
   }, [loading, user, navigate, location.pathname]);
