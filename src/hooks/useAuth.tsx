@@ -17,10 +17,19 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Centralized admin list
+const ADMIN_EMAILS = [
+  "admin@pulsehr.com", 
+  "admin@admin.com", 
+  "admin1@admin.com", 
+  "hr@pulsehr.com", 
+  "hardik@pulsehr.com",
+  "hrsngen@gmail.com", // Added you as requested
+  "admin@pulse.com"    // Added the pulse admin
+];
+
 async function fetchRole(userId: string, email: string): Promise<Role> {
-  // Admin emails shortcut
-  const adminEmails = ["admin@pulsehr.com", "admin@admin.com", "admin1@admin.com", "hr@pulsehr.com", "hardik@pulsehr.com"];
-  if (adminEmails.includes(email.toLowerCase())) {
+  if (ADMIN_EMAILS.includes(email.toLowerCase())) {
     return "admin";
   }
   try {
@@ -44,20 +53,22 @@ async function syncUserRecords(user: User): Promise<string | null> {
     const email = user.email;
     if (!email) return null;
 
+    const fullName = user.user_metadata?.full_name || user.user_metadata?.name || email.split("@")[0];
+
     // 1. Ensure profile exists
     const { data: profile } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle();
     if (!profile) {
       console.log("[Auth] Creating profile for", email);
       await supabase.from("profiles").upsert({
         id: user.id,
-        full_name: user.user_metadata?.full_name || email.split("@")[0],
+        full_name: fullName,
         created_at: new Date().toISOString()
       }, { onConflict: 'id' });
     }
 
     // 2. First check if employee is already linked to this user_id (fast path)
     const { data: alreadyLinked } = await (supabase.from("employees") as any)
-      .select("id, user_id, email")
+      .select("id, user_id, email, full_name")
       .eq("user_id", user.id)
       .maybeSingle();
     
@@ -68,34 +79,35 @@ async function syncUserRecords(user: User): Promise<string | null> {
 
     // 3. Try to find employee by email (case-insensitive) and link them
     const { data: employee } = await (supabase.from("employees") as any)
-      .select("id, user_id, email")
+      .select("id, user_id, email, full_name")
       .ilike("email", email)
       .maybeSingle() as any;
     
     if (employee) {
-      if (employee.user_id !== user.id) {
-        console.log("[Auth] Linking employee record for", email, "-> id:", employee.id);
-        await (supabase.from("employees") as any).update({ user_id: user.id }).eq("id", employee.id);
-      }
+      console.log("[Auth] Linking employee record for", email, "-> id:", employee.id);
+      const updates: any = { user_id: user.id };
+      // If the employee record has no name, use the one from Auth
+      if (!employee.full_name) updates.full_name = fullName;
+      
+      await (supabase.from("employees") as any).update(updates).eq("id", employee.id);
       return employee.id;
     }
 
-    // 4. No employee record found — ensure user_roles has at least 'employee' role
-    const { data: roleExists } = await supabase.from("user_roles").select("id").eq("user_id", user.id).maybeSingle();
-    if (!roleExists) {
-      await supabase.from("user_roles").insert({ user_id: user.id, role: "employee" });
+    // 4. Ensure roles are set correctly
+    const isSystemAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+    const targetRole = isSystemAdmin ? "admin" : "employee";
+
+    const { data: currentRoles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+    const hasTargetRole = currentRoles?.some(r => r.role === targetRole);
+
+    if (!hasTargetRole) {
+      await supabase.from("user_roles").upsert({ 
+        user_id: user.id, 
+        role: targetRole 
+      }, { onConflict: 'user_id,role' });
     }
 
-    // 5. Ensure admin role for known admins
-    const adminEmails = ["admin@pulsehr.com", "admin@admin.com", "hr@pulsehr.com", "hardik@pulsehr.com"];
-    if (adminEmails.includes(email.toLowerCase())) {
-      const { data: adminRoleExists } = await supabase.from("user_roles").select("id").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-      if (!adminRoleExists) {
-        await supabase.from("user_roles").upsert({ user_id: user.id, role: "admin" }, { onConflict: 'user_id,role' });
-      }
-    }
-
-    console.log("[Auth] No employee record found for:", email);
+    console.log("[Auth] Sync complete for:", email, "Role:", targetRole);
     return null;
   } catch (err) {
     console.error("[Auth] Sync failed:", err);
