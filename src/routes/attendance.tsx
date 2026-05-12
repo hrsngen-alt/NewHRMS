@@ -36,6 +36,25 @@ function AttendancePage() {
     enabled: !!user && (isAdmin || !!myEmployee),
   });
 
+  useEffect(() => {
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('attendance_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'attendance' 
+      }, () => {
+        console.log("[Attendance] Real-time update detected, refreshing...");
+        qc.invalidateQueries({ queryKey: ["attendance"] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
   const today = new Date().toLocaleDateString('en-CA');
   
   const myTodayRecords = records.filter((r: any) => r.date === today && r.employee_id === myEmployee?.id);
