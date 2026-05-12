@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [employeeId, setEmployeeId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("[Auth] Initializing session check...");
+    console.log("[Auth] Provider mounted. Starting initial checks...");
     
     // Safety valve: Ensure loading is always set to false after 5 seconds max
     const safetyTimeout = setTimeout(() => {
