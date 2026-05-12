@@ -14,7 +14,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/employees")({ component: () => <AppShell><EmployeesPage /></AppShell> });
 
