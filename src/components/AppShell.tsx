@@ -78,8 +78,11 @@ export function AppShell({ children }: { children?: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [loading, user, navigate]);
+    // Only navigate if we're not already on the login page to avoid loops
+    if (!loading && !user && location.pathname !== "/login") {
+      navigate({ to: "/login" });
+    }
+  }, [loading, user, navigate, location.pathname]);
 
   useEffect(() => {
     const root = window.document.documentElement;
