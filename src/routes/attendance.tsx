@@ -26,9 +26,14 @@ function AttendancePage() {
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["attendance", role, myEmployee?.id],
     queryFn: async () => {
-      let q = supabase.from("attendance" as any).select("*, employees(full_name, employee_code, department)").order("date", { ascending: false });
+      let q = supabase
+        .from("attendance" as any)
+        .select("*, employees(full_name, employee_code, department)")
+        .order("check_in", { ascending: false });
+      
       if (!isAdmin && myEmployee) q = q.eq("employee_id", myEmployee.id).limit(100);
       else q = q.limit(300);
+      
       const { data, error } = await q;
       if (error) throw error;
       return (data as any) || [];
@@ -57,7 +62,11 @@ function AttendancePage() {
 
   const today = new Date().toLocaleDateString('en-CA');
   
-  const myTodayRecords = records.filter((r: any) => r.date === today && r.employee_id === myEmployee?.id);
+  const myTodayRecords = useMemo(() => 
+    records.filter((r: any) => r.date === today && r.employee_id === myEmployee?.id),
+    [records, today, myEmployee?.id]
+  );
+  
   const latestRecord = myTodayRecords.length > 0 ? myTodayRecords[0] : null;
   const isCheckedIn = !!(latestRecord && !latestRecord.check_out);
 
@@ -90,13 +99,18 @@ function AttendancePage() {
     return () => clearInterval(interval);
   }, [isCheckedIn, latestRecord?.check_in]);
 
-  const totalToday = myTodayRecords.reduce((acc: number, r: any) => {
-    if (r.hours_worked) return acc + Number(r.hours_worked);
-    if (r.check_in && !r.check_out) {
-      return acc + (Date.now() - new Date(r.check_in).getTime()) / 3600000;
-    }
-    return acc;
-  }, 0);
+  const totalToday = useMemo(() => {
+    return myTodayRecords.reduce((acc: number, r: any) => {
+      if (r.hours_worked) return acc + Number(r.hours_worked);
+      if (r.check_in && !r.check_out) {
+        const checkInTime = new Date(r.check_in).getTime();
+        if (!isNaN(checkInTime)) {
+          return acc + (Date.now() - checkInTime) / 3600000;
+        }
+      }
+      return acc;
+    }, 0);
+  }, [myTodayRecords]);
 
   const weeklyTotal = useMemo(() => {
     if (!myEmployee) return 0;
