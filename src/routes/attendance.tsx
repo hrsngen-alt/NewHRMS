@@ -100,38 +100,58 @@ function AttendancePage() {
     );
   });
 
+  const [isPunching, setIsPunching] = useState(false);
   const punch = async (type: "in" | "out") => {
     if (!myEmployee) return toast.error("No employee profile linked.");
+    setIsPunching(true);
     
     let lat, lng;
     try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 }));
+      const pos = await new Promise<GeolocationPosition>((res, rej) => {
+        navigator.geolocation.getCurrentPosition(res, rej, { 
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+      });
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
     } catch (e) {
       if (!isMarketing) {
+        setIsPunching(false);
         return toast.error("Location access is required for office check-ins.");
       }
       toast.warning("Field check-in: Location captured as approximate.");
     }
 
-    if (type === "in") {
-      await (supabase.from("attendance") as any).insert({ 
-        employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
-        status: "present", check_in_lat: lat, check_in_lng: lng,
-        metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
-      });
-      toast.success(isMarketing ? "Field Check-in started (India-wide)!" : "Checked in successfully!");
-    } else {
-      const start = new Date(latestRecord!.check_in!);
-      const hours = Math.max(0, (Date.now() - start.getTime()) / 3_600_000);
-      await (supabase.from("attendance") as any).update({ 
-        check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
-        check_out_lat: lat, check_out_lng: lng
-      }).eq("id", latestRecord!.id);
-      toast.success("Checked out successfully!");
+    try {
+      if (type === "in") {
+        const { error } = await (supabase.from("attendance") as any).insert({ 
+          employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
+          status: "present", check_in_lat: lat, check_in_lng: lng,
+          metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
+        });
+        if (error) throw error;
+        toast.success(isMarketing ? "Field Check-in started!" : "Checked in successfully!");
+      } else {
+        const start = new Date(latestRecord!.check_in!);
+        const hours = Math.max(0, (Date.now() - start.getTime()) / 3_600_000);
+        const { error } = await (supabase.from("attendance") as any).update({ 
+          check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
+          check_out_lat: lat, check_out_lng: lng
+        }).eq("id", latestRecord!.id);
+        if (error) throw error;
+        toast.success("Checked out successfully!");
+      }
+      
+      // Force a re-fetch of everything
+      await qc.invalidateQueries({ queryKey: ["attendance"] });
+      await qc.refetchQueries({ queryKey: ["attendance"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update attendance.");
+    } finally {
+      setIsPunching(false);
     }
-    qc.invalidateQueries({ queryKey: ["attendance"] });
   };
 
   return (
@@ -196,12 +216,12 @@ function AttendancePage() {
             </div>
 
             {isCheckedIn ? (
-              <Button onClick={() => punch("out")} variant="destructive" className="w-full h-14 rounded-xl text-lg font-black gap-3 shadow-lg shadow-red-200">
-                <Square className="size-5 fill-current" /> Finish Session
+              <Button onClick={() => punch("out")} disabled={isPunching} variant="destructive" className="w-full h-14 rounded-xl text-lg font-black gap-3 shadow-lg shadow-red-200">
+                <Square className="size-5 fill-current" /> {isPunching ? "Finishing..." : "Finish Session"}
               </Button>
             ) : (
-              <Button onClick={() => punch("in")} className="w-full h-14 rounded-xl text-lg font-black gap-3 shadow-lg shadow-indigo-200">
-                <Play className="size-5 fill-current" /> Start Session
+              <Button onClick={() => punch("in")} disabled={isPunching} className="w-full h-14 rounded-xl text-lg font-black gap-3 shadow-lg shadow-indigo-200">
+                <Play className="size-5 fill-current" /> {isPunching ? "Starting..." : "Start Session"}
               </Button>
             )}
             
