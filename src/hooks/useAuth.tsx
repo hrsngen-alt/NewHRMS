@@ -25,7 +25,8 @@ const ADMIN_EMAILS = [
   "hr@pulsehr.com", 
   "hardik@pulsehr.com",
   "hrsngen@gmail.com", // Added you as requested
-  "admin@pulse.com"    // Added the pulse admin
+  "admin@pulse.com",    // Added the pulse admin
+  "admin12@pulse.com"
 ];
 
 async function fetchRole(userId: string, email: string): Promise<Role> {
