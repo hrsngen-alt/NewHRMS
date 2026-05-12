@@ -20,17 +20,15 @@ const MAX_NAV = 20;
 const router = createRouter({
   routeTree,
   context: { queryClient },
+  defaultPreload: 'intent',
 });
 
-router.subscribe('onBeforeNavigate', () => {
-  navCount++;
-  if (navCount > MAX_NAV) {
-    console.error("CRITICAL: Infinite navigation loop detected. Stopping.");
-    throw new Error("Navigation loop detected");
+// Register the router instance for type safety
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
   }
-  // Reset count after 2 seconds of stability
-  setTimeout(() => { navCount = Math.max(0, navCount - 1); }, 2000);
-});
+}
 
 let root: ReactDOM.Root | null = null;
 
@@ -48,5 +46,4 @@ function renderApp() {
   }
 }
 
-// Initial render
 renderApp();
