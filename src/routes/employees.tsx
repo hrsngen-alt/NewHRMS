@@ -56,63 +56,9 @@ function EmployeesPage() {
 
 
 
-  const { data: empAttendance = [] } = useQuery({
-    queryKey: ["employee_attendance", viewingEmployee?.id],
-    enabled: !!viewingEmployee,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("attendance" as any)
-        .select("*")
-        .eq("employee_id", viewingEmployee.id)
-        .order("date", { ascending: false })
-        .order("check_in", { ascending: true })
-        .limit(20);
-      if (error) throw error;
-      return (data as any) || [];
-    },
-  });
 
-  const attendanceSummary = useMemo(() => {
-    const groups: Record<string, any> = {};
-    empAttendance.forEach((r: any) => {
-      if (!groups[r.date]) {
-        groups[r.date] = { 
-          date: r.date, 
-          sessions: [], 
-          totalHours: 0, 
-          status: r.status,
-          firstIn: null,
-          lastOut: null
-        };
-      }
-      groups[r.date].sessions.push(r);
-      groups[r.date].totalHours += Number(r.hours_worked || 0);
-      
-      if (!groups[r.date].firstIn || new Date(r.check_in) < new Date(groups[r.date].firstIn)) {
-        groups[r.date].firstIn = r.check_in;
-      }
-      if (r.check_out && (!groups[r.date].lastOut || new Date(r.check_out) > new Date(groups[r.date].lastOut))) {
-        groups[r.date].lastOut = r.check_out;
-      }
-    });
 
-    return Object.values(groups).map((day: any) => {
-      let breakTime = 0;
-      const sorted = [...day.sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-      for (let i = 0; i < sorted.length - 1; i++) {
-        if (sorted[i].check_out && sorted[i+1].check_in) {
-          const gap = new Date(sorted[i+1].check_in).getTime() - new Date(sorted[i].check_out).getTime();
-          breakTime += Math.max(0, gap / 3600000);
-        }
-      }
-      return {
-        ...day,
-        breakTime,
-        firstInTime: day.firstIn ? new Date(day.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-        lastOutTime: day.lastOut ? new Date(day.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
-      };
-    });
-  }, [empAttendance]);
+
 
   const departments = useMemo(() => {
     const set = new Set(employees.map(e => e.department).filter(Boolean));
@@ -485,50 +431,7 @@ function EmployeesPage() {
                         </div>
                       </section>
 
-                      <section className="md:col-span-2 space-y-4">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-l-4 border-primary pl-3">Recent Attendance</h3>
-                        <div className="ml-4 overflow-hidden rounded-xl border bg-slate-50/50">
-                          <Table>
-                            <TableHeader className="bg-muted/50">
-                              <TableRow>
-                                <TableHead className="text-[10px] uppercase font-black">Date</TableHead>
-                                <TableHead className="text-[10px] uppercase font-black">In Time</TableHead>
-                                <TableHead className="text-[10px] uppercase font-black">Out Time</TableHead>
-                                <TableHead className="text-[10px] uppercase font-black">Working</TableHead>
-                                <TableHead className="text-[10px] uppercase font-black">Break</TableHead>
-                                <TableHead className="text-[10px] uppercase font-black">Status</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {attendanceSummary.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={6} className="text-center py-8 text-xs text-muted-foreground font-medium">No attendance records found.</TableCell>
-                                </TableRow>
-                              ) : attendanceSummary.map((day: any) => (
-                                <TableRow key={day.date} className="hover:bg-primary/5">
-                                  <TableCell className="text-xs font-bold text-foreground">
-                                    {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
-                                  </TableCell>
-                                  <TableCell className="text-xs font-medium text-foreground">{day.firstInTime}</TableCell>
-                                  <TableCell className="text-xs font-medium text-foreground">{day.lastOutTime}</TableCell>
-                                  <TableCell className="text-xs font-black text-primary">{day.totalHours.toFixed(1)}h</TableCell>
-                                  <TableCell className="text-xs text-muted-foreground">{day.breakTime > 0 ? `${day.breakTime.toFixed(1)}h` : '-'}</TableCell>
-                                  <TableCell>
-                                    <span className={cn(
-                                      "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-                                      day.status === 'present' ? "bg-green-100 text-green-700" : 
-                                      day.status === 'late' ? "bg-amber-100 text-amber-700" :
-                                      "bg-rose-100 text-rose-700"
-                                    )}>
-                                      {day.status}
-                                    </span>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </section>
+
 
                       <section className="md:col-span-2 space-y-4">
                         <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-l-4 border-primary pl-3">Employee Documents</h3>
