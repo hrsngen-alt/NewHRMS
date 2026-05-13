@@ -537,6 +537,7 @@ function AttendancePage() {
                               <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Working</TableHead>
                               <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Break</TableHead>
                               <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Status</TableHead>
+                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4 text-center">Map</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -581,6 +582,18 @@ function AttendancePage() {
                                     )}>
                                       {dayStatus}
                                     </span>
+                                  </TableCell>
+                                  <TableCell className="py-4 text-center">
+                                     {sortedSessions[0]?.check_in_lat ? (
+                                       <a 
+                                         href={`https://www.google.com/maps?q=${sortedSessions[0].check_in_lat},${sortedSessions[0].check_in_lng}`} 
+                                         target="_blank" rel="noreferrer"
+                                         className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors"
+                                         title="View on Google Maps"
+                                       >
+                                         <MapPin className="size-4" />
+                                       </a>
+                                     ) : "-"}
                                   </TableCell>
                                 </TableRow>
                               );
