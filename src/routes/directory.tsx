@@ -31,7 +31,7 @@ function DirectoryPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-1">
           <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Team Directory</h1>
-          <p className="text-muted-foreground font-medium text-lg">Connect with your colleagues across the SN Genec network.</p>
+          <p className="text-muted-foreground font-medium text-lg">Connect with your colleagues across the SN Gene network.</p>
         </div>
         <div className="relative w-full max-w-md group">
           <Search className="absolute left-4 top-4 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
