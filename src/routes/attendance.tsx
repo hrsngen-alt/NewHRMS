@@ -428,9 +428,18 @@ function AttendancePage() {
                         {Object.entries(
                           dayRecords.reduce((eAcc: any, r: any) => {
                             const key = r.employee_id;
-                            if (!eAcc[key]) eAcc[key] = { employee: r.employees, sessions: [], totalHours: 0 };
+                            if (!eAcc[key]) eAcc[key] = { employee: r.employees, sessions: [], totalHours: 0, breakTime: 0 };
                             eAcc[key].sessions.push(r);
                             eAcc[key].totalHours += Number(r.hours_worked || 0);
+                            
+                            const sorted = [...eAcc[key].sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+                            let b = 0;
+                            for (let i = 0; i < sorted.length - 1; i++) {
+                              if (sorted[i].check_out && sorted[i+1].check_in) {
+                                b += Math.max(0, (new Date(sorted[i+1].check_in).getTime() - new Date(sorted[i].check_out).getTime()) / 3600000);
+                              }
+                            }
+                            eAcc[key].breakTime = b;
                             return eAcc;
                           }, {})
                         ).map(([empId, data]: [string, any]) => (
@@ -445,11 +454,17 @@ function AttendancePage() {
                                   <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{data.employee?.department} · {data.employee?.employee_code}</p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-black shadow-lg shadow-primary/20">
-                                  Total: {data.totalHours.toFixed(2)}h
+                              <div className="text-right flex items-center gap-4">
+                                <div className="text-right">
+                                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Break</p>
+                                  <p className="font-bold text-sm">{data.breakTime > 0 ? `${data.breakTime.toFixed(2)}h` : "-"}</p>
                                 </div>
-                                <p className="text-[10px] font-black text-muted-foreground uppercase mt-1">Daily Shift Total</p>
+                                <div className="text-right">
+                                  <div className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-black shadow-lg shadow-primary/20">
+                                    Total: {data.totalHours.toFixed(2)}h
+                                  </div>
+                                  <p className="text-[10px] font-black text-muted-foreground uppercase mt-1 text-right">Work Time</p>
+                                </div>
                               </div>
                             </div>
                             
@@ -514,6 +529,13 @@ function AttendancePage() {
                      <div className="p-4 space-y-4">
                        {Object.entries(data.days).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
                          const dayTotal = sessions.reduce((s: number, r: any) => s + Number(r.hours_worked || 0), 0);
+                         const sortedSessions = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+                         let breakTime = 0;
+                         for (let i = 0; i < sortedSessions.length - 1; i++) {
+                           if (sortedSessions[i].check_out && sortedSessions[i+1].check_in) {
+                             breakTime += Math.max(0, (new Date(sortedSessions[i+1].check_in).getTime() - new Date(sortedSessions[i].check_out).getTime()) / 3600000);
+                           }
+                         }
                          return (
                            <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800">
                              <div className="flex items-center gap-4 min-w-[140px]">
@@ -522,14 +544,31 @@ function AttendancePage() {
                              </div>
                              <div className="flex flex-wrap gap-2 flex-1">
                                 {sessions.map((s: any) => (
-                                  <div key={s.id} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold flex items-center gap-2">
+                                  <div key={s.id} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold flex items-center gap-2 relative group/item">
                                      <Clock className="size-3 text-muted-foreground" />
                                      {new Date(s.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {s.check_out ? new Date(s.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Live"}
+                                     <span className={cn(
+                                       "ml-2 px-1.5 py-0.5 rounded text-[8px] uppercase",
+                                       s.status === 'present' ? "bg-green-100 text-green-700" : 
+                                       s.status === 'late' ? "bg-amber-100 text-amber-700" :
+                                       "bg-rose-100 text-rose-700"
+                                     )}>
+                                       {s.status}
+                                     </span>
                                   </div>
                                 ))}
                              </div>
-                             <div className="text-right">
-                                <span className="text-xs font-black text-primary">{dayTotal.toFixed(2)}h</span>
+                             <div className="text-right flex items-center gap-4">
+                               {breakTime > 0 && (
+                                 <div className="text-right">
+                                   <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Break</p>
+                                   <p className="font-bold text-[10px]">{breakTime.toFixed(2)}h</p>
+                                 </div>
+                               )}
+                               <div className="text-right">
+                                  <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Work</p>
+                                  <span className="text-xs font-black text-primary">{dayTotal.toFixed(2)}h</span>
+                               </div>
                              </div>
                            </div>
                          );
