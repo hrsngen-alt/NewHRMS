@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Trash2, Upload, Download, Users, Pencil, FileIcon, Eye, Clock, Calendar } from "lucide-react";
+import { Plus, Search, Trash2, Upload, Download, Users, Pencil, FileIcon, Eye, Clock, Calendar, FileText } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
@@ -26,10 +26,13 @@ function EmployeesPage() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [viewingEmployee, setViewingEmployee] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
   const isAdmin = role === "admin";
+
+
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
@@ -40,17 +43,18 @@ function EmployeesPage() {
     },
   });
 
-  const { data: documents = [] } = useQuery({
-    queryKey: ["employee_documents", editingEmployee?.id],
-    enabled: !!editingEmployee,
+  const { data: documents = [], refetch: fetchDocs } = useQuery({
+    queryKey: ["employee_documents", editingEmployee?.id || viewingEmployee?.id],
+    enabled: !!editingEmployee || !!viewingEmployee,
     queryFn: async () => {
-      const { data, error } = await supabase.from("employee_documents" as any).select("*").eq("employee_id", editingEmployee.id).order("created_at", { ascending: false });
+      const targetId = editingEmployee?.id || viewingEmployee?.id;
+      const { data, error } = await supabase.from("employee_documents" as any).select("*").eq("employee_id", targetId).order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
-  const [viewingEmployee, setViewingEmployee] = useState<any>(null);
+
 
   const { data: empAttendance = [] } = useQuery({
     queryKey: ["employee_attendance", viewingEmployee?.id],
@@ -523,6 +527,32 @@ function EmployeesPage() {
                               ))}
                             </TableBody>
                           </Table>
+                        </div>
+                      </section>
+
+                      <section className="md:col-span-2 space-y-4">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground border-l-4 border-primary pl-3">Employee Documents</h3>
+                        <div className="ml-4 border rounded-xl divide-y bg-slate-50/30 overflow-hidden">
+                          {documents.length === 0 ? (
+                            <div className="p-8 text-center text-sm text-muted-foreground italic">No documents uploaded for this employee.</div>
+                          ) : documents.map((doc: any) => (
+                            <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-white/80 transition-colors">
+                              <div className="flex items-center gap-4 overflow-hidden">
+                                <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                  <FileText className="size-6" />
+                                </div>
+                                <div className="overflow-hidden">
+                                  <p className="text-sm font-bold truncate">{doc.document_name}</p>
+                                  <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{new Date(doc.created_at).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                              <Button size="sm" variant="outline" asChild className="gap-2 shadow-none border-dashed">
+                                <a href={doc.document_url} target="_blank" rel="noreferrer">
+                                  <Eye className="size-4" /> View
+                                </a>
+                              </Button>
+                            </div>
+                          ))}
                         </div>
                       </section>
                     </div>
