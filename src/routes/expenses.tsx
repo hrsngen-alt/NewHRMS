@@ -403,11 +403,23 @@ function ExpensesPage() {
                                     </TableCell>
                                     <TableCell className="text-right font-black">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
                                     <TableCell className="text-right pr-6">
-                                       {c.receipt_url && (
-                                         <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild>
-                                            <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
-                                         </Button>
-                                       )}
+                                       <div className="flex justify-end gap-2">
+                                          {c.receipt_url && (
+                                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild>
+                                               <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
+                                            </Button>
+                                          )}
+                                          {isAdmin && c.status === 'pending' && (
+                                            <>
+                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => updateStatus(c.id, 'approved')}>
+                                                <CheckCircle2 className="size-4" />
+                                              </Button>
+                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => updateStatus(c.id, 'rejected')}>
+                                                <XCircle className="size-4" />
+                                              </Button>
+                                            </>
+                                          )}
+                                       </div>
                                     </TableCell>
                                  </TableRow>
                                ))}
