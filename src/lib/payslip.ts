@@ -108,7 +108,7 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
   });
 
   // Net pay strip
-  // @ts-expect-error jsPDF lastAutoTable typing
+
   const finalY = (doc as any).lastAutoTable?.finalY || (doc as any).autoTable?.previous?.finalY || (y + 44 + earnings.length * 22);
   const yEnd = Math.max(finalY, y + 44 + earnings.length * 22) + 20;
   doc.setFillColor(34, 34, 60);
