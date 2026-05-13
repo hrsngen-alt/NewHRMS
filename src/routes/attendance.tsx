@@ -5,12 +5,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { toast } from "sonner";
 import { Clock, Play, Square, Search, Users, Calendar, Activity, CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, Plane } from "lucide-react";
 import { cn } from "../lib/utils";
+import { X } from "lucide-react";
+
+const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export const Route = createFileRoute("/attendance")({ component: () => <AppShell><AttendancePage /></AppShell> });
 
@@ -20,7 +24,9 @@ function AttendancePage() {
   const isAdmin = role === "admin";
   const [q, setQ] = useState("");
   const { myEmployee, isLoading: empLoading } = useMyEmployee();
-  const [viewMode, setViewMode] = useState<"date" | "employee">("date");
+  const [viewMode, setViewMode] = useState<"date" | "employee" | "summary">("date");
+  const [selMonth, setSelMonth] = useState<string>("all");
+  const [selYear, setSelYear] = useState<string>("all");
 
   const isMarketing = myEmployee?.department?.toLowerCase() === "marketing";
 
@@ -133,6 +139,39 @@ function AttendancePage() {
       r.date.includes(search)
     );
   });
+
+  const summaryData = useMemo(() => {
+    const summary: Record<string, any> = {};
+    
+    records.forEach((r: any) => {
+      const d = new Date(r.date);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      
+      const mMatch = selMonth === "all" || String(m) === selMonth;
+      const yMatch = selYear === "all" || String(y) === selYear;
+      
+      if (!mMatch || !yMatch) return;
+      
+      const key = `${r.employee_id}-${m}-${y}`;
+      if (!summary[key]) {
+        summary[key] = {
+          employee: r.employees,
+          month: m,
+          year: y,
+          days: new Set(),
+          hours: 0
+        };
+      }
+      
+      summary[key].days.add(r.date);
+      summary[key].hours += Number(r.hours_worked || 0);
+    });
+    
+    return Object.values(summary).sort((a: any, b: any) => b.year - a.year || b.month - a.month);
+  }, [records, selMonth, selYear]);
+
+  const availableYears = Array.from(new Set(records.map((r: any) => new Date(r.date).getFullYear()))).sort((a: any, b: any) => b - a);
 
   const [isPunching, setIsPunching] = useState(false);
   const punch = async (type: "in" | "out") => {
@@ -311,16 +350,62 @@ function AttendancePage() {
                     >
                       By Employee
                     </button>
+                    <button 
+                      onClick={() => setViewMode("summary")} 
+                      className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-all", viewMode === "summary" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}
+                    >
+                      Summary
+                    </button>
                  </div>
               </div>
-              <div className="relative max-w-xs w-full">
-                <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
-                <Input 
-                  placeholder={isAdmin ? "Search employees..." : "Search by date..."}
-                  className="pl-10 h-10 bg-background shadow-none rounded-xl" 
-                  value={q} 
-                  onChange={(e) => setQ(e.target.value)}
-                />
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                {viewMode === "summary" && (
+                  <div className="flex items-center gap-2">
+                    <Select value={selMonth} onValueChange={setSelMonth}>
+                      <SelectTrigger className="w-[100px] h-9 bg-background shadow-none border-dashed rounded-lg">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Months</SelectItem>
+                        {months.map((m, i) => (
+                          <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={selYear} onValueChange={setSelYear}>
+                      <SelectTrigger className="w-[100px] h-9 bg-background shadow-none border-dashed rounded-lg">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Years</SelectItem>
+                        {availableYears.map((y: any) => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {(selMonth !== "all" || selYear !== "all") && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => { setSelMonth("all"); setSelYear("all"); }}
+                        className="h-9 px-2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <div className="relative max-w-xs w-full">
+                  <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
+                  <Input 
+                    placeholder={isAdmin ? "Search employees..." : "Search by date..."}
+                    className="pl-10 h-10 bg-background shadow-none rounded-xl" 
+                    value={q} 
+                    onChange={(e) => setQ(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -406,53 +491,101 @@ function AttendancePage() {
                     </Table>
                   </div>
                 ))
-              ) : (
-                Object.entries(
-                  filteredRecords.reduce((acc: any, r: any) => {
-                    const key = r.employee_id;
-                    if (!acc[key]) acc[key] = { employee: r.employees, days: {} };
-                    if (!acc[key].days[r.date]) acc[key].days[r.date] = [];
-                    acc[key].days[r.date].push(r);
-                    return acc;
-                  }, {})
-                ).map(([empId, data]: [string, any]) => (
-                  <div key={empId} className="border-b last:border-0">
-                    <div className="bg-slate-50/80 dark:bg-slate-900/80 px-8 py-3 border-y flex items-center gap-4">
-                      <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white font-black">
-                         {data.employee?.full_name?.charAt(0)}
-                      </div>
-                      <div>
-                        <span className="text-sm font-black text-foreground uppercase tracking-tight">{data.employee?.full_name}</span>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">{data.employee?.department} · {data.employee?.employee_code}</p>
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-4">
-                      {Object.entries(data.days).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
-                        const dayTotal = sessions.reduce((s: number, r: any) => s + Number(r.hours_worked || 0), 0);
-                        return (
-                          <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center gap-4 min-w-[140px]">
-                               <Calendar className="size-4 text-primary" />
-                               <span className="text-xs font-black text-foreground">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2 flex-1">
-                               {sessions.map((s: any) => (
-                                 <div key={s.id} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold flex items-center gap-2">
-                                    <Clock className="size-3 text-muted-foreground" />
-                                    {new Date(s.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {s.check_out ? new Date(s.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Live"}
-                                 </div>
-                               ))}
-                            </div>
-                            <div className="text-right">
-                               <span className="text-xs font-black text-primary">{dayTotal.toFixed(2)}h</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
+              ) : viewMode === "employee" ? (
+                 Object.entries(
+                   filteredRecords.reduce((acc: any, r: any) => {
+                     const key = r.employee_id;
+                     if (!acc[key]) acc[key] = { employee: r.employees, days: {} };
+                     if (!acc[key].days[r.date]) acc[key].days[r.date] = [];
+                     acc[key].days[r.date].push(r);
+                     return acc;
+                   }, {})
+                 ).map(([empId, data]: [string, any]) => (
+                   <div key={empId} className="border-b last:border-0">
+                     <div className="bg-slate-50/80 dark:bg-slate-900/80 px-8 py-3 border-y flex items-center gap-4">
+                       <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white font-black">
+                          {data.employee?.full_name?.charAt(0)}
+                       </div>
+                       <div>
+                         <span className="text-sm font-black text-foreground uppercase tracking-tight">{data.employee?.full_name}</span>
+                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">{data.employee?.department} · {data.employee?.employee_code}</p>
+                       </div>
+                     </div>
+                     <div className="p-4 space-y-4">
+                       {Object.entries(data.days).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
+                         const dayTotal = sessions.reduce((s: number, r: any) => s + Number(r.hours_worked || 0), 0);
+                         return (
+                           <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800">
+                             <div className="flex items-center gap-4 min-w-[140px]">
+                                <Calendar className="size-4 text-primary" />
+                                <span className="text-xs font-black text-foreground">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
+                             </div>
+                             <div className="flex flex-wrap gap-2 flex-1">
+                                {sessions.map((s: any) => (
+                                  <div key={s.id} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold flex items-center gap-2">
+                                     <Clock className="size-3 text-muted-foreground" />
+                                     {new Date(s.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {s.check_out ? new Date(s.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Live"}
+                                  </div>
+                                ))}
+                             </div>
+                             <div className="text-right">
+                                <span className="text-xs font-black text-primary">{dayTotal.toFixed(2)}h</span>
+                             </div>
+                           </div>
+                         );
+                       })}
+                     </div>
+                   </div>
+                 ))
+               ) : (
+                 <Table>
+                   <TableHeader className="bg-muted/30">
+                     <TableRow>
+                       <TableHead className="pl-8 text-[10px] font-black uppercase tracking-widest">Employee</TableHead>
+                       <TableHead className="text-[10px] font-black uppercase tracking-widest">Period</TableHead>
+                       <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">Days Present</TableHead>
+                       <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest">Total Hours</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                     {summaryData
+                       .filter((item: any) => {
+                         if (!q) return true;
+                         const search = q.toLowerCase();
+                         return (
+                           item.employee?.full_name?.toLowerCase().includes(search) ||
+                           item.employee?.employee_code?.toLowerCase().includes(search)
+                         );
+                       })
+                       .map((item: any, i) => (
+                         <TableRow key={i} className="hover:bg-muted/5 transition-colors border-b last:border-0">
+                           <TableCell className="pl-8 py-4">
+                             <div className="flex items-center gap-3">
+                               <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-black">
+                                 {item.employee?.full_name?.charAt(0)}
+                               </div>
+                               <div>
+                                 <p className="font-bold text-sm">{item.employee?.full_name}</p>
+                                 <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{item.employee?.employee_code}</p>
+                               </div>
+                             </div>
+                           </TableCell>
+                           <TableCell className="font-bold text-sm text-foreground">
+                             {months[item.month - 1]} {item.year}
+                           </TableCell>
+                           <TableCell className="text-center">
+                             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-black">
+                               {item.days.size} Days
+                             </span>
+                           </TableCell>
+                           <TableCell className="text-right pr-8">
+                             <span className="font-black text-foreground text-lg tracking-tight">{item.hours.toFixed(1)}h</span>
+                           </TableCell>
+                         </TableRow>
+                       ))}
+                   </TableBody>
+                 </Table>
+               )}
               {filteredRecords.length === 0 && (
                 <div className="py-20 text-center flex flex-col items-center gap-4">
                   <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/30">
