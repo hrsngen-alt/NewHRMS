@@ -138,13 +138,24 @@ function AttendancePage() {
     const yMatch = selYear === "all" || String(y) === selYear;
     if (!mMatch || !yMatch) return false;
 
-    if (!q) return true;
+    if (!q) {
+      // Default view: only show own records
+      return r.employee_id === myEmployee?.id;
+    }
+
     const search = q.toLowerCase();
-    return (
+    const matchesSearch = (
       r.employees?.full_name?.toLowerCase().includes(search) ||
       r.employees?.employee_code?.toLowerCase().includes(search) ||
       r.date.includes(search)
     );
+
+    // Admins can search for anyone; non-admins only search their own records
+    if (isAdmin) {
+      return matchesSearch;
+    } else {
+      return r.employee_id === myEmployee?.id && matchesSearch;
+    }
   });
 
   const summaryData = useMemo(() => {
