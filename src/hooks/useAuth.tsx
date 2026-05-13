@@ -56,13 +56,16 @@ async function syncUserRecords(user: User): Promise<string | null> {
 
     const fullName = user.user_metadata?.full_name || user.user_metadata?.name || email.split("@")[0];
 
+    const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase());
+
     // 1. Ensure profile exists
     const { data: profile } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle();
     if (!profile) {
       console.log("[Auth] Creating profile for", email);
-      await supabase.from("profiles").upsert({
+      await (supabase.from("profiles") as any).upsert({
         id: user.id,
         full_name: fullName,
+        role: isAdminEmail ? "admin" : "employee",
         created_at: new Date().toISOString()
       }, { onConflict: 'id' });
     }
@@ -96,7 +99,6 @@ async function syncUserRecords(user: User): Promise<string | null> {
 
     // 4. Ensure roles are set correctly
     const { data: existingRoles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-    const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase());
 
     // Check if current role matches our ADMIN_EMAILS list
     const hasAdminRole = existingRoles?.some(r => r.role === "admin");
@@ -106,8 +108,10 @@ async function syncUserRecords(user: User): Promise<string | null> {
       // Remove any old roles and set as admin
       await supabase.from("user_roles").delete().eq("user_id", user.id);
       await supabase.from("user_roles").insert({ user_id: user.id, role: "admin" });
+      await (supabase.from("profiles") as any).update({ role: "admin" }).eq("id", user.id);
     } else if (!existingRoles || existingRoles.length === 0) {
       await supabase.from("user_roles").insert({ user_id: user.id, role: "employee" });
+      await (supabase.from("profiles") as any).update({ role: "employee" }).eq("id", user.id);
     }
 
     console.log("[Auth] Sync complete for:", email, "Role:", isAdminEmail ? "admin" : "employee");
