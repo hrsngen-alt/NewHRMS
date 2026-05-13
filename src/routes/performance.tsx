@@ -14,7 +14,7 @@ import { Star, Award, Target, MessageSquare, Plus, FileEdit, CheckCircle2 } from
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/performance")({ 
   component: () => (
@@ -78,7 +78,7 @@ function PerformancePage() {
       // Create notification for HR/Admin
       const { data: admins, error: admErr } = await supabase.from("profiles" as any).select("id").eq("role", "admin");
       if (!admErr && admins) {
-        const notifications = admins.map(adm => ({
+        const notifications = (admins as any[]).map(adm => ({
           user_id: adm.id,
           title: "New Performance Appraisal",
           message: `A new appraisal has been submitted for ${empName} (${fd.get("review_period")}).`,
@@ -94,6 +94,8 @@ function PerformancePage() {
     }
     setBusy(false);
   };
+
+  const [selectedReview, setSelectedReview] = useState<any>(null);
 
   if (isLoading) return <div className="p-8 text-center animate-pulse font-black text-primary">Loading reviews...</div>;
 
@@ -209,7 +211,7 @@ function PerformancePage() {
             <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
                <div className="overflow-x-auto">
                   <Table>
-                     <TableHeader className="bg-slate-50/50 border-b">
+                     <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-800">
                         <TableRow>
                            <TableHead className="pl-8 font-black uppercase text-[10px] tracking-widest">Review Period</TableHead>
                            <TableHead className="font-black uppercase text-[10px] tracking-widest">{isAdmin ? "Employee" : "Rating"}</TableHead>
@@ -250,7 +252,12 @@ function PerformancePage() {
                                  </span>
                               </TableCell>
                               <TableCell className="text-right pr-8">
-                                 <Button variant="ghost" size="sm" className="font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl">
+                                 <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => setSelectedReview(r)}
+                                    className="font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl"
+                                 >
                                     View Details
                                  </Button>
                               </TableCell>
@@ -270,6 +277,56 @@ function PerformancePage() {
             </Card>
          </div>
       </div>
+
+      <Dialog open={!!selectedReview} onOpenChange={(open) => !open && setSelectedReview(null)}>
+         <DialogContent className="max-w-2xl rounded-3xl p-8 border-2 border-primary/5 shadow-elegant">
+            <DialogHeader>
+               <div className="flex items-center justify-between">
+                  <div>
+                     <DialogTitle className="text-2xl font-black tracking-tight">Performance Appraisal</DialogTitle>
+                     <CardDescription className="font-bold">{selectedReview?.review_period}</CardDescription>
+                  </div>
+                  <div className="text-right">
+                     <div className="flex gap-1 text-amber-400 justify-end">
+                        {Array.from({ length: selectedReview?.rating || 0 }).map((_, i) => <Star key={i} className="size-5 fill-current" />)}
+                     </div>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Final Rating</span>
+                  </div>
+               </div>
+            </DialogHeader>
+
+            <div className="mt-8 space-y-8">
+               <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-1">
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Employee Name</p>
+                     <p className="font-bold text-lg">{selectedReview?.employees?.full_name}</p>
+                  </div>
+                  <div className="space-y-1">
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Department</p>
+                     <p className="font-bold text-lg">{selectedReview?.employees?.department}</p>
+                  </div>
+               </div>
+
+               <div className="space-y-3 p-6 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Reviewer Feedback</p>
+                  <p className="text-sm leading-relaxed italic text-slate-700 dark:text-slate-300">"{selectedReview?.feedback}"</p>
+               </div>
+
+               <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Development Goals</p>
+                  <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 dark:bg-primary/10">
+                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{selectedReview?.goals}</p>
+                  </div>
+               </div>
+            </div>
+
+            <DialogFooter className="mt-8 pt-6 border-t">
+               <Button onClick={() => setSelectedReview(null)} className="rounded-xl px-8 h-12 shadow-lg shadow-primary/20 font-black uppercase tracking-widest text-xs">
+                  Close Review
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
     </div>
   );
 }

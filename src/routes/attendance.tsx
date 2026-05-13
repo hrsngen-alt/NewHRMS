@@ -334,7 +334,7 @@ function AttendancePage() {
                   }, {})
                 ).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayRecords]: [string, any]) => (
                   <div key={date} className="border-b last:border-0">
-                    <div className="bg-slate-50/80 px-8 py-2 border-y flex items-center justify-between">
+                    <div className="bg-slate-50/80 dark:bg-slate-900/80 px-8 py-2 border-y flex items-center justify-between">
                       <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                       <span className="text-[10px] font-bold text-muted-foreground">{dayRecords.length} Sessions</span>
                     </div>
@@ -349,7 +349,7 @@ function AttendancePage() {
                             return eAcc;
                           }, {})
                         ).map(([empId, data]: [string, any]) => (
-                          <div key={empId} className="border-b last:border-0 p-4 bg-white/50">
+                          <div key={empId} className="border-b last:border-0 p-4 bg-white/50 dark:bg-slate-900/50">
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-4">
                                 <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">
@@ -372,14 +372,14 @@ function AttendancePage() {
                               {data.sessions.map((h: any) => {
                                 const isField = (h as any).metadata?.mode === 'field';
                                 return (
-                                  <div key={h.id} className="flex items-center justify-between py-2 px-4 rounded-xl bg-slate-50/50 border border-slate-100 group">
+                                  <div key={h.id} className="flex items-center justify-between py-2 px-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group">
                                     <div className="flex items-center gap-6">
                                       <div className="text-[10px] font-black flex gap-3">
-                                        <div className="px-2 py-1 bg-green-50 text-green-700 rounded-lg flex items-center gap-1.5">
+                                        <div className="px-2 py-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg flex items-center gap-1.5">
                                           <div className="size-1.5 rounded-full bg-green-500" />
                                           {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
                                         </div>
-                                        <div className="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg flex items-center gap-1.5">
+                                        <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-lg flex items-center gap-1.5">
                                           <div className="size-1.5 rounded-full bg-rose-500" />
                                           {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
                                         </div>
@@ -417,7 +417,7 @@ function AttendancePage() {
                   }, {})
                 ).map(([empId, data]: [string, any]) => (
                   <div key={empId} className="border-b last:border-0">
-                    <div className="bg-slate-50/80 px-8 py-3 border-y flex items-center gap-4">
+                    <div className="bg-slate-50/80 dark:bg-slate-900/80 px-8 py-3 border-y flex items-center gap-4">
                       <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white font-black">
                          {data.employee?.full_name?.charAt(0)}
                       </div>
@@ -430,14 +430,14 @@ function AttendancePage() {
                       {Object.entries(data.days).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
                         const dayTotal = sessions.reduce((s: number, r: any) => s + Number(r.hours_worked || 0), 0);
                         return (
-                          <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border bg-white/50">
+                          <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800">
                             <div className="flex items-center gap-4 min-w-[140px]">
                                <Calendar className="size-4 text-primary" />
                                <span className="text-xs font-black text-foreground">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
                             </div>
                             <div className="flex flex-wrap gap-2 flex-1">
                                {sessions.map((s: any) => (
-                                 <div key={s.id} className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-bold flex items-center gap-2">
+                                 <div key={s.id} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold flex items-center gap-2">
                                     <Clock className="size-3 text-muted-foreground" />
                                     {new Date(s.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {s.check_out ? new Date(s.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Live"}
                                  </div>

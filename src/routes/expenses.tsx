@@ -449,7 +449,7 @@ function ExpensesPage() {
       <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50/50">
+            <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
               <TableRow>
                 {viewMode === "employees" ? (
                   <>
