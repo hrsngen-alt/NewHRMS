@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { Plus, Check, X, CalendarDays, Search } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/leaves")({ component: () => <AppShell><LeavesPage /></AppShell> });
 

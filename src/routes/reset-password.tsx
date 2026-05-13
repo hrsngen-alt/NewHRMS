@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
 
-export const Route = createFileRoute("/reset-password")({
+export const Route = createFileRoute("/reset-password" as any)({
   component: ResetPasswordPage,
 });
 

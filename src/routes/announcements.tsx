@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Megaphone, Calendar, Tag, AlertCircle, Info, Star, Plus, Edit2, Trash2, Send } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -85,7 +85,7 @@ function AnnouncementsPage() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="font-display text-4xl font-black tracking-tight text-foreground">SN Gene Bulletin & Events</h1>
+          <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Pulse Bulletin & Events</h1>
           <p className="text-muted-foreground font-medium">The central hub for company news, cultural events, and important updates.</p>
         </div>
 
@@ -206,7 +206,7 @@ function AnnouncementsPage() {
             <div className="absolute -right-8 -top-8 size-32 rounded-full bg-white/10 blur-2xl" />
             <Star className="size-10 mb-6 text-white/50" />
             <h3 className="text-2xl font-black tracking-tight">Stay Connected</h3>
-            <p className="text-indigo-100 font-medium mt-2 leading-relaxed">The SN Gene Bulletin is your source of truth for all company-wide updates and cultural events.</p>
+            <p className="text-indigo-100 font-medium mt-2 leading-relaxed">The Pulse Bulletin is your source of truth for all company-wide updates and cultural events.</p>
             <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-4">
               <div className="flex items-center gap-3">
                 <div className="size-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">

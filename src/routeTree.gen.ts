@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PerformanceRouteImport } from './routes/performance'
@@ -24,7 +23,6 @@ import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as EmployeesRouteImport } from './routes/employees'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as DirectoryRouteImport } from './routes/directory'
-import { Route as DevResetRouteImport } from './routes/dev-reset'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AnnouncementsRouteImport } from './routes/announcements'
@@ -33,11 +31,6 @@ import { Route as IndexRouteImport } from './routes/index'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -105,11 +98,6 @@ const DirectoryRoute = DirectoryRouteImport.update({
   path: '/directory',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DevResetRoute = DevResetRouteImport.update({
-  id: '/dev-reset',
-  path: '/dev-reset',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -136,7 +124,6 @@ export interface FileRoutesByFullPath {
   '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRoute
   '/dashboard': typeof DashboardRoute
-  '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
   '/documents': typeof DocumentsRoute
   '/employees': typeof EmployeesRoute
@@ -150,7 +137,6 @@ export interface FileRoutesByFullPath {
   '/performance': typeof PerformanceRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -158,7 +144,6 @@ export interface FileRoutesByTo {
   '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRoute
   '/dashboard': typeof DashboardRoute
-  '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
   '/documents': typeof DocumentsRoute
   '/employees': typeof EmployeesRoute
@@ -172,7 +157,6 @@ export interface FileRoutesByTo {
   '/performance': typeof PerformanceRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -181,7 +165,6 @@ export interface FileRoutesById {
   '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRoute
   '/dashboard': typeof DashboardRoute
-  '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
   '/documents': typeof DocumentsRoute
   '/employees': typeof EmployeesRoute
@@ -195,7 +178,6 @@ export interface FileRoutesById {
   '/performance': typeof PerformanceRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
@@ -205,7 +187,6 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/attendance'
     | '/dashboard'
-    | '/dev-reset'
     | '/directory'
     | '/documents'
     | '/employees'
@@ -219,7 +200,6 @@ export interface FileRouteTypes {
     | '/performance'
     | '/profile'
     | '/reports'
-    | '/reset-password'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -227,7 +207,6 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/attendance'
     | '/dashboard'
-    | '/dev-reset'
     | '/directory'
     | '/documents'
     | '/employees'
@@ -241,7 +220,6 @@ export interface FileRouteTypes {
     | '/performance'
     | '/profile'
     | '/reports'
-    | '/reset-password'
     | '/settings'
   id:
     | '__root__'
@@ -249,7 +227,6 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/attendance'
     | '/dashboard'
-    | '/dev-reset'
     | '/directory'
     | '/documents'
     | '/employees'
@@ -263,7 +240,6 @@ export interface FileRouteTypes {
     | '/performance'
     | '/profile'
     | '/reports'
-    | '/reset-password'
     | '/settings'
   fileRoutesById: FileRoutesById
 }
@@ -272,7 +248,6 @@ export interface RootRouteChildren {
   AnnouncementsRoute: typeof AnnouncementsRoute
   AttendanceRoute: typeof AttendanceRoute
   DashboardRoute: typeof DashboardRoute
-  DevResetRoute: typeof DevResetRoute
   DirectoryRoute: typeof DirectoryRoute
   DocumentsRoute: typeof DocumentsRoute
   EmployeesRoute: typeof EmployeesRoute
@@ -286,7 +261,6 @@ export interface RootRouteChildren {
   PerformanceRoute: typeof PerformanceRoute
   ProfileRoute: typeof ProfileRoute
   ReportsRoute: typeof ReportsRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -297,13 +271,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -397,13 +364,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DirectoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dev-reset': {
-      id: '/dev-reset'
-      path: '/dev-reset'
-      fullPath: '/dev-reset'
-      preLoaderRoute: typeof DevResetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -440,7 +400,6 @@ const rootRouteChildren: RootRouteChildren = {
   AnnouncementsRoute: AnnouncementsRoute,
   AttendanceRoute: AttendanceRoute,
   DashboardRoute: DashboardRoute,
-  DevResetRoute: DevResetRoute,
   DirectoryRoute: DirectoryRoute,
   DocumentsRoute: DocumentsRoute,
   EmployeesRoute: EmployeesRoute,
@@ -454,7 +413,6 @@ const rootRouteChildren: RootRouteChildren = {
   PerformanceRoute: PerformanceRoute,
   ProfileRoute: ProfileRoute,
   ReportsRoute: ReportsRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport

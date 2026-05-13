@@ -5,7 +5,7 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Scan, UserCheck, UserMinus, ShieldAlert, Sparkles, Clock, MapPin, CheckCircle2 } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/kiosk")({ 
@@ -53,7 +53,7 @@ function KioskPage() {
   async function onScanSuccess(decodedText: string) {
     if (isProcessing || scannedResult) return;
     
-    if (decodedText.startsWith("SNGENE_ID:")) {
+    if (decodedText.startsWith("PULSEHR_ID:")) {
       setIsProcessing(true);
       const employeeId = decodedText.split(":")[1];
       await handlePunch(employeeId);
@@ -181,7 +181,7 @@ function KioskPage() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-4">
             <Sparkles className="size-3" /> Digital Kiosk Terminal
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter leading-none">SN Gene HR Kiosk</h1>
+          <h1 className="text-5xl font-black text-white tracking-tighter leading-none">Pulse HR Kiosk</h1>
           <p className="text-slate-400 font-medium">Scan your Digital ID to record your session.</p>
         </div>
 
@@ -243,7 +243,7 @@ function KioskPage() {
       </div>
 
       <div className="mt-20 text-slate-600 text-[10px] font-black uppercase tracking-[0.4em]">
-         Property of SN Gene HR Solutions • v2.5.0 • {selectedLocation.name} Branch
+         Property of Pulse HR Solutions • v2.5.0 • {selectedLocation.name} Branch
       </div>
     </div>
   );

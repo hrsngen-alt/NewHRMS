@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FileDown, Printer, Calendar, Users, Wallet, TrendingUp, Filter } from "lucide-react";
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, CartesianGrid } from "recharts";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/reports")({ 
   component: () => (
