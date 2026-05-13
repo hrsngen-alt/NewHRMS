@@ -39,18 +39,18 @@ function LoginPage() {
       <div className="hidden gradient-hero p-12 lg:flex lg:flex-col lg:justify-between">
         <div className="flex items-center gap-2 text-primary-foreground">
           <div className="size-9 rounded-xl bg-white/15 backdrop-blur" />
-          <span className="font-display text-xl font-bold">Pulse HR</span>
+          <span className="font-display text-xl font-bold">SN Genec HR</span>
         </div>
         <div className="text-primary-foreground">
           <h2 className="font-display text-4xl font-bold leading-tight">People ops, refined.</h2>
           <p className="mt-3 max-w-sm text-white/80">Onboard, track, pay — all in one beautifully simple workspace.</p>
         </div>
-        <div className="text-xs text-white/60">© Pulse HR · Modern HRMS</div>
+        <div className="text-xs text-white/60">© SN Genec HR · Modern HRMS</div>
       </div>
 
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <h1 className="font-display text-2xl font-bold">Welcome to Pulse HR</h1>
+          <h1 className="font-display text-2xl font-bold">Welcome to SN Genec HR</h1>
           <p className="mt-1 text-sm text-muted-foreground">Sign in to your portal or create a new account if this is your first time.</p>
           <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
             💡 Note: If you were added by HR, please use the "Create account" tab to register your email first.

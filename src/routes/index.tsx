@@ -18,7 +18,7 @@ function Landing() {
       <header className="container mx-auto flex items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2">
           <div className="size-9 rounded-xl gradient-primary shadow-elegant" />
-          <span className="font-display text-xl font-bold">Pulse HR</span>
+          <span className="font-display text-xl font-bold">SN Genec HR</span>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/login"><Button variant="ghost">Sign in</Button></Link>

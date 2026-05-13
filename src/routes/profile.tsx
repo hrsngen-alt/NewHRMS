@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Mail, Phone, Calendar, Fingerprint, ShieldCheck, Download, Share2, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { QRCodeSVG } from "qrcode.react";
 
 export const Route = createFileRoute("/profile")({ 
@@ -59,7 +59,7 @@ function ProfilePage() {
                     <div className="size-6 rounded-lg bg-white flex items-center justify-center">
                        <ShieldCheck className="size-4 text-primary" />
                     </div>
-                    <span className="font-display font-black tracking-widest text-xs uppercase">Pulse HR Enterprise</span>
+                    <span className="font-display font-black tracking-widest text-xs uppercase">SN Genec HR Enterprise</span>
                  </div>
 
                  <div className="size-32 rounded-3xl border-4 border-white/20 p-1 mb-6 shadow-2xl group-hover:scale-105 transition-transform">
@@ -84,7 +84,7 @@ function ProfilePage() {
 
                  <div className="w-full h-20 bg-white rounded-2xl p-2 flex items-center justify-center shadow-inner overflow-hidden">
                     <QRCodeSVG 
-                      value={`PULSEHR_ID:${employee.id}`} 
+                      value={`SNGENEC_ID:${employee.id}`} 
                       size={64}
                       level="H"
                       includeMargin={false}
@@ -131,7 +131,7 @@ function ProfilePage() {
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
                  This Digital ID card is valid for office entry, security clearance, and benefits verification. 
-                 Scan the QR code to verify real-time status with the Pulse HR secure server.
+                 Scan the QR code to verify real-time status with the SN Genec HR secure server.
               </p>
            </div>
         </div>

@@ -153,7 +153,7 @@ function LiveActivity({ isAdmin, today }: { isAdmin: boolean; today: string }) {
     <div className="rounded-2xl border bg-card p-6 shadow-card">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-bold text-lg tracking-tight flex items-center gap-2">
-          <div className="size-2 rounded-full bg-green-500 animate-pulse" /> Live Pulse
+          <div className="size-2 rounded-full bg-green-500 animate-pulse" /> Live SN Genec
         </h3>
         <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Real-time Activity</span>
       </div>
@@ -309,7 +309,7 @@ function Dashboard() {
         <h1 className="font-display text-4xl font-black tracking-tight text-foreground">
           Good Morning, <span className="text-primary">{isAdmin ? "Admin" : myEmployee?.full_name?.split(' ')[0] || 'User'}</span>
         </h1>
-        <p className="text-muted-foreground font-medium">Pulse HR Dashboard Overview • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+        <p className="text-muted-foreground font-medium">SN Genec HR Dashboard Overview • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -388,7 +388,7 @@ function Dashboard() {
                   </div>
                   <div className="mt-8">
                     <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Employee Digital ID</p>
-                    <p className="text-xl font-black text-white tracking-tight leading-tight mt-1">View My Pulse ID</p>
+                    <p className="text-xl font-black text-white tracking-tight leading-tight mt-1">View My SN Genec ID</p>
                     <div className="mt-4 flex items-center gap-2 text-xs font-bold text-white/80 group-hover:text-white transition-colors">
                         Scan to Verify <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
                     </div>
