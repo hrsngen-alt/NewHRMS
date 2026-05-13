@@ -29,6 +29,8 @@ function ExpensesPage() {
   const [deptFilter, setDeptFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"claims" | "employees">("employees");
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
+  const [reviewingClaim, setReviewingClaim] = useState<{id: string, status: 'approved' | 'rejected'} | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const { myEmployee } = useMyEmployee();
 
@@ -142,8 +144,12 @@ function ExpensesPage() {
     }
   };
 
-  const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("expense_claims" as any).update({ status }).eq("id", id);
+  const updateStatus = async (id: string, status: string, notes?: string) => {
+    const { error } = await supabase.from("expense_claims" as any).update({ 
+      status,
+      admin_notes: notes || null 
+    }).eq("id", id);
+    
     if (error) toast.error(error.message);
     else {
       toast.success(`Claim ${status} successfully.`);
@@ -393,13 +399,20 @@ function ExpensesPage() {
                                        </span>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                       <span className={cn(
-                                         "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
-                                         c.status === 'approved' ? "bg-green-100 text-green-700" :
-                                         c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
-                                       )}>
-                                          {c.status}
-                                       </span>
+                                       <div className="flex flex-col items-center">
+                                          <span className={cn(
+                                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
+                                            c.status === 'approved' ? "bg-green-100 text-green-700" :
+                                            c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                                          )}>
+                                             {c.status}
+                                          </span>
+                                          {c.admin_notes && (
+                                             <p className="text-[8px] font-bold text-muted-foreground italic mt-1 max-w-[100px] truncate" title={c.admin_notes}>
+                                                "{c.admin_notes}"
+                                             </p>
+                                          )}
+                                       </div>
                                     </TableCell>
                                     <TableCell className="text-right font-black">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
                                     <TableCell className="text-right pr-6">
@@ -411,10 +424,10 @@ function ExpensesPage() {
                                           )}
                                           {isAdmin && c.status === 'pending' && (
                                             <>
-                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => updateStatus(c.id, 'approved')}>
+                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => setReviewingClaim({id: c.id, status: 'approved'})}>
                                                 <CheckCircle2 className="size-4" />
                                               </Button>
-                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => updateStatus(c.id, 'rejected')}>
+                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => setReviewingClaim({id: c.id, status: 'rejected'})}>
                                                 <XCircle className="size-4" />
                                               </Button>
                                             </>
@@ -526,15 +539,22 @@ function ExpensesPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className={cn(
-                      "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-tighter",
-                      c.status === 'approved' ? "bg-green-100 text-green-700" :
-                      c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
-                    )}>
-                      {c.status === 'approved' ? <CheckCircle2 className="size-3 mr-1.5" /> :
-                       c.status === 'rejected' ? <XCircle className="size-3 mr-1.5" /> : <Clock className="size-3 mr-1.5" />}
-                      {c.status}
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className={cn(
+                        "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-tighter",
+                        c.status === 'approved' ? "bg-green-100 text-green-700" :
+                        c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                      )}>
+                        {c.status === 'approved' ? <CheckCircle2 className="size-3 mr-1.5" /> :
+                         c.status === 'rejected' ? <XCircle className="size-3 mr-1.5" /> : <Clock className="size-3 mr-1.5" />}
+                        {c.status}
+                      </span>
+                      {c.admin_notes && (
+                        <p className="text-[9px] font-bold text-muted-foreground italic max-w-[120px] truncate" title={c.admin_notes}>
+                          "{c.admin_notes}"
+                        </p>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right pr-8">
                     <span className="font-black text-foreground">₹{Number(c.amount).toLocaleString('en-IN')}</span>
@@ -555,10 +575,10 @@ function ExpensesPage() {
                       <div className="flex justify-end gap-2">
                         {c.status === 'pending' && (
                           <>
-                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => updateStatus(c.id, 'approved')}>
+                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => setReviewingClaim({id: c.id, status: 'approved'})}>
                               <CheckCircle2 className="size-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => updateStatus(c.id, 'rejected')}>
+                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => setReviewingClaim({id: c.id, status: 'rejected'})}>
                               <XCircle className="size-4" />
                             </Button>
                           </>
@@ -572,6 +592,45 @@ function ExpensesPage() {
           </Table>
         </div>
       </Card>
+
+      <Dialog open={!!reviewingClaim} onOpenChange={(v) => !v && setReviewingClaim(null)}>
+         <DialogContent className="rounded-3xl p-8 border-2 border-primary/5 shadow-elegant max-w-md">
+            <DialogHeader>
+               <DialogTitle className="text-2xl font-black tracking-tight">
+                  {reviewingClaim?.status === 'approved' ? "Approve Expense" : "Reject Expense"}
+               </DialogTitle>
+               <CardDescription>
+                  Add an optional comment for the employee to see.
+               </CardDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+               <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Admin Comment / Clarification</Label>
+                  <Input 
+                     placeholder="e.g. Please provide GST bill copy..." 
+                     value={reviewNote}
+                     onChange={(e) => setReviewNote(e.target.value)}
+                     className="h-12 rounded-xl border-2"
+                  />
+               </div>
+            </div>
+            <DialogFooter className="gap-3">
+               <Button variant="ghost" className="rounded-xl font-bold" onClick={() => setReviewingClaim(null)}>Cancel</Button>
+               <Button 
+                  className={cn("rounded-xl font-black px-8", reviewingClaim?.status === 'approved' ? "bg-green-600 hover:bg-green-700" : "bg-rose-600 hover:bg-rose-700")}
+                  onClick={() => {
+                     if (reviewingClaim) {
+                        updateStatus(reviewingClaim.id, reviewingClaim.status, reviewNote);
+                        setReviewingClaim(null);
+                        setReviewNote("");
+                     }
+                  }}
+               >
+                  Confirm {reviewingClaim?.status}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
     </div>
   );
 }
