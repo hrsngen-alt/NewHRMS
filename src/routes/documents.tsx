@@ -4,8 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  FolderOpen, FileText, Download, ExternalLink, ShieldCheck, Info, Plus, Trash2, 
+import {
+  FolderOpen, FileText, Download, ExternalLink, ShieldCheck, Info, Plus, Trash2,
   Upload, Send, CalendarDays, Clock, Smartphone, TrendingUp, X, Search, Navigation2, Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ function DocumentsPage() {
         const { data: { publicUrl: url } } = supabase.storage
           .from("employee_documents")
           .getPublicUrl(filePath);
-        
+
         publicUrl = url;
       }
 
@@ -141,15 +141,15 @@ function DocumentsPage() {
     }
   };
 
-  const filteredDocs = search 
-    ? documents.filter((d: any) => 
-        d.title.toLowerCase().includes(search.toLowerCase()) || 
-        d.description?.toLowerCase().includes(search.toLowerCase())
-      )
+  const filteredDocs = search
+    ? documents.filter((d: any) =>
+      d.title.toLowerCase().includes(search.toLowerCase()) ||
+      d.description?.toLowerCase().includes(search.toLowerCase())
+    )
     : documents;
 
   const scrollTo = (id: string) => {
-     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   return (
@@ -163,10 +163,10 @@ function DocumentsPage() {
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input 
+            <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search documents..." 
+              placeholder="Search documents..."
               className="pl-9 w-[250px]"
             />
           </div>
@@ -230,8 +230,8 @@ function DocumentsPage() {
                 <div className="flex items-center gap-2">
                   {!isAdmin && (
                     <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-                       <ShieldCheck className="size-3 text-primary" />
-                       <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">Protected Mode</span>
+                      <ShieldCheck className="size-3 text-primary" />
+                      <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">Protected Mode</span>
                     </div>
                   )}
                   <Button variant="ghost" onClick={() => setPreviewDoc(null)} className="text-white hover:bg-white/20 rounded-xl">
@@ -240,7 +240,7 @@ function DocumentsPage() {
                 </div>
               </div>
 
-              <div 
+              <div
                 className="flex-1 bg-neutral-900 overflow-hidden relative flex items-center justify-center"
                 onContextMenu={(e) => !isAdmin && e.preventDefault()}
               >
@@ -248,27 +248,27 @@ function DocumentsPage() {
                     actually best way is pointer-events-none on a top layer for non-admins */}
                 {!isAdmin && (
                   <div className="absolute inset-0 z-20 pointer-events-none select-none flex flex-col items-center justify-center opacity-[0.03]">
-                     <p className="text-white text-6xl font-black rotate-[-30deg] uppercase tracking-[2rem]">Pulse HR</p>
+                    <p className="text-white text-6xl font-black rotate-[-30deg] uppercase tracking-[2rem]">SN Gene HR</p>
                   </div>
                 )}
-                
+
                 <div className={cn(
                   "w-full h-full relative z-10",
                   !isAdmin ? "pointer-events-auto" : "" // We allow pointer events but handle specifically
                 )}>
                   {previewDoc.file_url.toLowerCase().endsWith('.pdf') ? (
-                    <iframe 
-                      src={`${previewDoc.file_url}#toolbar=0&navpanes=0&scrollbar=1`} 
-                      className="w-full h-full border-none bg-white" 
-                      title="Preview" 
+                    <iframe
+                      src={`${previewDoc.file_url}#toolbar=0&navpanes=0&scrollbar=1`}
+                      className="w-full h-full border-none bg-white"
+                      title="Preview"
                       style={{ pointerEvents: isAdmin ? 'auto' : 'auto' }}
                     />
                   ) : (
                     <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
-                      <img 
-                        src={previewDoc.file_url} 
-                        alt="Preview" 
-                        className="max-w-full max-h-full object-contain shadow-2xl rounded-lg select-none" 
+                      <img
+                        src={previewDoc.file_url}
+                        alt="Preview"
+                        className="max-w-full max-h-full object-contain shadow-2xl rounded-lg select-none"
                         draggable={false}
                       />
                     </div>
@@ -278,8 +278,8 @@ function DocumentsPage() {
                 {!isAdmin && (
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 z-30 shadow-2xl">
                     <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] flex items-center gap-2">
-                       <ShieldCheck className="size-3 text-primary" />
-                       View Only Mode • Print/Download Disabled
+                      <ShieldCheck className="size-3 text-primary" />
+                      View Only Mode • Print/Download Disabled
                     </p>
                   </div>
                 )}
