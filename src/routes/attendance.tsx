@@ -20,6 +20,7 @@ function AttendancePage() {
   const isAdmin = role === "admin";
   const [q, setQ] = useState("");
   const { myEmployee, isLoading: empLoading } = useMyEmployee();
+  const [viewMode, setViewMode] = useState<"date" | "employee">("date");
 
   const isMarketing = myEmployee?.department?.toLowerCase() === "marketing";
 
@@ -294,10 +295,23 @@ function AttendancePage() {
 
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="rounded-2xl border bg-card shadow-card overflow-hidden flex flex-col">
-            <div className="bg-muted/20 px-8 py-6 border-b flex items-center justify-between gap-4">
+            <div className="bg-muted/20 px-8 py-6 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                 <h3 className="font-black text-xl tracking-tight">Daily Activity Log</h3>
-                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Date-wise Session History</p>
+                 <h3 className="font-black text-xl tracking-tight">Attendance Records</h3>
+                 <div className="flex items-center gap-2 mt-1">
+                    <button 
+                      onClick={() => setViewMode("date")} 
+                      className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-all", viewMode === "date" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}
+                    >
+                      By Date
+                    </button>
+                    <button 
+                      onClick={() => setViewMode("employee")} 
+                      className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-all", viewMode === "employee" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}
+                    >
+                      By Employee
+                    </button>
+                 </div>
               </div>
               <div className="relative max-w-xs w-full">
                 <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
@@ -309,87 +323,136 @@ function AttendancePage() {
                 />
               </div>
             </div>
+
             <div className="overflow-x-auto">
-              {Object.entries(
-                filteredRecords.reduce((acc: any, r: any) => {
-                  if (!acc[r.date]) acc[r.date] = [];
-                  acc[r.date].push(r);
-                  return acc;
-                }, {})
-              ).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayRecords]: [string, any]) => (
-                <div key={date} className="border-b last:border-0">
-                  <div className="bg-slate-50/80 px-8 py-2 border-y flex items-center justify-between">
-                    <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                    <span className="text-[10px] font-bold text-muted-foreground">{dayRecords.length} Sessions</span>
+              {viewMode === "date" ? (
+                Object.entries(
+                  filteredRecords.reduce((acc: any, r: any) => {
+                    if (!acc[r.date]) acc[r.date] = [];
+                    acc[r.date].push(r);
+                    return acc;
+                  }, {})
+                ).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayRecords]: [string, any]) => (
+                  <div key={date} className="border-b last:border-0">
+                    <div className="bg-slate-50/80 px-8 py-2 border-y flex items-center justify-between">
+                      <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">{dayRecords.length} Sessions</span>
+                    </div>
+                    <Table>
+                      <TableBody>
+                        {Object.entries(
+                          dayRecords.reduce((eAcc: any, r: any) => {
+                            const key = r.employee_id;
+                            if (!eAcc[key]) eAcc[key] = { employee: r.employees, sessions: [], totalHours: 0 };
+                            eAcc[key].sessions.push(r);
+                            eAcc[key].totalHours += Number(r.hours_worked || 0);
+                            return eAcc;
+                          }, {})
+                        ).map(([empId, data]: [string, any]) => (
+                          <div key={empId} className="border-b last:border-0 p-4 bg-white/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-4">
+                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">
+                                  {data.employee?.full_name?.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="font-black text-foreground">{data.employee?.full_name}</p>
+                                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{data.employee?.department} · {data.employee?.employee_code}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-black shadow-lg shadow-primary/20">
+                                  Total: {data.totalHours.toFixed(2)}h
+                                </div>
+                                <p className="text-[10px] font-black text-muted-foreground uppercase mt-1">Daily Shift Total</p>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2 ml-14">
+                              {data.sessions.map((h: any) => {
+                                const isField = (h as any).metadata?.mode === 'field';
+                                return (
+                                  <div key={h.id} className="flex items-center justify-between py-2 px-4 rounded-xl bg-slate-50/50 border border-slate-100 group">
+                                    <div className="flex items-center gap-6">
+                                      <div className="text-[10px] font-black flex gap-3">
+                                        <div className="px-2 py-1 bg-green-50 text-green-700 rounded-lg flex items-center gap-1.5">
+                                          <div className="size-1.5 rounded-full bg-green-500" />
+                                          {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                                        </div>
+                                        <div className="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg flex items-center gap-1.5">
+                                          <div className="size-1.5 rounded-full bg-rose-500" />
+                                          {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                                        </div>
+                                      </div>
+                                      {(h as any).check_in_lat && (
+                                        <a href={`https://www.google.com/maps?q=${(h as any).check_in_lat},${(h as any).check_in_lng}`} target="_blank" rel="noreferrer" className={cn(
+                                          "size-7 rounded-lg flex items-center justify-center transition-all",
+                                          isField ? "bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white" : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
+                                        )}>
+                                          {isField ? <Plane className="size-3" /> : <MapPin className="size-3" />}
+                                        </a>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-xs font-black text-foreground">{h.hours_worked ?? 0}h</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                  <Table>
-                    <TableBody>
-                      {Object.entries(
-                        dayRecords.reduce((eAcc: any, r: any) => {
-                          const key = r.employee_id;
-                          if (!eAcc[key]) eAcc[key] = { employee: r.employees, sessions: [], totalHours: 0 };
-                          eAcc[key].sessions.push(r);
-                          eAcc[key].totalHours += Number(r.hours_worked || 0);
-                          return eAcc;
-                        }, {})
-                      ).map(([empId, data]: [string, any]) => (
-                        <div key={empId} className="border-b last:border-0 p-4 bg-white/50">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                              <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">
-                                {data.employee?.full_name?.charAt(0)}
-                              </div>
-                              <div>
-                                <p className="font-black text-foreground">{data.employee?.full_name}</p>
-                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{data.employee?.department} · {data.employee?.employee_code}</p>
-                              </div>
+                ))
+              ) : (
+                Object.entries(
+                  filteredRecords.reduce((acc: any, r: any) => {
+                    const key = r.employee_id;
+                    if (!acc[key]) acc[key] = { employee: r.employees, days: {} };
+                    if (!acc[key].days[r.date]) acc[key].days[r.date] = [];
+                    acc[key].days[r.date].push(r);
+                    return acc;
+                  }, {})
+                ).map(([empId, data]: [string, any]) => (
+                  <div key={empId} className="border-b last:border-0">
+                    <div className="bg-slate-50/80 px-8 py-3 border-y flex items-center gap-4">
+                      <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white font-black">
+                         {data.employee?.full_name?.charAt(0)}
+                      </div>
+                      <div>
+                        <span className="text-sm font-black text-foreground uppercase tracking-tight">{data.employee?.full_name}</span>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">{data.employee?.department} · {data.employee?.employee_code}</p>
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {Object.entries(data.days).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
+                        const dayTotal = sessions.reduce((s: number, r: any) => s + Number(r.hours_worked || 0), 0);
+                        return (
+                          <div key={date} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border bg-white/50">
+                            <div className="flex items-center gap-4 min-w-[140px]">
+                               <Calendar className="size-4 text-primary" />
+                               <span className="text-xs font-black text-foreground">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 flex-1">
+                               {sessions.map((s: any) => (
+                                 <div key={s.id} className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-bold flex items-center gap-2">
+                                    <Clock className="size-3 text-muted-foreground" />
+                                    {new Date(s.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {s.check_out ? new Date(s.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Live"}
+                                 </div>
+                               ))}
                             </div>
                             <div className="text-right">
-                              <div className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-black shadow-lg shadow-primary/20">
-                                Total: {data.totalHours.toFixed(2)}h
-                              </div>
-                              <p className="text-[10px] font-black text-muted-foreground uppercase mt-1">Daily Shift Total</p>
+                               <span className="text-xs font-black text-primary">{dayTotal.toFixed(2)}h</span>
                             </div>
                           </div>
-                          
-                          <div className="space-y-2 ml-14">
-                            {data.sessions.map((h: any) => {
-                              const isField = (h as any).metadata?.mode === 'field';
-                              return (
-                                <div key={h.id} className="flex items-center justify-between py-2 px-4 rounded-xl bg-slate-50/50 border border-slate-100 group">
-                                  <div className="flex items-center gap-6">
-                                    <div className="text-[10px] font-black flex gap-3">
-                                      <div className="px-2 py-1 bg-green-50 text-green-700 rounded-lg flex items-center gap-1.5">
-                                        <div className="size-1.5 rounded-full bg-green-500" />
-                                        {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
-                                      </div>
-                                      <div className="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg flex items-center gap-1.5">
-                                        <div className="size-1.5 rounded-full bg-rose-500" />
-                                        {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
-                                      </div>
-                                    </div>
-                                    {(h as any).check_in_lat && (
-                                      <a href={`https://www.google.com/maps?q=${(h as any).check_in_lat},${(h as any).check_in_lng}`} target="_blank" rel="noreferrer" className={cn(
-                                        "size-7 rounded-lg flex items-center justify-center transition-all",
-                                        isField ? "bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white" : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
-                                      )}>
-                                        {isField ? <Plane className="size-3" /> : <MapPin className="size-3" />}
-                                      </a>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-xs font-black text-foreground">{h.hours_worked ?? 0}h</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ))}
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
               {filteredRecords.length === 0 && (
                 <div className="py-20 text-center flex flex-col items-center gap-4">
                   <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/30">
