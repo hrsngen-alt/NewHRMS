@@ -296,8 +296,8 @@ function AttendancePage() {
           <div className="rounded-2xl border bg-card shadow-card overflow-hidden flex flex-col">
             <div className="bg-muted/20 px-8 py-6 border-b flex items-center justify-between gap-4">
               <div>
-                 <h3 className="font-black text-xl tracking-tight">Activity Log</h3>
-                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Historical Session Data</p>
+                 <h3 className="font-black text-xl tracking-tight">Daily Activity Log</h3>
+                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Date-wise Session History</p>
               </div>
               <div className="relative max-w-xs w-full">
                 <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
@@ -310,61 +310,69 @@ function AttendancePage() {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow>
-                    <TableHead className="pl-8 font-black uppercase text-[10px] tracking-widest">Date</TableHead>
-                    {isAdmin && <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>}
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Punches</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Location</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Hours</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRecords.map((h: any) => {
-                    const isField = (h as any).metadata?.mode === 'field';
-                    return (
-                      <TableRow key={h.id} className="hover:bg-primary/5 transition-colors group">
-                        <TableCell className="font-black pl-8">{h.date}</TableCell>
-                        {isAdmin && (
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <p className="font-bold text-sm text-foreground">{h.employees?.full_name}</p>
-                              <p className="text-[10px] font-black text-primary uppercase tracking-widest">{h.employees?.department}</p>
-                            </div>
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          <div className="text-[10px] font-black flex gap-3">
-                            <div className="px-2 py-1 bg-green-50 text-green-700 rounded-lg">IN: {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</div>
-                            <div className="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg">OUT: {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {(h as any).check_in_lat && (
-                              <a href={`https://www.google.com/maps?q=${(h as any).check_in_lat},${(h as any).check_in_lng}`} target="_blank" rel="noreferrer" className={cn(
-                                "size-8 rounded-lg flex items-center justify-center transition-all shadow-sm",
-                                isField ? "bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white" : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
-                              )}>
-                                {isField ? <Plane className="size-4" /> : <MapPin className="size-4" />}
-                              </a>
-                            )}
-                            {isField && <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Field</span>}
-                            {!(h as any).check_in_lat && <span className="text-[10px] font-bold text-muted-foreground italic">No GPS</span>}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right pr-8">
-                           <span className="inline-flex items-center gap-1.5 font-black text-foreground">
-                              {h.hours_worked ?? 0}h
-                              {h.hours_worked && h.hours_worked > 8 && <TrendingUp className="size-3 text-green-500" />}
-                           </span>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              {Object.entries(
+                filteredRecords.reduce((acc: any, r: any) => {
+                  if (!acc[r.date]) acc[r.date] = [];
+                  acc[r.date].push(r);
+                  return acc;
+                }, {})
+              ).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayRecords]: [string, any]) => (
+                <div key={date} className="border-b last:border-0">
+                  <div className="bg-slate-50/80 px-8 py-2 border-y flex items-center justify-between">
+                    <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">{dayRecords.length} Sessions</span>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      {dayRecords.map((h: any) => {
+                        const isField = (h as any).metadata?.mode === 'field';
+                        return (
+                          <TableRow key={h.id} className="hover:bg-primary/5 transition-colors group border-0">
+                            <TableCell className="pl-8 w-1/4">
+                              {isAdmin ? (
+                                <div className="flex flex-col">
+                                  <p className="font-bold text-sm text-foreground">{h.employees?.full_name}</p>
+                                  <p className="text-[10px] font-black text-primary uppercase tracking-widest">{h.employees?.department}</p>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className={cn("size-2 rounded-full", h.check_out ? "bg-green-500" : "bg-amber-500 animate-pulse")} />
+                                  <span className="font-bold text-sm">{h.check_out ? "Completed" : "In Progress"}</span>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="w-1/3">
+                              <div className="text-[10px] font-black flex gap-3">
+                                <div className="px-2 py-1 bg-green-50 text-green-700 rounded-lg">IN: {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</div>
+                                <div className="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg">OUT: {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {(h as any).check_in_lat && (
+                                  <a href={`https://www.google.com/maps?q=${(h as any).check_in_lat},${(h as any).check_in_lng}`} target="_blank" rel="noreferrer" className={cn(
+                                    "size-8 rounded-lg flex items-center justify-center transition-all shadow-sm",
+                                    isField ? "bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white" : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
+                                  )}>
+                                    {isField ? <Plane className="size-4" /> : <MapPin className="size-4" />}
+                                  </a>
+                                )}
+                                {isField && <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Field</span>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right pr-8">
+                               <span className="inline-flex items-center gap-1.5 font-black text-foreground">
+                                  {h.hours_worked ?? 0}h
+                                  {h.hours_worked && h.hours_worked > 8 && <TrendingUp className="size-3 text-green-500" />}
+                               </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
               {filteredRecords.length === 0 && (
                 <div className="py-20 text-center flex flex-col items-center gap-4">
                   <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/30">
