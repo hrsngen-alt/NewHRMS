@@ -324,51 +324,68 @@ function AttendancePage() {
                   </div>
                   <Table>
                     <TableBody>
-                      {dayRecords.map((h: any) => {
-                        const isField = (h as any).metadata?.mode === 'field';
-                        return (
-                          <TableRow key={h.id} className="hover:bg-primary/5 transition-colors group border-0">
-                            <TableCell className="pl-8 w-1/4">
-                              {isAdmin ? (
-                                <div className="flex flex-col">
-                                  <p className="font-bold text-sm text-foreground">{h.employees?.full_name}</p>
-                                  <p className="text-[10px] font-black text-primary uppercase tracking-widest">{h.employees?.department}</p>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className={cn("size-2 rounded-full", h.check_out ? "bg-green-500" : "bg-amber-500 animate-pulse")} />
-                                  <span className="font-bold text-sm">{h.check_out ? "Completed" : "In Progress"}</span>
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="w-1/3">
-                              <div className="text-[10px] font-black flex gap-3">
-                                <div className="px-2 py-1 bg-green-50 text-green-700 rounded-lg">IN: {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</div>
-                                <div className="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg">OUT: {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</div>
+                      {Object.entries(
+                        dayRecords.reduce((eAcc: any, r: any) => {
+                          const key = r.employee_id;
+                          if (!eAcc[key]) eAcc[key] = { employee: r.employees, sessions: [], totalHours: 0 };
+                          eAcc[key].sessions.push(r);
+                          eAcc[key].totalHours += Number(r.hours_worked || 0);
+                          return eAcc;
+                        }, {})
+                      ).map(([empId, data]: [string, any]) => (
+                        <div key={empId} className="border-b last:border-0 p-4 bg-white/50">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                              <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">
+                                {data.employee?.full_name?.charAt(0)}
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {(h as any).check_in_lat && (
-                                  <a href={`https://www.google.com/maps?q=${(h as any).check_in_lat},${(h as any).check_in_lng}`} target="_blank" rel="noreferrer" className={cn(
-                                    "size-8 rounded-lg flex items-center justify-center transition-all shadow-sm",
-                                    isField ? "bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white" : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
-                                  )}>
-                                    {isField ? <Plane className="size-4" /> : <MapPin className="size-4" />}
-                                  </a>
-                                )}
-                                {isField && <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter">Field</span>}
+                              <div>
+                                <p className="font-black text-foreground">{data.employee?.full_name}</p>
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{data.employee?.department} · {data.employee?.employee_code}</p>
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right pr-8">
-                               <span className="inline-flex items-center gap-1.5 font-black text-foreground">
-                                  {h.hours_worked ?? 0}h
-                                  {h.hours_worked && h.hours_worked > 8 && <TrendingUp className="size-3 text-green-500" />}
-                               </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                            </div>
+                            <div className="text-right">
+                              <div className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-black shadow-lg shadow-primary/20">
+                                Total: {data.totalHours.toFixed(2)}h
+                              </div>
+                              <p className="text-[10px] font-black text-muted-foreground uppercase mt-1">Daily Shift Total</p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2 ml-14">
+                            {data.sessions.map((h: any) => {
+                              const isField = (h as any).metadata?.mode === 'field';
+                              return (
+                                <div key={h.id} className="flex items-center justify-between py-2 px-4 rounded-xl bg-slate-50/50 border border-slate-100 group">
+                                  <div className="flex items-center gap-6">
+                                    <div className="text-[10px] font-black flex gap-3">
+                                      <div className="px-2 py-1 bg-green-50 text-green-700 rounded-lg flex items-center gap-1.5">
+                                        <div className="size-1.5 rounded-full bg-green-500" />
+                                        {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                                      </div>
+                                      <div className="px-2 py-1 bg-rose-50 text-rose-700 rounded-lg flex items-center gap-1.5">
+                                        <div className="size-1.5 rounded-full bg-rose-500" />
+                                        {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                                      </div>
+                                    </div>
+                                    {(h as any).check_in_lat && (
+                                      <a href={`https://www.google.com/maps?q=${(h as any).check_in_lat},${(h as any).check_in_lng}`} target="_blank" rel="noreferrer" className={cn(
+                                        "size-7 rounded-lg flex items-center justify-center transition-all",
+                                        isField ? "bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white" : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
+                                      )}>
+                                        {isField ? <Plane className="size-3" /> : <MapPin className="size-3" />}
+                                      </a>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-xs font-black text-foreground">{h.hours_worked ?? 0}h</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
