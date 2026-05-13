@@ -42,7 +42,7 @@ const nav: NavItem[] = [
 ];
 
 const essNav: NavItem[] = [
-  { to: "/announcements", label: "Pulse Bulletin", icon: Megaphone },
+  { to: "/announcements", label: "SN Genec Bulletin", icon: Megaphone },
   { to: "/holidays", label: "Holidays", icon: CalendarIcon },
   { to: "/directory", label: "Team Directory", icon: Search },
   { to: "/documents", label: "Policy Hub", icon: FolderOpen },
@@ -171,7 +171,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           <div className="size-12 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
             <SparklesIcon className="size-6 text-white" />
           </div>
-          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Initializing Pulse HR...</p>
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Initializing SN Genec HR...</p>
         </div>
       </div>
     );
@@ -185,7 +185,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
             <SparklesIcon className="size-6 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="font-display text-xl font-black tracking-tight text-white leading-none">Pulse HR</span>
+            <span className="font-display text-xl font-black tracking-tight text-white leading-none">SN Genec HR</span>
             <span className="text-[10px] font-bold text-primary tracking-widest uppercase mt-1">Enterprise</span>
           </div>
         </Link>
@@ -223,7 +223,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                      <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
                        <SparklesIcon className="size-5 text-white" />
                      </div>
-                     <span className="font-display font-black text-xl">Pulse HR</span>
+                     <span className="font-display font-black text-xl">SN Genec HR</span>
                    </SheetTitle>
                  </SheetHeader>
                  <NavContent role={role} location={location} onNavClick={() => {}} />
@@ -239,7 +239,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                 <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
                    <SparklesIcon className="size-4 text-white" />
                 </div>
-                <span className="font-display font-black text-lg text-foreground">Pulse HR</span>
+                <span className="font-display font-black text-lg text-foreground">SN Genec HR</span>
              </div>
              
              <div className="hidden md:flex items-center gap-6">
