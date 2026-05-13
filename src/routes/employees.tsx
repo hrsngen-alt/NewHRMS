@@ -523,6 +523,9 @@ function EmployeesPage() {
                           </div>
                         ))}
                       </div>
+                      <DialogFooter className="mt-6 pt-4 border-t">
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setOpen(false); setEditingEmployee(null); }}>Finish & Close</Button>
+                      </DialogFooter>
                     </TabsContent>
                   </Tabs>
                 ) : (
