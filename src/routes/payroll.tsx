@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Lock, Play, FileDown, Wallet } from "lucide-react";
 import { generatePayslipPDF } from "@/lib/payslip";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/payroll")({ component: () => <AppShell><PayrollPage /></AppShell> });
 
@@ -26,6 +26,13 @@ function PayrollPage() {
     queryKey: ["payroll-runs"],
     queryFn: async () => (await supabase.from("payroll_runs").select("*").order("period_year", { ascending: false }).order("period_month", { ascending: false })).data ?? [],
   });
+
+  const { data: settings } = useQuery({
+    queryKey: ["company-settings"],
+    queryFn: async () => (await (supabase.from("company_settings" as any).select("company_name").maybeSingle() as any)).data,
+  });
+
+  const companyName = (settings as any)?.company_name || "SN Gene HR";
 
   const { data: latestSlips = [] } = useQuery({
     queryKey: ["latest-payslips", month, year],
@@ -107,7 +114,7 @@ function PayrollPage() {
 
   const downloadAll = async (runId: string) => {
     const { data } = await supabase.from("payslips").select("*, payroll_runs(period_month, period_year), employees(*)").eq("payroll_run_id", runId);
-    (data ?? []).forEach((p) => generatePayslipPDF(p as never));
+    (data ?? []).forEach((p) => generatePayslipPDF(p as never, companyName));
     toast.success(`Generated ${data?.length ?? 0} slips`);
   };
 

@@ -5,7 +5,7 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Scan, UserCheck, UserMinus, ShieldAlert, Sparkles, Clock, MapPin, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/kiosk")({ 
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/kiosk")({
 
 function KioskPage() {
   const [locations, setLocations] = useState<any[]>([]);
+  const [companyName, setCompanyName] = useState("SN Gene HR");
   const [selectedLocation, setSelectedLocation] = useState<any>(() => {
     const saved = localStorage.getItem("kiosk_location");
     return saved ? JSON.parse(saved) : null;
@@ -23,11 +24,14 @@ function KioskPage() {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
-    const fetchLocations = async () => {
-      const { data } = await supabase.from("company_locations" as any).select("*");
-      if (data) setLocations(data);
+    const fetchData = async () => {
+      const { data: locs } = await supabase.from("company_locations" as any).select("*");
+      if (locs) setLocations(locs);
+      
+      const { data: settings } = await (supabase.from("company_settings" as any).select("company_name").maybeSingle() as any);
+      if (settings?.company_name) setCompanyName(settings.company_name);
     };
-    fetchLocations();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -53,7 +57,7 @@ function KioskPage() {
   async function onScanSuccess(decodedText: string) {
     if (isProcessing || scannedResult) return;
     
-    if (decodedText.startsWith("PULSEHR_ID:")) {
+    if (decodedText.startsWith("SNGENE_ID:")) {
       setIsProcessing(true);
       const employeeId = decodedText.split(":")[1];
       await handlePunch(employeeId);
@@ -181,7 +185,7 @@ function KioskPage() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-4">
             <Sparkles className="size-3" /> Digital Kiosk Terminal
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter leading-none">Pulse HR Kiosk</h1>
+          <h1 className="text-5xl font-black text-white tracking-tighter leading-none">{companyName} Kiosk</h1>
           <p className="text-slate-400 font-medium">Scan your Digital ID to record your session.</p>
         </div>
 
@@ -243,7 +247,7 @@ function KioskPage() {
       </div>
 
       <div className="mt-20 text-slate-600 text-[10px] font-black uppercase tracking-[0.4em]">
-         Property of Pulse HR Solutions • v2.5.0 • {selectedLocation.name} Branch
+         Property of {companyName} Solutions • v2.5.0 • {selectedLocation.name} Branch
       </div>
     </div>
   );

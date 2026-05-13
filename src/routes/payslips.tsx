@@ -28,13 +28,20 @@ function PayslipsPage() {
   const { data: slips = [] } = useQuery({
     queryKey: ["payslips", role, myEmployee?.id],
     queryFn: async () => {
-      let q = supabase.from("payslips").select("*, payroll_runs(period_month, period_year), employees(*)").order("created_at", { ascending: false });
-      if (role !== "admin" && myEmployee) q = (q as any).eq("employee_id", myEmployee.id);
-      const { data, error } = await q;
+      let query = supabase.from("payslips").select("*, payroll_runs(period_month, period_year), employees(*)").order("created_at", { ascending: false });
+      if (role !== "admin" && myEmployee) query = (query as any).eq("employee_id", myEmployee.id);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
   });
+
+  const { data: settings } = useQuery({
+    queryKey: ["company-settings"],
+    queryFn: async () => (await (supabase.from("company_settings" as any).select("company_name").maybeSingle() as any)).data,
+  });
+
+  const companyName = (settings as any)?.company_name || "SN Gene HR";
 
   const filteredSlips = slips.filter((s: any) => {
     if (!q) return true;
@@ -86,7 +93,7 @@ function PayslipsPage() {
                 <TableCell className="text-right text-destructive">₹{Number(s.total_deductions).toLocaleString("en-IN")}</TableCell>
                 <TableCell className="text-right font-semibold">₹{Number(s.net_pay).toLocaleString("en-IN")}</TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="outline" className="gap-2" onClick={() => generatePayslipPDF(s as never)}><FileDown className="size-3.5" /> PDF</Button>
+                  <Button size="sm" variant="outline" className="gap-2" onClick={() => generatePayslipPDF(s as never, companyName)}><FileDown className="size-3.5" /> PDF</Button>
                 </TableCell>
               </TableRow>
             ))}
