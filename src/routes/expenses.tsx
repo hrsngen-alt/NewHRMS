@@ -14,7 +14,7 @@ import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 export const Route = createFileRoute("/expenses")({ component: () => <AppShell><ExpensesPage /></AppShell> });

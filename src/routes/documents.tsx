@@ -248,7 +248,7 @@ function DocumentsPage() {
                     actually best way is pointer-events-none on a top layer for non-admins */}
                 {!isAdmin && (
                   <div className="absolute inset-0 z-20 pointer-events-none select-none flex flex-col items-center justify-center opacity-[0.03]">
-                     <p className="text-white text-6xl font-black rotate-[-30deg] uppercase tracking-[2rem]">SN Genec HR</p>
+                     <p className="text-white text-6xl font-black rotate-[-30deg] uppercase tracking-[2rem]">SN Gene HR</p>
                   </div>
                 )}
                 

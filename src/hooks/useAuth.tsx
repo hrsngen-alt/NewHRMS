@@ -19,10 +19,10 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // Centralized admin list
 const ADMIN_EMAILS = [
-  "admin@pulsehr.com", 
-  "admin@admin.com", 
-  "admin1@admin.com", 
-  "hr@pulsehr.com", 
+  "admin@pulsehr.com",
+  "admin@admin.com",
+  "admin1@admin.com",
+  "hr@pulsehr.com",
   "hardik@pulsehr.com",
   "hrsngen@gmail.com", // Added you as requested
   "admin@pulse.com",    // Added the pulse admin
@@ -72,7 +72,7 @@ async function syncUserRecords(user: User): Promise<string | null> {
       .select("id, user_id, email, full_name")
       .eq("user_id", user.id)
       .maybeSingle();
-    
+
     if (alreadyLinked) {
       console.log("[Auth] Employee already linked:", alreadyLinked.id);
       return alreadyLinked.id;
@@ -83,13 +83,13 @@ async function syncUserRecords(user: User): Promise<string | null> {
       .select("id, user_id, email, full_name")
       .ilike("email", email)
       .maybeSingle() as any;
-    
+
     if (employee) {
       console.log("[Auth] Linking employee record for", email, "-> id:", employee.id);
       const updates: any = { user_id: user.id };
       // If the employee record has no name, use the one from Auth
       if (!employee.full_name) updates.full_name = fullName;
-      
+
       await (supabase.from("employees") as any).update(updates).eq("id", employee.id);
       return employee.id;
     }
@@ -97,10 +97,10 @@ async function syncUserRecords(user: User): Promise<string | null> {
     // 4. Ensure roles are set correctly
     const { data: existingRoles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
     const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase());
-    
+
     // Check if current role matches our ADMIN_EMAILS list
     const hasAdminRole = existingRoles?.some(r => r.role === "admin");
-    
+
     if (isAdminEmail && !hasAdminRole) {
       console.log("[Auth] Promoting user to admin based on email list...");
       // Remove any old roles and set as admin
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log("[Auth] Provider mounted. Starting initial checks...");
-    
+
     // Safety valve: Ensure loading is always set to false after 5 seconds max
     const safetyTimeout = setTimeout(() => {
       if (loading) {

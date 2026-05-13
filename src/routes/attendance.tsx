@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { toast } from "sonner";
 import { Clock, Play, Square, Search, Users, Calendar, Activity, CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, Plane } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/attendance")({ component: () => <AppShell><AttendancePage /></AppShell> });
 

@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Lock, Play, FileDown, Wallet } from "lucide-react";
 import { generatePayslipPDF } from "@/lib/payslip";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/payroll")({ component: () => <AppShell><PayrollPage /></AppShell> });
 

@@ -44,7 +44,7 @@ export function generatePayslipPDF(p: Payslip) {
   doc.setFillColor(82, 71, 200);
   doc.rect(0, 0, W, 70, "F");
   doc.setTextColor(255);
-  doc.setFont("helvetica", "bold").setFontSize(18).text("SN Genec HR", 40, 32);
+  doc.setFont("helvetica", "bold").setFontSize(18).text("SN Gene HR", 40, 32);
   doc.setFont("helvetica", "normal").setFontSize(10).text("Payslip · Confidential", 40, 50);
   doc.setFont("helvetica", "bold").setFontSize(12).text(`Pay period: ${period}`, W - 40, 40, { align: "right" });
 
@@ -120,7 +120,7 @@ export function generatePayslipPDF(p: Payslip) {
 
   // Footer
   doc.setFontSize(8).setTextColor(140);
-  doc.text("This is a system-generated payslip. Digitally verified by SN Genec HR.", W / 2, 800, { align: "center" });
+  doc.text("This is a system-generated payslip. Digitally verified by SN Gene HR.", W / 2, 800, { align: "center" });
 
   doc.save(`Payslip_${emp.employee_code}_${period.replace(" ", "_")}.pdf`);
 }
