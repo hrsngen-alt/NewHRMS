@@ -217,11 +217,15 @@ function Dashboard() {
         value: 85 + Math.floor(Math.random() * 15)
       }));
 
+      const { data: myHoursData } = !isAdmin ? await supabase.from("attendance").select("hours_worked").eq("employee_id", myEmployee?.id) : { data: [] };
+      const personalHours = (myHoursData ?? []).reduce((s, r) => s + Number(r.hours_worked || 0), 0).toFixed(1);
+
       return {
         totalEmployees: emp.data?.length ?? 0,
         presentToday: uniquePresent,
         pendingLeaves: lv.data?.length ?? 0,
         totalPayroll: totalNet,
+        personalHours,
         deptData,
         attTrend,
         locations: (loc as any).data || [],
@@ -316,140 +320,119 @@ function Dashboard() {
         <StatCard icon={Users} label="Total Workforce" value={stats?.totalEmployees ?? 0} trend="up" trendValue="+3.2%" colorClass="bg-indigo-500" />
         <StatCard icon={Clock} label="Attendance Rate" value={`${stats?.attTrend?.[6]?.value ?? 96}%`} trend="up" trendValue="+0.8%" colorClass="bg-teal-500" />
         <StatCard icon={CalendarDays} label="Pending Leaves" value={stats?.pendingLeaves ?? 0} colorClass="bg-rose-500" />
-        <StatCard icon={Wallet} label="Net Payroll YTD" value={`₹${(stats?.totalPayroll ?? 0).toLocaleString("en-IN")}`} trend="up" trendValue="+12%" colorClass="bg-amber-500" />
+        {isAdmin ? (
+          <StatCard icon={Wallet} label="Net Payroll YTD" value={`₹${(stats?.totalPayroll ?? 0).toLocaleString("en-IN")}`} trend="up" trendValue="+12%" colorClass="bg-amber-500" />
+        ) : (
+          <StatCard icon={Activity} label="Personal Performance" value={`${stats?.personalHours ?? 0}h`} trend="up" trendValue="+5.4%" colorClass="bg-amber-500" />
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8 rounded-2xl border bg-card p-6 shadow-card overflow-hidden group">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="font-bold text-xl tracking-tight">Weekly Attendance Trends</h3>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Average Daily Presence %</p>
+        {isAdmin ? (
+          <div className="lg:col-span-12 rounded-2xl border bg-card p-6 shadow-card overflow-hidden group">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="font-bold text-xl tracking-tight">Weekly Attendance Trends</h3>
+                <p className="text-xs text-muted-foreground font-medium mt-1">Average Daily Presence %</p>
+              </div>
+            </div>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats?.attTrend ?? []}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
+                  <YAxis hide domain={[0, 100]} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-elegant)', padding: '12px' }}
+                    itemStyle={{ fontWeight: 800, color: 'var(--primary)' }}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats?.attTrend ?? []}>
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
-                <YAxis hide domain={[0, 100]} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-elegant)', padding: '12px' }}
-                  itemStyle={{ fontWeight: 800, color: 'var(--primary)' }}
-                />
-                <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="lg:col-span-4 space-y-6">
-          {!isAdmin && myEmployee && (
-              <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-                <div className="rounded-2xl border bg-card p-6 shadow-card flex flex-col justify-between border-b-8 border-b-primary transition-all hover:shadow-elegant group">
+        ) : (
+          <div className="lg:col-span-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-2xl border bg-card p-8 shadow-card flex flex-col justify-between border-b-8 border-b-primary transition-all hover:shadow-elegant group min-h-[300px]">
                   <div>
-                    <h3 className="font-bold text-xl tracking-tight flex items-center gap-2">
-                      <Activity className="size-5 text-primary" /> Time Tracking
+                    <h3 className="font-black text-2xl tracking-tight flex items-center gap-3">
+                      <Activity className="size-6 text-primary" /> Time Tracking
                     </h3>
-                    {isMarketing && <span className="text-[8px] font-black uppercase text-amber-600 tracking-widest mt-1 flex items-center gap-1"><Plane className="size-2" /> India-Wide Mode</span>}
-                    <p className="text-xs text-muted-foreground font-medium mt-1">Log your daily work hours</p>
+                    <p className="text-sm text-muted-foreground font-medium mt-2">Record your shift and track productivity</p>
                   </div>
                   
-                  <div className="text-center py-4">
-                    <div className="text-4xl font-black font-display text-primary tracking-tighter mb-1 tabular-nums">
+                  <div className="text-center py-6">
+                    <div className="text-5xl font-black font-display text-primary tracking-tighter mb-2 tabular-nums">
                       {isCheckedIn ? elapsed : "00:00:00"}
                     </div>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-6">Current Session</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-8">Shift Duration Today</p>
                     
                     {isCheckedIn ? (
-                      <Button onClick={() => punch("out")} variant="destructive" className="w-full h-11 rounded-xl gap-2 text-sm font-black shadow-lg shadow-red-200">
-                        <Square className="size-4 fill-current" /> Finish Session
+                      <Button onClick={() => punch("out")} variant="destructive" className="w-full h-14 rounded-2xl gap-3 text-base font-black shadow-lg shadow-red-100">
+                        <Square className="size-5 fill-current" /> Finish My Session
                       </Button>
                     ) : (
-                      <Button onClick={() => punch("in")} className="w-full h-11 rounded-xl gap-2 text-sm font-black shadow-lg shadow-indigo-200">
-                        <Play className="size-4 fill-current" /> Start Session
+                      <Button onClick={() => punch("in")} className="w-full h-14 rounded-2xl gap-3 text-base font-black shadow-lg shadow-indigo-100">
+                        <Play className="size-5 fill-current" /> Start My Session
                       </Button>
                     )}
                   </div>
                 </div>
 
-                <Link to="/profile" className="rounded-2xl border bg-gradient-to-br from-indigo-600 to-purple-700 p-6 shadow-elegant flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-95 group">
-                  <div className="flex items-center justify-between text-white/80">
-                    <Award className="size-6" />
-                    <div className="size-8 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-black uppercase tracking-tighter backdrop-blur-md border border-white/10">
-                        ID
+                <Link to="/profile" className="rounded-[32px] border bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-8 shadow-elegant flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 size-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+                  <div className="flex items-center justify-between text-white/80 relative z-10">
+                    <Award className="size-8" />
+                    <div className="px-3 py-1 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-black uppercase tracking-widest backdrop-blur-md border border-white/10">
+                        Digital ID
                     </div>
                   </div>
-                  <div className="mt-8">
-                    <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Employee Digital ID</p>
-                    <p className="text-xl font-black text-white tracking-tight leading-tight mt-1">View My SN Gene ID</p>
-                    <div className="mt-4 flex items-center gap-2 text-xs font-bold text-white/80 group-hover:text-white transition-colors">
-                        Scan to Verify <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+                  <div className="mt-12 relative z-10">
+                    <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Identity Pass</p>
+                    <p className="text-3xl font-black text-white tracking-tight leading-tight mt-2">Show My SN Gene ID</p>
+                    <div className="mt-6 flex items-center gap-3 text-sm font-bold text-white/80 group-hover:text-white transition-colors">
+                        Scan for Office Entry <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
                 </Link>
-              </div>
-          )}
-
-          {isAdmin && (
-            <>
-              <LiveActivity isAdmin={isAdmin} today={today} />
-              <div className="rounded-2xl border bg-card p-6 shadow-card">
-                <h3 className="font-bold text-lg tracking-tight mb-4">Recent Hires</h3>
-                <div className="space-y-4">
-                  {(stats?.recentHires ?? []).map((h: any) => (
-                    <div key={h.id} className="flex items-center justify-between group">
-                      <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-sm">
-                          {h.full_name?.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold tracking-tight group-hover:text-primary transition-colors">{h.full_name}</p>
-                          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{h.designation}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="ghost" asChild className="w-full mt-4 text-[10px] font-black uppercase tracking-widest border border-dashed text-muted-foreground hover:text-primary hover:border-primary">
-                  <Link to="/employees" className="gap-2">Manage Workforce <ArrowRight className="size-4" /></Link>
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-6 shadow-card">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-bold text-xl tracking-tight">Workforce by Department</h3>
+        {isAdmin && (
+          <div className="rounded-2xl border bg-card p-6 shadow-card">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="font-bold text-xl tracking-tight">Workforce by Department</h3>
+            </div>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.deptData ?? []}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
+                  <YAxis hide />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-elegant)' }}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={32}>
+                    {(stats?.deptData ?? []).map((_, i) => (
+                      <Cell key={i} fill={chartColors[i % chartColors.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.deptData ?? []}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
-                <YAxis hide />
-                <Tooltip 
-                  cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-elegant)' }}
-                />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={32}>
-                  {(stats?.deptData ?? []).map((_, i) => (
-                    <Cell key={i} fill={chartColors[i % chartColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        )}
 
         <div className="rounded-2xl border bg-card p-6 shadow-card relative overflow-hidden group min-h-[400px] flex flex-col">
           <div className="flex flex-col gap-1 mb-6">
