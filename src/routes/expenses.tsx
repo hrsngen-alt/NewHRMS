@@ -333,10 +333,10 @@ function ExpensesPage() {
       </div>
 
       <Dialog open={!!selectedEmpId} onOpenChange={(v) => !v && setSelectedEmpId(null)}>
-        <DialogContent className="max-w-5xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-slate-50">
+        <DialogContent className="max-w-5xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-slate-50 dark:bg-slate-950">
            {empDetailData && (
              <div className="flex flex-col h-[85vh]">
-                <div className="bg-white p-8 border-b border-slate-200">
+                <div className="bg-white dark:bg-slate-900 p-8 border-b border-slate-200 dark:border-slate-800">
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-5">
                          <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/5">
@@ -356,15 +356,15 @@ function ExpensesPage() {
 
                 <div className="flex-1 overflow-auto p-8 space-y-8">
                    <div className="grid grid-cols-3 gap-6">
-                      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Submission Count</p>
                          <p className="text-2xl font-black">{empDetailData.claims.length} Documents</p>
                       </div>
-                      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Mean Claim Value</p>
                          <p className="text-2xl font-black">₹{Math.round(empDetailData.total / (empDetailData.claims.length || 1)).toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Governance Performance</p>
                          <div className="flex items-center gap-2 mt-1">
                             <div className="size-3 rounded-full bg-green-500" />
@@ -375,9 +375,9 @@ function ExpensesPage() {
 
                    <div className="space-y-4">
                       <h3 className="font-black text-lg tracking-tight uppercase">Consolidated Claim History</h3>
-                      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
                          <Table>
-                            <TableHeader className="bg-slate-50/50">
+                            <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
                                <TableRow>
                                   <TableHead className="pl-6 font-black uppercase text-[9px] tracking-widest">Entry Details</TableHead>
                                   <TableHead className="font-black uppercase text-[9px] tracking-widest">Category</TableHead>
