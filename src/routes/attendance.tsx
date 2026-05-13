@@ -131,6 +131,13 @@ function AttendancePage() {
   }, [records, myEmployee]);
 
   const filteredRecords = records.filter((r: any) => {
+    const d = new Date(r.date);
+    const m = d.getMonth() + 1;
+    const y = d.getFullYear();
+    const mMatch = selMonth === "all" || String(m) === selMonth;
+    const yMatch = selYear === "all" || String(y) === selYear;
+    if (!mMatch || !yMatch) return false;
+
     if (!q) return true;
     const search = q.toLowerCase();
     return (
@@ -359,8 +366,7 @@ function AttendancePage() {
                  </div>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                {viewMode === "summary" && (
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                     <Select value={selMonth} onValueChange={setSelMonth}>
                       <SelectTrigger className="w-[100px] h-9 bg-background shadow-none border-dashed rounded-lg">
                         <SelectValue placeholder="Month" />
@@ -396,7 +402,6 @@ function AttendancePage() {
                       </Button>
                     )}
                   </div>
-                )}
                 <div className="relative max-w-xs w-full">
                   <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
                   <Input 
