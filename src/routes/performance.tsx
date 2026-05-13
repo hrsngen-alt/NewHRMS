@@ -78,7 +78,7 @@ function PerformancePage() {
       // Create notification for HR/Admin
       const { data: admins, error: admErr } = await supabase.from("profiles" as any).select("id").eq("role", "admin");
       if (!admErr && admins) {
-        const notifications = admins.map(adm => ({
+        const notifications = (admins as any[]).map(adm => ({
           user_id: adm.id,
           title: "New Performance Appraisal",
           message: `A new appraisal has been submitted for ${empName} (${fd.get("review_period")}).`,
