@@ -231,7 +231,7 @@ function AttendancePage() {
 
         <div className="flex items-center gap-3">
            <Select value={selMonth} onValueChange={setSelMonth}>
-             <SelectTrigger className="w-[140px] h-12 bg-white/50 backdrop-blur-md border-2 border-slate-100 rounded-2xl font-bold shadow-sm">
+             <SelectTrigger className="w-[140px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
                <SelectValue />
              </SelectTrigger>
              <SelectContent>
@@ -240,7 +240,7 @@ function AttendancePage() {
              </SelectContent>
            </Select>
            <Select value={selYear} onValueChange={setSelYear}>
-             <SelectTrigger className="w-[110px] h-12 bg-white/50 backdrop-blur-md border-2 border-slate-100 rounded-2xl font-bold shadow-sm">
+             <SelectTrigger className="w-[110px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
                <SelectValue />
              </SelectTrigger>
              <SelectContent>
@@ -250,9 +250,9 @@ function AttendancePage() {
            </Select>
            <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input 
+              <input 
                 placeholder="Search logs..." 
-                className="pl-12 h-12 w-[240px] bg-white/50 backdrop-blur-md border-2 border-slate-100 rounded-2xl font-medium shadow-sm"
+                className="pl-12 h-12 w-[240px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -316,18 +316,18 @@ function AttendancePage() {
       )}
 
       {/* Summary Table */}
-      <div className="rounded-3xl border-2 border-slate-50 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
-        <div className="bg-slate-50/50 px-8 py-4 border-b">
+      <div className="rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+        <div className="bg-slate-50/50 dark:bg-slate-800/50 px-8 py-4 border-b dark:border-slate-800">
            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Summary of {months[Number(selMonth)-1]} {selYear}</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 divide-x divide-y md:divide-y-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 divide-x divide-y md:divide-y-0 dark:divide-slate-800">
            <SummaryItem label="Working Days" value={`${monthlyMetrics?.workingDays || 0}/${monthlyMetrics?.workingDays || 0}`} />
            <SummaryItem label="Leave Days" value="0" />
            <SummaryItem label="Late Days" value={String(Math.floor((100 - (monthlyMetrics?.punctuality || 100)) / 100 * (monthlyMetrics?.workingDays || 0)))} />
-           <SummaryItem label="Actual Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-indigo-600" />
+           <SummaryItem label="Actual Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-indigo-600 dark:text-indigo-400" />
            <SummaryItem label="Expected Hours" value={`${((monthlyMetrics?.workingDays || 0) * 8.5).toFixed(1)}h`} />
            <SummaryItem label="Total Holidays" value="0" />
-           <SummaryItem label="Total Break" value={`${monthlyMetrics?.totalBreakHours.toFixed(1) || 0}h`} color="text-amber-600" />
+           <SummaryItem label="Total Break" value={`${monthlyMetrics?.totalBreakHours.toFixed(1) || 0}h`} color="text-amber-600 dark:text-amber-400" />
            <SummaryItem label="Project Hours" value="0h" />
         </div>
       </div>
@@ -345,9 +345,9 @@ function AttendancePage() {
            </div>
         </div>
 
-        <div className="rounded-3xl border-2 border-slate-50 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
+        <div className="rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
           <Table>
-            <TableHeader className="bg-slate-50/50">
+            <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
               <TableRow className="hover:bg-transparent border-b-2">
                 <TableHead className="pl-8 py-5 text-[10px] font-black uppercase tracking-widest">In-Out Time</TableHead>
                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Breaks</TableHead>
@@ -370,7 +370,7 @@ function AttendancePage() {
                 const isShiftComplete = prodHours >= 8;
 
                 return (
-                  <TableRow key={date} className="hover:bg-slate-50/80 transition-all border-b last:border-0 group">
+                  <TableRow key={date} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all border-b dark:border-slate-800 last:border-0 group">
                     <TableCell className="pl-8 py-6">
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-black text-foreground">
@@ -404,11 +404,11 @@ function AttendancePage() {
                     <TableCell className="text-center">
                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all">
                           {isShiftComplete ? (
-                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full flex items-center gap-1.5">
+                            <span className="bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 px-3 py-1 rounded-full flex items-center gap-1.5">
                               <CheckCircle className="size-3" /> Yes
                             </span>
                           ) : (
-                            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full">No</span>
+                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 rounded-full">No</span>
                           )}
                        </div>
                     </TableCell>
@@ -459,25 +459,25 @@ function AttendancePage() {
 
 function PremiumStatCard({ label, value, subtext, icon: Icon, color, progress }: any) {
   const colors: Record<string, string> = {
-    indigo: "from-indigo-500 to-blue-600 text-indigo-600 bg-indigo-50 shadow-indigo-100",
-    green: "from-green-500 to-teal-600 text-green-600 bg-green-50 shadow-green-100",
-    amber: "from-amber-500 to-orange-600 text-amber-600 bg-amber-50 shadow-amber-100",
+    indigo: "from-indigo-500 to-blue-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/5 shadow-indigo-100 dark:shadow-none",
+    green: "from-green-500 to-teal-600 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/5 shadow-green-100 dark:shadow-none",
+    amber: "from-amber-500 to-orange-600 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/5 shadow-amber-100 dark:shadow-none",
   };
 
   return (
-    <div className={cn("rounded-[32px] p-8 bg-white border-2 border-slate-50 shadow-xl transition-all hover:shadow-2xl hover:-translate-y-1 group relative overflow-hidden", colors[color].split(' ').slice(4).join(' '))}>
+    <div className={cn("rounded-[32px] p-8 bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 shadow-xl dark:shadow-none transition-all hover:shadow-2xl dark:hover:bg-slate-800/50 hover:-translate-y-1 group relative overflow-hidden", colors[color].split(' ').slice(4).join(' '))}>
       <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-all group-hover:scale-110">
         <Icon className="size-20" />
       </div>
       <div className="relative z-10 space-y-6">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">{label}</p>
         <div>
-          <h3 className="text-4xl font-black tracking-tighter text-slate-900 group-hover:text-primary transition-colors">{value}</h3>
+          <h3 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white group-hover:text-primary transition-colors">{value}</h3>
           <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
             {subtext}
           </p>
         </div>
-        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div 
             className={cn("h-full rounded-full transition-all duration-1000 bg-gradient-to-r", colors[color].split(' ').slice(0, 2).join(' '))}
             style={{ width: `${Math.min(100, progress)}%` }}
@@ -492,7 +492,7 @@ function SummaryItem({ label, value, color }: { label: string; value: string; co
   return (
     <div className="p-6 flex flex-col gap-1">
       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">{label}</p>
-      <p className={cn("text-lg font-black tracking-tight", color || "text-slate-900")}>{value}</p>
+      <p className={cn("text-lg font-black tracking-tight", color || "text-slate-900 dark:text-white")}>{value}</p>
     </div>
   );
 }
