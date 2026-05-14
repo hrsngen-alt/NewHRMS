@@ -169,7 +169,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="size-12 rounded-2xl bg-primary flex items-center justify-center animate-pulse">
-            <SparklesIcon className="size-6 text-white" />
+            <SNLogo className="size-8" />
           </div>
           <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Initializing SN Gene HR...</p>
         </div>
@@ -181,8 +181,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
     <div className="flex min-h-screen bg-background font-sans transition-colors duration-300">
       <aside className="hidden w-72 shrink-0 flex-col bg-sidebar border-r border-sidebar-border p-6 text-sidebar-foreground md:flex shadow-2xl relative z-10">
         <Link to="/dashboard" className="mb-10 flex items-center gap-3 px-2">
-          <div className="size-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-            <SparklesIcon className="size-6 text-white" />
+          <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-primary/20">
+            <SNLogo className="size-8" />
           </div>
           <div className="flex flex-col">
             <span className="font-display text-xl font-black tracking-tight text-white leading-none">SN Gene HR</span>
@@ -220,8 +220,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
                <SheetContent side="left" className="w-[300px] p-6 flex flex-col">
                  <SheetHeader className="text-left mb-6">
                    <SheetTitle className="flex items-center gap-3">
-                     <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-                       <SparklesIcon className="size-5 text-white" />
+                     <div className="size-8 rounded-lg bg-white flex items-center justify-center">
+                       <SNLogo className="size-6" />
                      </div>
                      <span className="font-display font-black text-xl">SN Gene HR</span>
                    </SheetTitle>
@@ -236,8 +236,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
              </Sheet>
 
              <div className="md:hidden flex items-center gap-2">
-                <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-                   <SparklesIcon className="size-4 text-white" />
+                <div className="size-8 rounded-lg bg-white flex items-center justify-center">
+                   <SNLogo className="size-6" />
                 </div>
                 <span className="font-display font-black text-lg text-foreground">SN Gene HR</span>
              </div>
@@ -328,10 +328,39 @@ export function AppShell({ children }: { children?: ReactNode }) {
   );
 }
 
-function SparklesIcon({ className }: { className?: string }) {
+function SNLogo({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" />
+    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Red/Pink Fan Background */}
+      <path 
+        d="M50 15C65 15 85 30 85 50C85 70 65 85 50 85C35 85 15 70 15 50C15 30 35 15 50 15Z" 
+        fill="#E15B64" 
+      />
+      {/* White Outline/Shadow for SN */}
+      <text 
+        x="50%" 
+        y="58%" 
+        dominantBaseline="middle" 
+        textAnchor="middle" 
+        fontSize="38" 
+        fontWeight="900" 
+        fontFamily="sans-serif" 
+        fill="white"
+        stroke="white"
+        strokeWidth="6"
+        strokeLinejoin="round"
+      >SN</text>
+      {/* Blue SN Letters */}
+      <text 
+        x="50%" 
+        y="58%" 
+        dominantBaseline="middle" 
+        textAnchor="middle" 
+        fontSize="38" 
+        fontWeight="900" 
+        fontFamily="sans-serif" 
+        fill="#0EA5E9"
+      >SN</text>
     </svg>
   );
 }
