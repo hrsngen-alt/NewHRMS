@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+import { SNLogo } from "@/components/SNLogo";
+
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
 function LoginPage() {
@@ -37,8 +39,10 @@ function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden gradient-hero p-12 lg:flex lg:flex-col lg:justify-between">
-        <div className="flex items-center gap-2 text-primary-foreground">
-          <div className="size-9 rounded-xl bg-white/15 backdrop-blur" />
+        <div className="flex items-center gap-3 text-primary-foreground">
+          <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+            <SNLogo className="size-8" />
+          </div>
           <span className="font-display text-xl font-bold">SN Gene HR</span>
         </div>
         <div className="text-primary-foreground">

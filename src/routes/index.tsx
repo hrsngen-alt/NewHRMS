@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Users, Clock, FileText, TrendingUp } from "lucide-react";
 
+import { SNLogo } from "@/components/SNLogo";
+
 export const Route = createFileRoute("/")({ component: Landing });
 
 function Landing() {
@@ -16,8 +18,10 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <header className="container mx-auto flex items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-2">
-          <div className="size-9 rounded-xl gradient-primary shadow-elegant" />
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+            <SNLogo className="size-8" />
+          </div>
           <span className="font-display text-xl font-bold">SN Gene HR</span>
         </div>
         <div className="flex items-center gap-2">
