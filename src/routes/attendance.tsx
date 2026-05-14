@@ -10,11 +10,14 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { toast } from "sonner";
-import { Clock, Play, Square, Search, Users, Calendar, Activity, CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, Plane } from "lucide-react";
+import { 
+  Clock, Play, Square, Search, Users, Calendar, Activity, 
+  CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, 
+  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X
+} from "lucide-react";
 import { cn } from "../lib/utils";
-import { X } from "lucide-react";
 
-const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 export const Route = createFileRoute("/attendance")({ component: () => <AppShell><AttendancePage /></AppShell> });
 
@@ -25,23 +28,23 @@ function AttendancePage() {
   const [q, setQ] = useState("");
   const { myEmployee, isLoading: empLoading } = useMyEmployee();
   const [viewMode, setViewMode] = useState<"date" | "employee" | "summary">("date");
-  const [selMonth, setSelMonth] = useState<string>("all");
-  const [selYear, setSelYear] = useState<string>("all");
+  const [selMonth, setSelMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [selYear, setSelYear] = useState<string>(String(new Date().getFullYear()));
 
   const isMarketing = myEmployee?.department?.toLowerCase() === "marketing";
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["attendance", role, myEmployee?.id],
     queryFn: async () => {
-      let q = supabase
+      let query = supabase
         .from("attendance" as any)
         .select("*, employees(full_name, employee_code, department)")
         .order("check_in", { ascending: false });
       
-      if (!isAdmin && myEmployee) q = q.eq("employee_id", myEmployee.id).limit(100);
-      else q = q.limit(300);
+      if (!isAdmin && myEmployee) query = query.eq("employee_id", myEmployee.id).limit(200);
+      else query = query.limit(500);
       
-      const { data, error } = await q;
+      const { data, error } = await query;
       if (error) throw error;
       return (data as any) || [];
     },
@@ -49,43 +52,26 @@ function AttendancePage() {
   });
 
   useEffect(() => {
-    // Subscribe to real-time changes
     const channel = supabase
       .channel('attendance_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'attendance' 
-      }, () => {
-        console.log("[Attendance] Real-time update detected, refreshing...");
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => {
         qc.invalidateQueries({ queryKey: ["attendance"] });
       })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
-  const today = new Date().toLocaleDateString('en-CA');
-  
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const myTodayRecords = useMemo(() => 
-    records.filter((r: any) => r.date === today && r.employee_id === myEmployee?.id),
-    [records, today, myEmployee?.id]
+    records.filter((r: any) => r.date === todayStr && r.employee_id === myEmployee?.id),
+    [records, todayStr, myEmployee?.id]
   );
   
   const latestRecord = myTodayRecords.length > 0 ? myTodayRecords[0] : null;
   const isCheckedIn = !!(latestRecord && !latestRecord.check_out);
 
-  const adminStats = useMemo(() => {
-    if (!isAdmin) return null;
-    const todayRecords = records.filter((r: any) => r.date === today);
-    const active = new Set(todayRecords.filter((r: any) => !r.check_out).map((r: any) => r.employee_id)).size;
-    const completed = new Set(todayRecords.filter((r: any) => r.check_out).map((r: any) => r.employee_id)).size;
-    return { active, completed };
-  }, [records, today, isAdmin]);
-
   const [elapsed, setElapsed] = useState<string>("00:00:00");
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
 
   useEffect(() => {
     let interval: any;
@@ -93,6 +79,7 @@ function AttendancePage() {
       const updateElapsed = () => {
         const start = new Date(latestRecord.check_in!).getTime();
         const diff = Date.now() - start;
+        setElapsedSeconds(Math.floor(diff / 1000));
         const h = Math.floor(diff / 3600000);
         const m = Math.floor((diff % 3600000) / 60000);
         const s = Math.floor((diff % 60000) / 1000);
@@ -102,33 +89,52 @@ function AttendancePage() {
       interval = setInterval(updateElapsed, 1000);
     } else {
       setElapsed("00:00:00");
+      setElapsedSeconds(0);
     }
     return () => clearInterval(interval);
   }, [isCheckedIn, latestRecord?.check_in]);
 
-  const totalToday = useMemo(() => {
-    return myTodayRecords.reduce((acc: number, r: any) => {
-      if (r.hours_worked) return acc + Number(r.hours_worked);
-      if (r.check_in && !r.check_out) {
-        const checkInTime = new Date(r.check_in).getTime();
-        if (!isNaN(checkInTime)) {
-          return acc + (Date.now() - checkInTime) / 3600000;
-        }
-      }
-      return acc;
-    }, 0);
-  }, [myTodayRecords]);
+  const monthlyMetrics = useMemo(() => {
+    if (!myEmployee) return null;
+    const currentMonth = Number(selMonth === "all" ? new Date().getMonth() + 1 : selMonth);
+    const currentYear = Number(selYear === "all" ? new Date().getFullYear() : selYear);
 
-  const weeklyTotal = useMemo(() => {
-    if (!myEmployee) return 0;
-    const now = new Date();
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    startOfWeek.setHours(0, 0, 0, 0);
+    const monthRecords = records.filter((r: any) => {
+      const d = new Date(r.date);
+      return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear && r.employee_id === myEmployee.id;
+    });
+
+    const totalProdHours = monthRecords.reduce((acc: number, r: any) => acc + (Number(r.hours_worked) || 0), 0);
+    const workingDays = new Set(monthRecords.map((r: any) => r.date)).size;
     
-    return records
-      .filter((r: any) => r.employee_id === myEmployee.id && new Date(r.date) >= startOfWeek)
-      .reduce((acc: number, r: any) => acc + (Number(r.hours_worked) || 0), 0);
-  }, [records, myEmployee]);
+    const punctuality = monthRecords.length > 0 
+      ? (monthRecords.filter((r: any) => {
+          const checkIn = new Date(r.check_in);
+          return checkIn.getHours() < 9 || (checkIn.getHours() === 9 && checkIn.getMinutes() <= 45);
+        }).length / monthRecords.length) * 100
+      : 100;
+
+    const dailyGroups = monthRecords.reduce((acc: any, r: any) => {
+      if (!acc[r.date]) acc[r.date] = [];
+      acc[r.date].push(r);
+      return acc;
+    }, {});
+
+    const dailyStats = Object.entries(dailyGroups).map(([date, sessions]: [string, any]) => {
+      const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+      const firstIn = new Date(sorted[0].check_in);
+      const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : new Date();
+      const availability = (lastOut.getTime() - firstIn.getTime()) / 3600000;
+      const production = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
+      return { availability, production };
+    });
+
+    const totalAvailHours = dailyStats.reduce((acc, s) => acc + s.availability, 0);
+    const totalBreakHours = Math.max(0, totalAvailHours - totalProdHours);
+    const breakPercentage = totalAvailHours > 0 ? (totalBreakHours / totalAvailHours) * 100 : 0;
+
+    return { totalProdHours, workingDays, punctuality, totalBreakHours, breakPercentage, totalAvailHours, dailyGroups };
+  }, [records, myEmployee, selMonth, selYear]);
 
   const filteredRecords = records.filter((r: any) => {
     const d = new Date(r.date);
@@ -138,573 +144,350 @@ function AttendancePage() {
     const yMatch = selYear === "all" || String(y) === selYear;
     if (!mMatch || !yMatch) return false;
 
-    if (!q) {
-      // Default view: only show own records
-      return r.employee_id === myEmployee?.id;
-    }
-
+    if (!q) return r.employee_id === myEmployee?.id;
     const search = q.toLowerCase();
     const matchesSearch = (
       r.employees?.full_name?.toLowerCase().includes(search) ||
       r.employees?.employee_code?.toLowerCase().includes(search) ||
       r.date.includes(search)
     );
-
-    // Admins can search for anyone; non-admins only search their own records
-    if (isAdmin) {
-      return matchesSearch;
-    } else {
-      return r.employee_id === myEmployee?.id && matchesSearch;
-    }
+    return isAdmin ? matchesSearch : (r.employee_id === myEmployee?.id && matchesSearch);
   });
-
-  const summaryData = useMemo(() => {
-    const summary: Record<string, any> = {};
-    
-    records.forEach((r: any) => {
-      const d = new Date(r.date);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-      
-      const mMatch = selMonth === "all" || String(m) === selMonth;
-      const yMatch = selYear === "all" || String(y) === selYear;
-      
-      if (!mMatch || !yMatch) return;
-      
-      const key = `${r.employee_id}-${m}-${y}`;
-      if (!summary[key]) {
-        summary[key] = {
-          employee: r.employees,
-          month: m,
-          year: y,
-          days: new Set(),
-          hours: 0
-        };
-      }
-      
-      summary[key].days.add(r.date);
-      summary[key].hours += Number(r.hours_worked || 0);
-    });
-    
-    return Object.values(summary).sort((a: any, b: any) => b.year - a.year || b.month - a.month);
-  }, [records, selMonth, selYear]);
 
   const availableYears = Array.from(new Set(records.map((r: any) => new Date(r.date).getFullYear()))).sort((a: any, b: any) => b - a);
 
   const [isPunching, setIsPunching] = useState(false);
   const punch = async (type: "in" | "out") => {
-    let currentEmployee = myEmployee;
-
-    // Auto-create employee record for admins if missing
-    if (!currentEmployee && isAdmin) {
-      console.log("[Attendance] Admin has no employee record, creating one...");
-      const { data: newEmp, error: createError } = await (supabase.from("employees") as any).insert({
-        full_name: user?.user_metadata?.full_name || "System Admin",
-        email: user?.email,
-        employee_code: "ADMIN-" + Math.random().toString(36).substring(7).toUpperCase(),
-        department: "Management",
-        user_id: user?.id
-      }).select().single();
-      
-      if (createError) {
-        console.error("Failed to auto-create admin employee:", createError);
-        return toast.error("Could not link your admin account to an employee profile.");
-      }
-      currentEmployee = newEmp;
-      await qc.invalidateQueries({ queryKey: ["my-employee"] });
-    }
-
-    if (!currentEmployee) return toast.error("No employee profile linked.");
+    if (!myEmployee && !isAdmin) return toast.error("No employee profile linked.");
     setIsPunching(true);
     
     let lat, lng;
     try {
       const pos = await new Promise<GeolocationPosition>((res, rej) => {
         navigator.geolocation.getCurrentPosition(res, rej, { 
-          enableHighAccuracy: true,
-          timeout: 10000, // Wait up to 10 seconds for user to click "Allow"
+          enableHighAccuracy: true, 
+          timeout: 10000,
           maximumAge: 0
         });
       });
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
-    } catch (e) {
-      console.error("GPS Error:", e);
+    } catch (e: any) {
       setIsPunching(false);
-      return toast.error("GPS is mandatory. Please enable location in your browser settings and click 'Allow'.");
+      let msg = "Location access is mandatory for attendance tracking.";
+      if (e.code === 1) msg = "Permission denied. Please click the lock icon in your browser URL bar and allow location.";
+      else if (e.code === 2) msg = "Position unavailable. Please check your GPS/Network signal.";
+      else if (e.code === 3) msg = "Location request timed out. Please try again in a moment.";
+      return toast.error(msg);
     }
 
     try {
       if (type === "in") {
-        const { error } = await (supabase.from("attendance") as any).insert({ 
-          employee_id: currentEmployee.id, date: today, check_in: new Date().toISOString(), 
+        await (supabase.from("attendance") as any).insert({ 
+          employee_id: myEmployee?.id, date: todayStr, check_in: new Date().toISOString(), 
           status: "present", check_in_lat: lat, check_in_lng: lng,
-          metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
+          metadata: isMarketing ? { mode: 'field' } : { mode: 'office' }
         });
-        if (error) throw error;
-        toast.success(isMarketing ? "Field Check-in started!" : "Checked in successfully!");
+        toast.success("Shift started!");
       } else {
         const start = new Date(latestRecord!.check_in!);
         const hours = Math.max(0, (Date.now() - start.getTime()) / 3_600_000);
-        const { error } = await (supabase.from("attendance") as any).update({ 
+        await (supabase.from("attendance") as any).update({ 
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
           check_out_lat: lat, check_out_lng: lng
         }).eq("id", latestRecord!.id);
-        if (error) throw error;
-        toast.success("Checked out successfully!");
+        toast.success("Shift ended!");
       }
-      
-      // Force a re-fetch of everything
-      await qc.invalidateQueries({ queryKey: ["attendance"] });
-      await qc.refetchQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["attendance"] });
     } catch (err: any) {
-      toast.error(err.message || "Failed to update attendance.");
+      toast.error("Failed to update attendance.");
     } finally {
       setIsPunching(false);
     }
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-3">
-           <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Time Tracking</h1>
-           {isMarketing && (
-             <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-amber-200">
-                <Plane className="size-3" /> Field Mode Active
-             </span>
-           )}
-        </div>
-        <p className="text-muted-foreground font-medium">Monitor your attendance and session logs across multiple office hubs.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {isAdmin && adminStats ? (
-          <>
-            <AttendanceStat icon={Activity} label="Active Sessions" value={adminStats.active} color="bg-indigo-500" />
-            <AttendanceStat icon={CheckCircle2} label="Completed Today" value={adminStats.completed} color="bg-teal-500" />
-            <AttendanceStat icon={Users} label="Total Records" value={adminStats.active + adminStats.completed} color="bg-primary" />
-          </>
-        ) : (
-          <>
-            <AttendanceStat icon={Clock} label="Today's Hours" value={`${totalToday.toFixed(1)}h`} color="bg-indigo-500" />
-            <AttendanceStat icon={Calendar} label="Weekly Total" value={`${weeklyTotal.toFixed(1)}h`} color="bg-purple-500" />
-            <AttendanceStat icon={Activity} label="Current Session" value={elapsed} color="bg-primary" />
-          </>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-4">
-          <div className="rounded-2xl border bg-card p-8 shadow-card border-b-8 border-b-primary flex flex-col items-center text-center relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-               <SparklesIcon className="size-20 text-primary" />
-            </div>
-            
-            <div className="size-24 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 relative shadow-inner">
-              <Clock className={cn("size-12 text-primary", isCheckedIn && "animate-pulse")} />
-              {isCheckedIn && (
-                <span className="absolute -top-2 -right-2 flex h-5 w-5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-5 w-5 bg-green-500 border-2 border-white"></span>
-                </span>
-              )}
-            </div>
-            
-            <h3 className="text-2xl font-black text-foreground tracking-tight">
-              {isCheckedIn ? "Active Session" : "Log In Your Day"}
-            </h3>
-            <p className="text-sm text-muted-foreground font-medium mt-2 max-w-[200px]">
-              {isMarketing ? "Marketing Field-Track enabled. Record your time anywhere in India." : "Punch in to start your working timer."}
+    <div className="max-w-[1400px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* Header Section */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+             <h1 className="font-display text-5xl font-black tracking-tight text-foreground">My Attendance</h1>
+             {isMarketing && (
+               <span className="px-4 py-1.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border border-amber-200/50 shadow-sm">
+                  <Plane className="size-3" /> Field Mode
+               </span>
+             )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-xl font-black text-green-500 flex items-center gap-2">
+              Today's Production <span className="tabular-nums">{isCheckedIn ? elapsed : "00:00:00"} hrs</span>
             </p>
-            
-            <div className="w-full my-8 py-6 px-4 glass rounded-2xl border-2 border-primary/10 shadow-inner">
-              <div className="text-4xl font-black font-display text-primary tabular-nums tracking-tighter">
-                {isCheckedIn ? elapsed : "00:00:00"}
-              </div>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Elapsed Time</p>
-            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              Regular Shift Timings <span className="text-foreground">09:30 AM ↔ 07:00 PM</span>
+            </p>
+          </div>
+        </div>
 
+        <div className="flex items-center gap-3">
+           <Select value={selMonth} onValueChange={setSelMonth}>
+             <SelectTrigger className="w-[140px] h-12 bg-white/50 backdrop-blur-md border-2 border-slate-100 rounded-2xl font-bold shadow-sm">
+               <SelectValue />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Months</SelectItem>
+               {months.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+             </SelectContent>
+           </Select>
+           <Select value={selYear} onValueChange={setSelYear}>
+             <SelectTrigger className="w-[110px] h-12 bg-white/50 backdrop-blur-md border-2 border-slate-100 rounded-2xl font-bold shadow-sm">
+               <SelectValue />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Years</SelectItem>
+               {(availableYears as number[]).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+             </SelectContent>
+           </Select>
+           <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search logs..." 
+                className="pl-12 h-12 w-[240px] bg-white/50 backdrop-blur-md border-2 border-slate-100 rounded-2xl font-medium shadow-sm"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+           </div>
+        </div>
+      </div>
+
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <PremiumStatCard 
+          label="PROD. HRS FOR CURRENT MONTH"
+          value={`${monthlyMetrics?.totalProdHours.toFixed(0) || 0} hrs`}
+          subtext={`${monthlyMetrics?.workingDays || 0} working days`}
+          icon={TrendingUp}
+          color="indigo"
+          progress={(monthlyMetrics?.totalProdHours || 0) / 160 * 100}
+        />
+        <PremiumStatCard 
+          label="BEGINNING YOUR DAY FOR MONTH"
+          value={`${monthlyMetrics?.punctuality.toFixed(0) || 100}%`}
+          subtext={`${monthlyMetrics?.workingDays || 0}/${monthlyMetrics?.workingDays || 0} On time`}
+          icon={CheckCircle2}
+          color="green"
+          progress={monthlyMetrics?.punctuality || 100}
+        />
+        <PremiumStatCard 
+          label="BREAK HOURS FOR CURRENT MONTH"
+          value={`${monthlyMetrics?.breakPercentage.toFixed(1) || 0}%`}
+          subtext={`(${monthlyMetrics?.totalBreakHours.toFixed(1) || 0}h Total)`}
+          icon={Coffee}
+          color="amber"
+          progress={monthlyMetrics?.breakPercentage || 0}
+        />
+      </div>
+
+      {/* Punch Controls (Visible if it's "Today" and current month) */}
+      {selMonth === String(new Date().getMonth() + 1) && (
+        <div className="p-8 rounded-3xl bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-50" />
+          <div className="relative z-10 flex items-center gap-6">
+            <div className={cn("size-20 rounded-2xl flex items-center justify-center border-2 border-white/10", isCheckedIn ? "bg-green-500" : "bg-indigo-500 shadow-lg shadow-indigo-500/40")}>
+              <Clock className={cn("size-10", isCheckedIn && "animate-pulse")} />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black tracking-tight">{isCheckedIn ? "You are currently Clocked In" : "Ready to start your day?"}</h3>
+              <p className="text-indigo-200/70 font-medium">Capture your location and start your work timer.</p>
+            </div>
+          </div>
+          <div className="relative z-10 flex items-center gap-4 w-full md:w-auto">
             {isCheckedIn ? (
-              <Button onClick={() => punch("out")} disabled={isPunching} variant="destructive" className="w-full h-14 rounded-xl text-lg font-black gap-3 shadow-lg shadow-red-200">
-                <Square className="size-5 fill-current" /> {isPunching ? "Finishing..." : "Finish Session"}
+              <Button onClick={() => punch("out")} disabled={isPunching} size="lg" variant="destructive" className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-red-500/40 w-full md:w-auto">
+                <Square className="size-5 fill-current" /> Finish Session
               </Button>
             ) : (
-              <Button onClick={() => punch("in")} disabled={isPunching} className="w-full h-14 rounded-xl text-lg font-black gap-3 shadow-lg shadow-indigo-200">
-                <Play className="size-5 fill-current" /> {isPunching ? "Starting..." : "Start Session"}
+              <Button onClick={() => punch("in")} disabled={isPunching} size="lg" className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-indigo-500/40 bg-indigo-500 hover:bg-indigo-600 w-full md:w-auto">
+                <Play className="size-5 fill-current" /> Start Session
               </Button>
             )}
-            
-            {latestRecord && (
-              <div className="mt-8 w-full pt-8 border-t flex justify-between gap-4">
-                <div className="text-left flex-1">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Clock In</p>
-                  <p className="font-black text-lg text-foreground">{new Date(latestRecord.check_in!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-                <div className="text-left flex-1">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Clock Out</p>
-                  <p className="font-black text-lg text-foreground">{latestRecord.check_out ? new Date(latestRecord.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}</p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
+      )}
 
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          <div className="rounded-2xl border bg-card shadow-card overflow-hidden flex flex-col">
-            <div className="bg-muted/20 px-8 py-6 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                 <h3 className="font-black text-xl tracking-tight">Attendance Records</h3>
-                 <div className="flex items-center gap-2 mt-1">
-                    <button 
-                      onClick={() => setViewMode("date")} 
-                      className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-all", viewMode === "date" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}
-                    >
-                      By Date
-                    </button>
-                    <button 
-                      onClick={() => setViewMode("employee")} 
-                      className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-all", viewMode === "employee" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}
-                    >
-                      By Employee
-                    </button>
-                    <button 
-                      onClick={() => setViewMode("summary")} 
-                      className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-all", viewMode === "summary" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}
-                    >
-                      Summary
-                    </button>
-                 </div>
-              </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="flex items-center gap-2">
-                    <Select value={selMonth} onValueChange={setSelMonth}>
-                      <SelectTrigger className="w-[100px] h-9 bg-background shadow-none border-dashed rounded-lg">
-                        <SelectValue placeholder="Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Months</SelectItem>
-                        {months.map((m, i) => (
-                          <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+      {/* Summary Table */}
+      <div className="rounded-3xl border-2 border-slate-50 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
+        <div className="bg-slate-50/50 px-8 py-4 border-b">
+           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Summary of {months[Number(selMonth)-1]} {selYear}</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 divide-x divide-y md:divide-y-0">
+           <SummaryItem label="Working Days" value={`${monthlyMetrics?.workingDays || 0}/${monthlyMetrics?.workingDays || 0}`} />
+           <SummaryItem label="Leave Days" value="0" />
+           <SummaryItem label="Late Days" value={String(Math.floor((100 - (monthlyMetrics?.punctuality || 100)) / 100 * (monthlyMetrics?.workingDays || 0)))} />
+           <SummaryItem label="Actual Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-indigo-600" />
+           <SummaryItem label="Expected Hours" value={`${((monthlyMetrics?.workingDays || 0) * 8.5).toFixed(1)}h`} />
+           <SummaryItem label="Total Holidays" value="0" />
+           <SummaryItem label="Total Break" value={`${monthlyMetrics?.totalBreakHours.toFixed(1) || 0}h`} color="text-amber-600" />
+           <SummaryItem label="Project Hours" value="0h" />
+        </div>
+      </div>
 
-                    <Select value={selYear} onValueChange={setSelYear}>
-                      <SelectTrigger className="w-[100px] h-9 bg-background shadow-none border-dashed rounded-lg">
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Years</SelectItem>
-                        {availableYears.map((y: any) => (
-                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    {(selMonth !== "all" || selYear !== "all") && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => { setSelMonth("all"); setSelYear("all"); }}
-                        className="h-9 px-2 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    )}
-                  </div>
-                <div className="relative max-w-xs w-full">
-                  <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
-                  <Input 
-                    placeholder={isAdmin ? "Search employees..." : "Search by date..."}
-                    className="pl-10 h-10 bg-background shadow-none rounded-xl" 
-                    value={q} 
-                    onChange={(e) => setQ(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
+      {/* Time Log Table */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+           <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+             <Timer className="size-6 text-indigo-500" /> Time Log
+           </h2>
+           <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-green-500" /> Working Day</span>
+              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-amber-500" /> Holiday</span>
+              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-rose-500" /> Weekend</span>
+           </div>
+        </div>
 
-            <div className="overflow-x-auto">
-              {viewMode === "date" ? (
-                Object.entries(
-                  filteredRecords.reduce((acc: any, r: any) => {
-                    if (!acc[r.date]) acc[r.date] = [];
-                    acc[r.date].push(r);
-                    return acc;
-                  }, {})
-                ).sort(([a], [b]) => b.localeCompare(a)).map(([date, dayRecords]: [string, any]) => (
-                  <div key={date} className="border-b last:border-0">
-                    <div className="bg-slate-50/80 dark:bg-slate-900/80 px-8 py-2 border-y flex items-center justify-between">
-                      <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">{new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                      <span className="text-[10px] font-bold text-muted-foreground">{dayRecords.length} Sessions</span>
-                    </div>
-                    <Table>
-                      <TableBody>
-                        {Object.entries(
-                          dayRecords.reduce((eAcc: any, r: any) => {
-                            const key = r.employee_id;
-                            if (!eAcc[key]) eAcc[key] = { employee: r.employees, sessions: [], totalHours: 0, breakTime: 0 };
-                            eAcc[key].sessions.push(r);
-                            eAcc[key].totalHours += Number(r.hours_worked || 0);
-                            
-                            const sorted = [...eAcc[key].sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-                            let b = 0;
-                            for (let i = 0; i < sorted.length - 1; i++) {
-                              if (sorted[i].check_out && sorted[i+1].check_in) {
-                                b += Math.max(0, (new Date(sorted[i+1].check_in).getTime() - new Date(sorted[i].check_out).getTime()) / 3600000);
-                              }
-                            }
-                            eAcc[key].breakTime = b;
-                            return eAcc;
-                          }, {})
-                        ).map(([empId, data]: [string, any]) => (
-                          <div key={empId} className="border-b last:border-0 p-4 bg-white/50 dark:bg-slate-900/50">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-4">
-                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">
-                                  {data.employee?.full_name?.charAt(0)}
-                                </div>
-                                <div>
-                                  <p className="font-black text-foreground">{data.employee?.full_name}</p>
-                                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{data.employee?.department} · {data.employee?.employee_code}</p>
-                                </div>
-                              </div>
-                              <div className="text-right flex items-center gap-4">
-                                <div className="text-right">
-                                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Break</p>
-                                  <p className="font-bold text-sm">{data.breakTime > 0 ? `${data.breakTime.toFixed(2)}h` : "-"}</p>
-                                </div>
-                                <div className="text-right">
-                                  <div className="px-3 py-1 rounded-lg bg-primary text-white text-sm font-black shadow-lg shadow-primary/20">
-                                    Total: {data.totalHours.toFixed(2)}h
-                                  </div>
-                                  <p className="text-[10px] font-black text-muted-foreground uppercase mt-1 text-right">Work Time</p>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-2 ml-14">
-                              {data.sessions.map((h: any) => {
-                                const isField = (h as any).metadata?.mode === 'field';
-                                return (
-                                  <div key={h.id} className="flex items-center justify-between py-2 px-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group">
-                                    <div className="flex items-center gap-6">
-                                      <div className="text-[10px] font-black flex gap-3">
-                                        <div className="px-2 py-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg flex items-center gap-1.5">
-                                          <div className="size-1.5 rounded-full bg-green-500" />
-                                          {h.check_in ? new Date(h.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
-                                        </div>
-                                        <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-lg flex items-center gap-1.5">
-                                          <div className="size-1.5 rounded-full bg-rose-500" />
-                                          {h.check_out ? new Date(h.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
-                                        </div>
-                                      </div>
-                                      {(h as any).check_in_lat && (
-                                        <a href={`https://www.google.com/maps?q=${(h as any).check_in_lat},${(h as any).check_in_lng}`} target="_blank" rel="noreferrer" className={cn(
-                                          "size-7 rounded-lg flex items-center justify-center transition-all",
-                                          isField ? "bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white" : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
-                                        )}>
-                                          {isField ? <Plane className="size-3" /> : <MapPin className="size-3" />}
-                                        </a>
-                                      )}
-                                    </div>
-                                    <div className="text-right">
-                                      <span className="text-xs font-black text-foreground">{h.hours_worked ?? 0}h</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ))
-              ) : viewMode === "employee" ? (
-                  Object.entries(
-                    filteredRecords.reduce((acc: any, r: any) => {
-                      const key = r.employee_id;
-                      if (!acc[key]) acc[key] = { employee: r.employees, days: {} };
-                      if (!acc[key].days[r.date]) acc[key].days[r.date] = [];
-                      acc[key].days[r.date].push(r);
-                      return acc;
-                    }, {})
-                  ).map(([empId, data]: [string, any]) => (
-                    <div key={empId} className="border-b last:border-0 p-8 bg-white dark:bg-slate-950">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
-                          {data.employee?.full_name?.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-foreground">{data.employee?.full_name}</h3>
-                          <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">{data.employee?.employee_code} · {data.employee?.department}</p>
-                        </div>
+        <div className="rounded-3xl border-2 border-slate-50 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="hover:bg-transparent border-b-2">
+                <TableHead className="pl-8 py-5 text-[10px] font-black uppercase tracking-widest">In-Out Time</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Breaks</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Availability</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Production</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Shift Status</TableHead>
+                <TableHead className="pr-8 text-[10px] font-black uppercase tracking-widest text-right">Location</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {monthlyMetrics && (Object.entries(monthlyMetrics.dailyGroups) as [string, any][]).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]) => {
+                const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+                const firstIn = new Date(sorted[0].check_in);
+                const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
+                
+                const availHours = lastOut ? (lastOut.getTime() - firstIn.getTime()) / 3600000 : 0;
+                const prodHours = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
+                const breakHours = Math.max(0, availHours - prodHours);
+                
+                const isShiftComplete = prodHours >= 8;
+
+                return (
+                  <TableRow key={date} className="hover:bg-slate-50/80 transition-all border-b last:border-0 group">
+                    <TableCell className="pl-8 py-6">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-black text-foreground">
+                          {new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                          {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Active"}
+                        </span>
                       </div>
-                      
-                      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                        <Table>
-                          <TableHeader className="bg-slate-100/50 dark:bg-slate-800/50">
-                            <TableRow className="hover:bg-transparent border-b border-slate-200 dark:border-slate-800">
-                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Date</TableHead>
-                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">In Time</TableHead>
-                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Out Time</TableHead>
-                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Working</TableHead>
-                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Break</TableHead>
-                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4">Status</TableHead>
-                              <TableHead className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70 py-4 text-center">Map</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {Object.entries(data.days).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
-                              const dayTotal = sessions.reduce((s: number, r: any) => s + Number(r.hours_worked || 0), 0);
-                              const sortedSessions = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-                              
-                              const firstIn = sortedSessions[0]?.check_in;
-                              const lastOut = sortedSessions[sortedSessions.length - 1]?.check_out;
-                              const dayStatus = sortedSessions[sortedSessions.length - 1]?.status;
-
-                              let breakTime = 0;
-                              for (let i = 0; i < sortedSessions.length - 1; i++) {
-                                if (sortedSessions[i].check_out && sortedSessions[i+1].check_in) {
-                                  breakTime += Math.max(0, (new Date(sortedSessions[i+1].check_in).getTime() - new Date(sortedSessions[i].check_out).getTime()) / 3600000);
-                                }
-                              }
-
-                              return (
-                                <TableRow key={date} className="hover:bg-primary/5 border-b border-slate-200 dark:border-slate-800 last:border-0 transition-colors">
-                                  <TableCell className="py-4 font-bold text-sm text-foreground">
-                                    {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                  </TableCell>
-                                  <TableCell className="py-4 text-sm font-medium text-muted-foreground">
-                                    {firstIn ? new Date(firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                  </TableCell>
-                                  <TableCell className="py-4 text-sm font-medium text-muted-foreground">
-                                    {lastOut ? new Date(lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                  </TableCell>
-                                  <TableCell className="py-4 font-bold text-sm text-indigo-600 dark:text-indigo-400">
-                                    {dayTotal.toFixed(1)}h
-                                  </TableCell>
-                                  <TableCell className="py-4 text-sm text-muted-foreground">
-                                    {breakTime > 0 ? `${breakTime.toFixed(1)}h` : '-'}
-                                  </TableCell>
-                                  <TableCell className="py-4">
-                                    <span className={cn(
-                                      "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest",
-                                      dayStatus === 'present' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : 
-                                      dayStatus === 'late' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                                      "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
-                                    )}>
-                                      {dayStatus}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="py-4 text-center">
-                                     {sortedSessions[0]?.check_in_lat ? (
-                                       <a 
-                                         href={`https://www.google.com/maps?q=${sortedSessions[0].check_in_lat},${sortedSessions[0].check_in_lng}`} 
-                                         target="_blank" rel="noreferrer"
-                                         className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors"
-                                         title="View on Google Maps"
-                                       >
-                                         <MapPin className="size-4" />
-                                       </a>
-                                     ) : "-"}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
+                    </TableCell>
+                    <TableCell className="text-center">
+                       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+                          <Coffee className="size-3" />
+                          <span className="text-xs font-black tabular-nums">{formatDuration(breakHours)}</span>
+                       </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                       <div className="flex flex-col gap-0.5">
+                         <span className="text-sm font-black text-indigo-600 tabular-nums">{formatDuration(availHours)}</span>
+                         <span className="text-[9px] font-black text-muted-foreground uppercase tracking-tighter">Total Log</span>
+                       </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                       <div className="flex flex-col gap-0.5">
+                         <span className="text-sm font-black text-foreground tabular-nums">{formatDuration(prodHours)}</span>
+                         <span className={cn("text-[9px] font-black uppercase tracking-tighter", prodHours >= 8 ? "text-green-500" : "text-rose-500")}>
+                           {prodHours >= 8 ? "Goal Reached" : `${(8 - prodHours).toFixed(1)}h Remaining`}
+                         </span>
+                       </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                       <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all">
+                          {isShiftComplete ? (
+                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full flex items-center gap-1.5">
+                              <CheckCircle className="size-3" /> Yes
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full">No</span>
+                          )}
+                       </div>
+                    </TableCell>
+                    <TableCell className="pr-8 text-right">
+                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                         {sorted.map((s, idx) => s.check_in_lat && (
+                           <a key={idx} href={`https://www.google.com/maps?q=${s.check_in_lat},${s.check_in_lng}`} target="_blank" rel="noreferrer" 
+                              className="size-8 rounded-xl bg-slate-100 hover:bg-primary hover:text-white flex items-center justify-center transition-all text-slate-500"
+                              title={`View punch #${idx+1}`}>
+                             <MapPin className="size-3" />
+                           </a>
+                         ))}
+                       </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {(!monthlyMetrics || Object.keys(monthlyMetrics.dailyGroups).length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="size-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-300">
+                        <AlertCircle className="size-8" />
                       </div>
+                      <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No records for this period</p>
                     </div>
-                  ))
-                ) : (
-                 <Table>
-                   <TableHeader className="bg-muted/30">
-                     <TableRow>
-                       <TableHead className="pl-8 text-[10px] font-black uppercase tracking-widest">Employee</TableHead>
-                       <TableHead className="text-[10px] font-black uppercase tracking-widest">Period</TableHead>
-                       <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">Days Present</TableHead>
-                       <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest">Total Hours</TableHead>
-                     </TableRow>
-                   </TableHeader>
-                   <TableBody>
-                     {summaryData
-                       .filter((item: any) => {
-                         if (!q) return true;
-                         const search = q.toLowerCase();
-                         return (
-                           item.employee?.full_name?.toLowerCase().includes(search) ||
-                           item.employee?.employee_code?.toLowerCase().includes(search)
-                         );
-                       })
-                       .map((item: any, i) => (
-                         <TableRow key={i} className="hover:bg-muted/5 transition-colors border-b last:border-0">
-                           <TableCell className="pl-8 py-4">
-                             <div className="flex items-center gap-3">
-                               <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-black">
-                                 {item.employee?.full_name?.charAt(0)}
-                               </div>
-                               <div>
-                                 <p className="font-bold text-sm">{item.employee?.full_name}</p>
-                                 <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{item.employee?.employee_code}</p>
-                               </div>
-                             </div>
-                           </TableCell>
-                           <TableCell className="font-bold text-sm text-foreground">
-                             {months[item.month - 1]} {item.year}
-                           </TableCell>
-                           <TableCell className="text-center">
-                             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-xs font-black">
-                               {item.days.size} Days
-                             </span>
-                           </TableCell>
-                           <TableCell className="text-right pr-8">
-                             <span className="font-black text-foreground text-lg tracking-tight">{item.hours.toFixed(1)}h</span>
-                           </TableCell>
-                         </TableRow>
-                       ))}
-                   </TableBody>
-                 </Table>
-               )}
-              {filteredRecords.length === 0 && (
-                <div className="py-20 text-center flex flex-col items-center gap-4">
-                  <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/30">
-                    <Activity className="size-8" />
-                  </div>
-                  <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No activity found</p>
-                </div>
+                  </TableCell>
+                </TableRow>
               )}
-            </div>
-          </div>
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>
   );
 }
 
-function AttendanceStat({ icon: Icon, label, value, color }: any) {
+function PremiumStatCard({ label, value, subtext, icon: Icon, color, progress }: any) {
+  const colors: Record<string, string> = {
+    indigo: "from-indigo-500 to-blue-600 text-indigo-600 bg-indigo-50 shadow-indigo-100",
+    green: "from-green-500 to-teal-600 text-green-600 bg-green-50 shadow-green-100",
+    amber: "from-amber-500 to-orange-600 text-amber-600 bg-amber-50 shadow-amber-100",
+  };
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card p-6 shadow-card transition-all hover:shadow-elegant group">
-      <div className={cn("absolute -right-4 -top-4 size-24 rounded-full opacity-10 transition-transform group-hover:scale-110", color)} />
-      <div className="flex items-center gap-4">
-        <div className={cn("inline-flex size-12 items-center justify-center rounded-xl", color, "bg-opacity-10")}>
-          <Icon className={cn("size-6", color.replace('bg-', 'text-'))} />
-        </div>
+    <div className={cn("rounded-[32px] p-8 bg-white border-2 border-slate-50 shadow-xl transition-all hover:shadow-2xl hover:-translate-y-1 group relative overflow-hidden", colors[color].split(' ').slice(4).join(' '))}>
+      <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-all group-hover:scale-110">
+        <Icon className="size-20" />
+      </div>
+      <div className="relative z-10 space-y-6">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">{label}</p>
         <div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{label}</p>
-          <p className="mt-1 font-display text-3xl font-black tracking-tighter text-foreground">{value}</p>
+          <h3 className="text-4xl font-black tracking-tighter text-slate-900 group-hover:text-primary transition-colors">{value}</h3>
+          <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
+            {subtext}
+          </p>
+        </div>
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div 
+            className={cn("h-full rounded-full transition-all duration-1000 bg-gradient-to-r", colors[color].split(' ').slice(0, 2).join(' '))}
+            style={{ width: `${Math.min(100, progress)}%` }}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function SparklesIcon({ className }: { className?: string }) {
+function SummaryItem({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" />
-    </svg>
+    <div className="p-6 flex flex-col gap-1">
+      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">{label}</p>
+      <p className={cn("text-lg font-black tracking-tight", color || "text-slate-900")}>{value}</p>
+    </div>
   );
+}
+
+function formatDuration(hours: number) {
+  const h = Math.floor(hours);
+  const m = Math.floor((hours % 1) * 60);
+  return `${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m`;
 }
