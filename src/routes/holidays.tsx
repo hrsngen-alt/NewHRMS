@@ -26,7 +26,6 @@ function HolidaysPage() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   const { data: holidays = [], isLoading } = useQuery({
     queryKey: ["holidays"],
@@ -171,24 +170,6 @@ function HolidaysPage() {
         
         {isAdmin && (
           <div className="flex items-center gap-3">
-            <div className="flex bg-muted p-1 rounded-xl border-2 border-primary/5 mr-2">
-              <Button 
-                variant={viewMode === 'cards' ? 'secondary' : 'ghost'} 
-                size="icon" 
-                onClick={() => setViewMode('cards')}
-                className={cn("size-10 rounded-lg", viewMode === 'cards' && "shadow-sm")}
-              >
-                <LayoutGrid className="size-4" />
-              </Button>
-              <Button 
-                variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
-                size="icon" 
-                onClick={() => setViewMode('table')}
-                className={cn("size-10 rounded-lg", viewMode === 'table' && "shadow-sm")}
-              >
-                <List className="size-4" />
-              </Button>
-            </div>
             <input type="file" id="holiday-import" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImport} disabled={busy} />
             <Button variant="outline" onClick={() => document.getElementById('holiday-import')?.click()} disabled={busy} className="h-12 px-6 rounded-xl font-black gap-2 border-2 border-primary/10 hover:border-primary/30 transition-all">
               <FileSpreadsheet className="size-5" /> {busy ? "Importing..." : "Import Excel"}
@@ -246,51 +227,13 @@ function HolidaysPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-40 rounded-2xl border bg-card animate-pulse" />
-          ))}
+        <div className="h-64 rounded-3xl border-2 border-dashed flex items-center justify-center">
+          <p className="font-black text-muted-foreground animate-pulse">Loading Holidays...</p>
         </div>
       ) : upcomingHolidays.length === 0 ? (
         <div className="py-20 text-center flex flex-col items-center gap-4 border-2 border-dashed rounded-3xl">
            <CalendarDays className="size-12 text-muted-foreground/30" />
            <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">No upcoming holidays scheduled</p>
-        </div>
-      ) : viewMode === 'cards' ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {upcomingHolidays.map((h: any) => (
-            <Card key={h.id} className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden group hover:shadow-elegant transition-all active:scale-95 relative">
-               {isAdmin && (
-                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <Button size="icon" variant="secondary" onClick={() => { setEditingItem(h); setOpen(true); }} className="size-8 rounded-lg">
-                      <Edit2 className="size-3" />
-                    </Button>
-                    <Button size="icon" variant="destructive" onClick={() => deleteHoliday(h.id)} className="size-8 rounded-lg">
-                      <Trash2 className="size-3" />
-                    </Button>
-                 </div>
-               )}
-               <CardHeader className={cn(
-                 "pb-4 text-white",
-                 h.type === 'public' ? "bg-indigo-500" : h.type === 'company' ? "bg-teal-500" : "bg-amber-500"
-               )}>
-                  <div className="flex items-center justify-between">
-                     <div className="size-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
-                        {h.type === 'public' ? <CalendarDays className="size-5" /> : <Gift className="size-5" />}
-                     </div>
-                     <span className="text-[10px] font-black uppercase tracking-widest bg-black/10 px-2 py-0.5 rounded-lg">{h.type}</span>
-                  </div>
-                  <CardTitle className="mt-4 text-xl font-black tracking-tight">{h.name}</CardTitle>
-                  <CardDescription className="text-white/70 font-bold">{new Date(h.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</CardDescription>
-               </CardHeader>
-               <CardContent className="p-6">
-                  <p className="text-sm text-muted-foreground font-medium line-clamp-2">{h.description || "Company-wide holiday observed across all branch locations."}</p>
-                  <div className="mt-4 pt-4 border-t flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-widest">
-                     <MapPin className="size-3" /> Ahmedabad & Surat
-                  </div>
-               </CardContent>
-            </Card>
-          ))}
         </div>
       ) : (
         <div className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden bg-card">

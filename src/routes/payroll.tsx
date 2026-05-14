@@ -21,10 +21,19 @@ function PayrollPage() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const [selDept, setSelDept] = useState<string>("all");
 
   const { data: runs = [] } = useQuery({
     queryKey: ["payroll-runs"],
     queryFn: async () => (await supabase.from("payroll_runs").select("*").order("period_year", { ascending: false }).order("period_month", { ascending: false })).data ?? [],
+  });
+  
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const { data } = await supabase.from("employees").select("department");
+      return Array.from(new Set((data ?? []).map(e => e.department).filter(Boolean))) as string[];
+    },
   });
 
   const { data: settings } = useQuery({
@@ -56,8 +65,11 @@ function PayrollPage() {
   }, [latestSlips]);
 
   const processPayroll = async () => {
-    const { data: employees } = await supabase.from("employees").select("*").eq("status", "active");
-    if (!employees || employees.length === 0) return toast.error("No active employees");
+    let q = supabase.from("employees").select("*").eq("status", "active");
+    if (selDept !== "all") q = q.eq("department", selDept);
+    
+    const { data: employees } = await q;
+    if (!employees || employees.length === 0) return toast.error("No active employees found for selection");
 
     const { data: run, error: runErr } = await supabase.from("payroll_runs")
       .upsert({ period_month: month, period_year: year, status: "processed", processed_at: new Date().toISOString() }, { onConflict: "period_month,period_year" })
@@ -145,6 +157,16 @@ function PayrollPage() {
             <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
               <SelectTrigger className="w-32 bg-muted/30"><SelectValue /></SelectTrigger>
               <SelectContent>{[year - 1, year, year + 1].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Department</Label>
+            <Select value={selDept} onValueChange={setSelDept}>
+              <SelectTrigger className="w-48 bg-muted/30"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
           <Button onClick={processPayroll} className="gap-2 px-6 bg-primary hover:bg-primary-glow shadow-sm">
