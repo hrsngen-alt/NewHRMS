@@ -413,15 +413,26 @@ function AttendancePage() {
                        </div>
                     </TableCell>
                     <TableCell className="pr-8 text-right">
-                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                         {sorted.map((s, idx) => s.check_in_lat && (
-                           <a key={idx} href={`https://www.google.com/maps?q=${s.check_in_lat},${s.check_in_lng}`} target="_blank" rel="noreferrer" 
-                              className="size-8 rounded-xl bg-slate-100 hover:bg-primary hover:text-white flex items-center justify-center transition-all text-slate-500"
-                              title={`View punch #${idx+1}`}>
-                             <MapPin className="size-3" />
-                           </a>
-                         ))}
-                       </div>
+                        <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {sorted.map((s, idx) => (
+                            <div key={idx} className="flex gap-1.5 p-1 bg-slate-50 rounded-2xl border border-slate-100">
+                              {s.check_in_lat && (
+                                <a href={`https://www.google.com/maps?q=${s.check_in_lat},${s.check_in_lng}`} target="_blank" rel="noreferrer" 
+                                   className="size-7 rounded-lg bg-white hover:bg-indigo-500 hover:text-white flex items-center justify-center transition-all text-indigo-500 shadow-sm"
+                                   title={`Check-in Location #${idx+1}`}>
+                                  <MapPin className="size-3" />
+                                </a>
+                              )}
+                              {s.check_out_lat && (
+                                <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 
+                                   className="size-7 rounded-lg bg-white hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all text-rose-500 shadow-sm"
+                                   title={`Check-out Location #${idx+1}`}>
+                                  <MapPin className="size-3 -scale-x-100" />
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                     </TableCell>
                   </TableRow>
                 );
