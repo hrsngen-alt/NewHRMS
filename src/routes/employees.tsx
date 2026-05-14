@@ -598,7 +598,12 @@ function EmployeesPage() {
                     </TableCell>
                   )}
                   <TableCell className="font-mono text-xs">{e.employee_code}</TableCell>
-                  <TableCell className="font-semibold">{e.full_name}</TableCell>
+                  <TableCell 
+                    className="font-semibold cursor-pointer hover:text-primary hover:underline transition-colors" 
+                    onClick={() => setViewingEmployee(e)}
+                  >
+                    {e.full_name}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{e.email}</TableCell>
                   <TableCell>{e.department}</TableCell>
                   <TableCell className="text-right font-medium">₹{Number(e.basic_salary).toLocaleString("en-IN")}</TableCell>
