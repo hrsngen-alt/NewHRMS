@@ -16,6 +16,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as PayslipsRouteImport } from './routes/payslips'
 import { Route as PayrollRouteImport } from './routes/payroll'
+import { Route as MonthlyAttendanceRouteImport } from './routes/monthly-attendance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeavesRouteImport } from './routes/leaves'
 import { Route as KioskRouteImport } from './routes/kiosk'
@@ -63,6 +64,11 @@ const PayslipsRoute = PayslipsRouteImport.update({
 const PayrollRoute = PayrollRouteImport.update({
   id: '/payroll',
   path: '/payroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonthlyAttendanceRoute = MonthlyAttendanceRouteImport.update({
+  id: '/monthly-attendance',
+  path: '/monthly-attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/kiosk': typeof KioskRoute
   '/leaves': typeof LeavesRoute
   '/login': typeof LoginRoute
+  '/monthly-attendance': typeof MonthlyAttendanceRoute
   '/payroll': typeof PayrollRoute
   '/payslips': typeof PayslipsRoute
   '/performance': typeof PerformanceRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/kiosk': typeof KioskRoute
   '/leaves': typeof LeavesRoute
   '/login': typeof LoginRoute
+  '/monthly-attendance': typeof MonthlyAttendanceRoute
   '/payroll': typeof PayrollRoute
   '/payslips': typeof PayslipsRoute
   '/performance': typeof PerformanceRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/kiosk': typeof KioskRoute
   '/leaves': typeof LeavesRoute
   '/login': typeof LoginRoute
+  '/monthly-attendance': typeof MonthlyAttendanceRoute
   '/payroll': typeof PayrollRoute
   '/payslips': typeof PayslipsRoute
   '/performance': typeof PerformanceRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/kiosk'
     | '/leaves'
     | '/login'
+    | '/monthly-attendance'
     | '/payroll'
     | '/payslips'
     | '/performance'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/kiosk'
     | '/leaves'
     | '/login'
+    | '/monthly-attendance'
     | '/payroll'
     | '/payslips'
     | '/performance'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/kiosk'
     | '/leaves'
     | '/login'
+    | '/monthly-attendance'
     | '/payroll'
     | '/payslips'
     | '/performance'
@@ -281,6 +293,7 @@ export interface RootRouteChildren {
   KioskRoute: typeof KioskRoute
   LeavesRoute: typeof LeavesRoute
   LoginRoute: typeof LoginRoute
+  MonthlyAttendanceRoute: typeof MonthlyAttendanceRoute
   PayrollRoute: typeof PayrollRoute
   PayslipsRoute: typeof PayslipsRoute
   PerformanceRoute: typeof PerformanceRoute
@@ -339,6 +352,13 @@ declare module '@tanstack/react-router' {
       path: '/payroll'
       fullPath: '/payroll'
       preLoaderRoute: typeof PayrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monthly-attendance': {
+      id: '/monthly-attendance'
+      path: '/monthly-attendance'
+      fullPath: '/monthly-attendance'
+      preLoaderRoute: typeof MonthlyAttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -449,6 +469,7 @@ const rootRouteChildren: RootRouteChildren = {
   KioskRoute: KioskRoute,
   LeavesRoute: LeavesRoute,
   LoginRoute: LoginRoute,
+  MonthlyAttendanceRoute: MonthlyAttendanceRoute,
   PayrollRoute: PayrollRoute,
   PayslipsRoute: PayslipsRoute,
   PerformanceRoute: PerformanceRoute,

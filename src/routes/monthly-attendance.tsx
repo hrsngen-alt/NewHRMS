@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { toast } from "sonner";
@@ -18,16 +19,36 @@ import { cn } from "../lib/utils";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-export const Route = createFileRoute("/attendance")({ component: () => <AppShell><AttendancePage /></AppShell> });
+export const Route = createFileRoute("/monthly-attendance")({ component: () => <AppShell><AttendancePage /></AppShell> });
 
 function AttendancePage() {
   const qc = useQueryClient();
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
   const [q, setQ] = useState("");
-  const { myEmployee } = useMyEmployee();
+  const { myEmployee, isLoading: empLoading } = useMyEmployee();
+  const [selectedEmpId, setSelectedEmpId] = useState<string>("");
+  const [selectedDept, setSelectedDept] = useState<string>("all");
+  const [viewingEmpId, setViewingEmpId] = useState<string>("");
   const [selMonth, setSelMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selYear, setSelYear] = useState<string>(String(new Date().getFullYear()));
+
+  const { data: allEmployees = [] } = useQuery({
+    queryKey: ["employees", "list"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department").eq("status", "active");
+      if (error) return [];
+      return data;
+    }
+  });
+
+  const departments = useMemo(() => Array.from(new Set(allEmployees.map((e: any) => e.department).filter(Boolean))), [allEmployees]);
+
+  const targetEmployeeId = isAdmin ? (selectedEmpId || myEmployee?.id) : myEmployee?.id;
+  const targetEmployee = isAdmin ? (allEmployees.find((e: any) => e.id === targetEmployeeId) || myEmployee) : myEmployee;
+
+  const isMarketing = targetEmployee?.department?.toLowerCase() === "marketing";
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["attendance", role, myEmployee?.id],
@@ -58,46 +79,15 @@ function AttendancePage() {
   }, [qc]);
 
   const todayStr = new Date().toLocaleDateString('en-CA');
-  const myTodayRecords = useMemo(() => 
-    records.filter((r: any) => r.date === todayStr && r.employee_id === myEmployee?.id),
-    [records, todayStr, myEmployee?.id]
-  );
-  
-  const latestRecord = myTodayRecords.length > 0 ? myTodayRecords[0] : null;
-  const isCheckedIn = !!(latestRecord && !latestRecord.check_out);
-
-  const [elapsed, setElapsed] = useState<string>("00:00:00");
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
-
-  useEffect(() => {
-    let interval: any;
-    if (isCheckedIn && latestRecord?.check_in) {
-      const updateElapsed = () => {
-        const start = new Date(latestRecord.check_in!).getTime();
-        const diff = Date.now() - start;
-        setElapsedSeconds(Math.floor(diff / 1000));
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        const s = Math.floor((diff % 60000) / 1000);
-        setElapsed(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-      };
-      updateElapsed();
-      interval = setInterval(updateElapsed, 1000);
-    } else {
-      setElapsed("00:00:00");
-      setElapsedSeconds(0);
-    }
-    return () => clearInterval(interval);
-  }, [isCheckedIn, latestRecord?.check_in]);
 
   const monthlyMetrics = useMemo(() => {
-    if (!myEmployee) return null;
+    if (!targetEmployeeId) return null;
     const currentMonth = Number(selMonth === "all" ? new Date().getMonth() + 1 : selMonth);
     const currentYear = Number(selYear === "all" ? new Date().getFullYear() : selYear);
 
     const monthRecords = records.filter((r: any) => {
       const d = new Date(r.date);
-      return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear && r.employee_id === myEmployee.id;
+      return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear && r.employee_id === targetEmployeeId;
     });
 
     const totalProdHours = monthRecords.reduce((acc: number, r: any) => acc + (Number(r.hours_worked) || 0), 0);
@@ -130,107 +120,152 @@ function AttendancePage() {
     const breakPercentage = totalAvailHours > 0 ? (totalBreakHours / totalAvailHours) * 100 : 0;
 
     return { totalProdHours, workingDays, punctuality, totalBreakHours, breakPercentage, totalAvailHours, dailyGroups };
-  }, [records, myEmployee, selMonth, selYear]);
+  }, [records, targetEmployeeId, selMonth, selYear]);
+
+  const filteredRecords = records.filter((r: any) => {
+    const d = new Date(r.date);
+    const m = d.getMonth() + 1;
+    const y = d.getFullYear();
+    const mMatch = selMonth === "all" || String(m) === selMonth;
+    const yMatch = selYear === "all" || String(y) === selYear;
+    if (!mMatch || !yMatch) return false;
+
+    if (!q) return r.employee_id === myEmployee?.id;
+    const search = q.toLowerCase();
+    const matchesSearch = (
+      r.employees?.full_name?.toLowerCase().includes(search) ||
+      r.employees?.employee_code?.toLowerCase().includes(search) ||
+      r.date.includes(search)
+    );
+    return isAdmin ? matchesSearch : (r.employee_id === myEmployee?.id && matchesSearch);
+  });
 
   const availableYears = Array.from(new Set(records.map((r: any) => new Date(r.date).getFullYear()))).sort((a: any, b: any) => b - a);
-  const isMarketing = myEmployee?.department?.toLowerCase() === "marketing";
 
-  const punch = async (type: "in" | "out") => {
-    if (!myEmployee) return toast.error("No employee profile linked.");
-    
-    let lat, lng;
-    try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) => {
-        navigator.geolocation.getCurrentPosition(res, rej, { 
-          enableHighAccuracy: true, 
-          timeout: 10000,
-          maximumAge: 0
-        });
-      });
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
-    } catch (e: any) {
-      let msg = "Location access is mandatory for attendance tracking.";
-      if (e.code === 1) msg = "Permission denied. Please allow location access.";
-      return toast.error(msg);
-    }
 
-    try {
-      if (type === "in") {
-        await (supabase.from("attendance") as any).insert({ 
-          employee_id: myEmployee?.id, date: todayStr, check_in: new Date().toISOString(), 
-          status: "present", check_in_lat: lat, check_in_lng: lng,
-          metadata: isMarketing ? { mode: 'field' } : { mode: 'office' }
-        });
-        toast.success("Shift started!");
-      } else {
-        const start = new Date(latestRecord!.check_in!);
-        const hours = Math.max(0, (Date.now() - start.getTime()) / 3_600_000);
-        await (supabase.from("attendance") as any).update({ 
-          check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
-          check_out_lat: lat, check_out_lng: lng
-        }).eq("id", latestRecord!.id);
-        toast.success("Shift ended!");
-      }
-      qc.invalidateQueries({ queryKey: ["attendance"] });
-    } catch (err: any) {
-      toast.error("Failed to update attendance.");
-    }
-  };
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+    <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 p-4 md:p-8">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-             <h1 className="font-display text-5xl font-black tracking-tight text-foreground">My Attendance</h1>
-             {isMarketing && (
-               <span className="px-4 py-1.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border border-amber-200/50 shadow-sm">
-                  <Plane className="size-3" /> Field Mode
-               </span>
-             )}
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-xl font-black text-green-500 flex items-center gap-2">
-              Today's Production <span className="tabular-nums">{isCheckedIn ? elapsed : "00:00:00"} hrs</span>
-            </p>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              Regular Shift Timings <span className="text-foreground">09:30 AM ↔ 07:00 PM</span>
-            </p>
-          </div>
-        </div>
+      <div className="space-y-6">
+        <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+          {isAdmin ? "Team Monthly Attendance" : "My Monthly Attendance"}
+        </h1>
 
-        <div className="flex items-center gap-3">
-           <Select value={selMonth} onValueChange={setSelMonth}>
-             <SelectTrigger className="w-[140px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
-               <SelectValue />
-             </SelectTrigger>
-             <SelectContent>
-               <SelectItem value="all">All Months</SelectItem>
-               {months.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
-             </SelectContent>
-           </Select>
-           <Select value={selYear} onValueChange={setSelYear}>
-             <SelectTrigger className="w-[110px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
-               <SelectValue />
-             </SelectTrigger>
+        <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-3xl border-2 border-slate-50 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+            {isAdmin && (
+              <div className="relative min-w-[280px]">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <input 
+                  placeholder="Search employee name/code..." 
+                  className="pl-12 h-12 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className="relative min-w-[240px]">
+                <Users className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
+                  <SelectTrigger className="pl-12 h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold">
+                    <SelectValue placeholder="Select Employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allEmployees.filter((e: any) => 
+                      !q || e.full_name.toLowerCase().includes(q.toLowerCase()) || e.employee_code.toLowerCase().includes(q.toLowerCase())
+                    ).map((e: any) => (
+                      <SelectItem key={e.id} value={e.id}>{e.full_name} ({e.employee_code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className="relative min-w-[180px]">
+                <Select value={selectedDept} onValueChange={setSelectedDept}>
+                  <SelectTrigger className="h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold">
+                    <SelectValue placeholder="Select Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((d: any) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-2 h-12">
+             <Calendar className="size-4 text-muted-foreground ml-2" />
+             <Select value={selMonth} onValueChange={setSelMonth}>
+               <SelectTrigger className="w-[120px] border-none bg-transparent font-bold shadow-none">
+                 <SelectValue />
+               </SelectTrigger>
                <SelectContent>
-               <SelectItem value="all">All Years</SelectItem>
-               {(availableYears as number[]).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-             </SelectContent>
-           </Select>
-           <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <input 
-                placeholder="Search logs..." 
-                className="pl-12 h-12 w-[240px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
+                 {months.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+               </SelectContent>
+             </Select>
+             <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+             <Select value={selYear} onValueChange={setSelYear}>
+               <SelectTrigger className="w-[100px] border-none bg-transparent font-bold shadow-none">
+                 <SelectValue />
+               </SelectTrigger>
+               <SelectContent>
+                 {(availableYears as number[]).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+               </SelectContent>
+             </Select>
+           </div>
+
+           <Button 
+            variant="ghost" 
+            onClick={() => { setSelectedEmpId(""); setSelectedDept("all"); setSelMonth(String(new Date().getMonth() + 1)); setQ(""); }}
+            className="h-12 px-6 rounded-xl font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+           >
+             Clear Filters
+           </Button>
+
+            <div className="flex flex-wrap items-center gap-4 ml-auto text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+               <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-green-500" /> Working Day</span>
+               <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-amber-500" /> Holiday</span>
+               <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-slate-400" /> Weekend</span>
+               <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-rose-500" /> Leave</span>
+            </div>
+         </div>
+      </div>
+
+      {/* Selected Employee Profile Card */}
+      {targetEmployee && (
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-700 rounded-[32px] p-8 text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
+           <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:opacity-20 transition-all group-hover:scale-110">
+             <Users className="size-32" />
+           </div>
+           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200/80">Employee Information</p>
+                 <div className="flex items-center gap-4">
+                    <div className="size-16 rounded-2xl bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/20">
+                       <span className="text-2xl font-black">{targetEmployee.full_name?.charAt(0)}</span>
+                    </div>
+                    <div>
+                       <h2 className="text-3xl font-black tracking-tight">{targetEmployee.full_name}</h2>
+                       <div className="flex items-center gap-3 mt-1">
+                          <span className="px-3 py-0.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest border border-white/10">{targetEmployee.employee_code}</span>
+                          <span className="px-3 py-0.5 rounded-full bg-indigo-500/40 text-[10px] font-black uppercase tracking-widest border border-white/10">{targetEmployee.department}</span>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+              <div className="flex gap-4">
+                 <div className="text-right">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/80">Reporting Period</p>
+                    <p className="text-xl font-black">{months[Number(selMonth)-1]} {selYear}</p>
+                 </div>
+              </div>
            </div>
         </div>
-      </div>
+      )}
 
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -260,44 +295,34 @@ function AttendancePage() {
         />
       </div>
 
-      {/* Punch Controls */}
-      {selMonth === String(new Date().getMonth() + 1) && (
-        <div className="p-8 rounded-3xl bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-50" />
-          <div className="relative z-10 flex items-center gap-6">
-            <div className={cn("size-20 rounded-2xl flex items-center justify-center border-2 border-white/10", isCheckedIn ? "bg-green-500" : "bg-indigo-500 shadow-lg shadow-indigo-500/40")}>
-              <Clock className={cn("size-10", isCheckedIn && "animate-pulse")} />
-            </div>
-            <div>
-              <h3 className="text-2xl font-black tracking-tight">{isCheckedIn ? "You are currently Clocked In" : "Ready to start your day?"}</h3>
-              <p className="text-indigo-200/70 font-medium">Capture your location and start your work timer.</p>
-            </div>
-          </div>
-          <div className="relative z-10 flex items-center gap-4 w-full md:w-auto">
-            {isCheckedIn ? (
-              <Button onClick={() => punch("out")} size="lg" variant="destructive" className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-red-500/40 w-full md:w-auto">
-                <Square className="size-5 fill-current" /> Finish Session
-              </Button>
-            ) : (
-              <Button onClick={() => punch("in")} size="lg" className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-indigo-500/40 bg-indigo-500 hover:bg-indigo-600 w-full md:w-auto">
-                <Play className="size-5 fill-current" /> Start Session
-              </Button>
-            )}
-          </div>
+
+
+      {/* Summary Table */}
+      <div className="rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+        <div className="bg-slate-50/50 dark:bg-slate-800/50 px-8 py-4 border-b dark:border-slate-800">
+           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">SUMMARY OF {months[Number(selMonth)-1].toUpperCase()} {selYear}</h3>
         </div>
-      )}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 divide-x divide-y dark:divide-slate-800">
+           <SummaryItem label="Employee Working Days / Total Working Days" value={`${monthlyMetrics?.workingDays || 0}/${monthlyMetrics?.workingDays || 0}`} />
+           <SummaryItem label="Leave Days" value="0" />
+           <SummaryItem label="Leave to be Considered" value="0" />
+           <SummaryItem label="Actual Hours / Expected Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0} / ${((monthlyMetrics?.workingDays || 0) * 9).toFixed(1)}`} />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 divide-x divide-y dark:divide-slate-800 border-t dark:border-slate-800">
+           <SummaryItem label="Total Holidays" value="0" />
+           <SummaryItem label="Total Timesheet Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-indigo-600 dark:text-indigo-400" />
+           <SummaryItem label="Project Timesheet Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-blue-600 dark:text-blue-400" />
+           <SummaryItem label="Free Timesheet Hours" value="0h 0m" color="text-rose-600 dark:text-rose-400" />
+        </div>
+      </div>
 
       {/* Time Log Table */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-2">
-           <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-             <Timer className="size-6 text-indigo-500" /> Time Log
+           <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-3">
+             <Timer className="size-6 text-indigo-500" /> 
+             TIME LOG {targetEmployee && <span className="text-muted-foreground/40 font-normal">: {targetEmployee.full_name.toUpperCase()}</span>}
            </h2>
-           <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-green-500" /> Working Day</span>
-              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-amber-500" /> Holiday</span>
-              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-rose-500" /> Weekend</span>
-           </div>
         </div>
 
         <div className="rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
@@ -313,7 +338,7 @@ function AttendancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(monthlyMetrics?.dailyGroups || {}).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
+              {monthlyMetrics && (Object.entries(monthlyMetrics.dailyGroups) as [string, any][]).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]) => {
                 const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
                 const firstIn = new Date(sorted[0].check_in);
                 const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
@@ -433,6 +458,15 @@ function PremiumStatCard({ label, value, subtext, icon: Icon, color, progress }:
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryItem({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="p-6 flex flex-col gap-1">
+      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">{label}</p>
+      <p className={cn("text-lg font-black tracking-tight", color || "text-slate-900 dark:text-white")}>{value}</p>
     </div>
   );
 }

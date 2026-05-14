@@ -31,6 +31,7 @@ const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/employees", label: "Employees", icon: Users, adminOnly: true },
   { to: "/attendance", label: "Attendance", icon: Clock },
+  { to: "/monthly-attendance", label: "Monthly Attendance", icon: CalendarIcon, adminOnly: true },
   { to: "/leaves", label: "Leaves", icon: CalendarDays },
   { to: "/performance", label: "Performance", icon: Award },
   { to: "/payroll", label: "Payroll", icon: Wallet, adminOnly: true },
