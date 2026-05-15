@@ -109,6 +109,21 @@ function ResignationPage() {
     }
   };
 
+  const handleWithdraw = async (id: string) => {
+    if (!window.confirm("Are you sure you want to withdraw your resignation request?")) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase.from("resignations" as any) as any).delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Resignation request withdrawn.");
+      qc.invalidateQueries({ queryKey: ["resignations"] });
+    } catch (err: any) {
+      toast.error(err.message || "Withdrawal failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const filtered = resignations.filter((r: any) => 
     r.employees?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     r.employees?.employee_code?.toLowerCase().includes(search.toLowerCase())
@@ -187,7 +202,7 @@ function ResignationPage() {
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Last Day</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Reason</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
-                  {isAdmin && <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>}
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -224,9 +239,9 @@ function ResignationPage() {
                          {r.status}
                        </Badge>
                     </TableCell>
-                    {isAdmin && (
-                      <TableCell className="text-right">
-                        {r.status === 'pending' ? (
+                    <TableCell className="text-right">
+                      {isAdmin ? (
+                        r.status === 'pending' ? (
                           <div className="flex items-center justify-end gap-2">
                              <Button 
                                size="icon" 
@@ -247,9 +262,21 @@ function ResignationPage() {
                           </div>
                         ) : (
                           <span className="text-[10px] font-black uppercase text-muted-foreground/40 italic">Handled</span>
-                        )}
-                      </TableCell>
-                    )}
+                        )
+                      ) : (
+                        r.status === 'pending' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleWithdraw(r.id)} 
+                            disabled={busy}
+                            className="text-red-600 hover:bg-red-50 font-bold text-xs gap-2 rounded-xl"
+                          >
+                            Withdraw
+                          </Button>
+                        )
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
