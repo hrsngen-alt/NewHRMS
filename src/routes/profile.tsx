@@ -159,11 +159,11 @@ function ProfilePage() {
                  </div>
 
                  <div className="relative group/photo">
-                    <div className="size-32 rounded-3xl border-4 border-white/20 p-1 mb-6 shadow-2xl group-hover:scale-105 transition-transform overflow-hidden bg-white/10 backdrop-blur-md">
+                    <div className="w-32 h-40 rounded-[40px] border-4 border-white/30 p-1 mb-6 shadow-2xl group-hover:scale-105 transition-transform overflow-hidden bg-white/10 backdrop-blur-md">
                         {(employee as any).photo_url ? (
-                            <img src={(employee as any).photo_url} alt={employee.full_name} className="size-full object-cover rounded-2xl" />
+                            <img src={(employee as any).photo_url} alt={employee.full_name} className="size-full object-cover rounded-[32px]" />
                         ) : (
-                            <div className="size-full rounded-2xl flex items-center justify-center text-5xl font-black">
+                            <div className="size-full rounded-[32px] flex items-center justify-center text-6xl font-black">
                                 {employee.full_name?.charAt(0)}
                             </div>
                         )}
@@ -175,34 +175,29 @@ function ProfilePage() {
                  </div>
 
                  <h2 className="text-2xl font-black tracking-tight text-center">{employee.full_name}</h2>
-                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mt-1 mb-6">{employee.designation}</p>
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mt-1">{employee.designation}</p>
 
-                 <div className="grid grid-cols-2 gap-4 w-full mt-auto mb-10">
-                    <div className="flex flex-col">
-                       <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">Employee ID</span>
-                       <span className="text-sm font-bold font-mono tracking-tighter">{employee.employee_code}</span>
+                 {/* Bottom Section */}
+                 <div className="mt-auto w-full space-y-5">
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                       <div className="flex flex-col">
+                          <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">Employee ID</span>
+                          <span className="text-sm font-bold font-mono tracking-tighter">{employee.employee_code}</span>
+                       </div>
+                       <div className="flex flex-col text-right">
+                          <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">Department</span>
+                          <span className="text-sm font-bold tracking-tight">{employee.department}</span>
+                       </div>
                     </div>
-                    <div className="flex flex-col text-right">
-                       <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">Department</span>
-                       <span className="text-sm font-bold tracking-tight">{employee.department}</span>
-                    </div>
-                 </div>
 
-                 <div className="w-full h-20 bg-white rounded-2xl p-2 flex items-center justify-center shadow-inner overflow-hidden">
-                    <QRCodeSVG 
-                      value={`SNGENE_ID:${employee.id}`} 
-                      size={64}
-                      level="H"
-                      includeMargin={false}
-                      imageSettings={{
-                        src: "/favicon.ico",
-                        height: 12,
-                        width: 12,
-                        excavate: true,
-                        x: undefined,
-                        y: undefined
-                      }}
-                    />
+                    <div className="w-full h-14 bg-white/95 backdrop-blur-sm rounded-2xl p-2 flex items-center justify-center shadow-inner">
+                       <QRCodeSVG 
+                         value={`SNGENE_ID:${employee.id}`} 
+                         size={42}
+                         level="H"
+                         includeMargin={false}
+                       />
+                    </div>
                  </div>
               </div>
            </div>

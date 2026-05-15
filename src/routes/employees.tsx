@@ -378,20 +378,20 @@ function EmployeesPage() {
                 </DialogHeader>
                 {viewingEmployee && (
                   <div className="mt-6 space-y-8">
-                    <div className="flex flex-col md:flex-row items-center gap-6 pb-6 border-b">
-                      <div className="size-24 rounded-3xl border-2 border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center shrink-0">
+                    <div className="flex flex-col md:flex-row items-center gap-8 pb-8 border-b border-slate-100 dark:border-slate-800">
+                      <div className="w-28 h-36 rounded-[32px] shadow-2xl shadow-slate-200 dark:shadow-none overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center shrink-0 border-4 border-white dark:border-slate-700">
                         {(viewingEmployee as any).photo_url ? (
                           <img src={(viewingEmployee as any).photo_url} alt={viewingEmployee.full_name} className="size-full object-cover" />
                         ) : (
-                          <div className="text-3xl font-black text-slate-300 uppercase">{viewingEmployee.full_name?.charAt(0)}</div>
+                          <div className="text-4xl font-black text-slate-200 uppercase">{viewingEmployee.full_name?.charAt(0)}</div>
                         )}
                       </div>
-                      <div className="text-center md:text-left">
-                        <h2 className="text-2xl font-black tracking-tight">{viewingEmployee.full_name}</h2>
-                        <p className="text-muted-foreground font-mono text-sm">{viewingEmployee.employee_code}</p>
-                        <div className="mt-3 flex flex-wrap justify-center md:justify-start gap-2">
-                          <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/10">{viewingEmployee.department}</span>
-                          <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700">{viewingEmployee.designation}</span>
+                      <div className="text-center md:text-left space-y-2">
+                        <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">{viewingEmployee.full_name}</h2>
+                        <p className="text-slate-500 font-mono text-sm tracking-tight">{viewingEmployee.employee_code}</p>
+                        <div className="mt-4 flex flex-wrap justify-center md:justify-start gap-2 pt-2">
+                          <span className="px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20">{viewingEmployee.department}</span>
+                          <span className="px-4 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100 dark:border-slate-700">{viewingEmployee.designation}</span>
                         </div>
                       </div>
                     </div>
