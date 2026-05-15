@@ -65,7 +65,8 @@ function AnnouncementsPage() {
             title: "New Company Announcement",
             message: payload.title as string,
             is_read: false,
-            type: payload.category === 'event' ? 'info' : 'success'
+            type: payload.category === 'event' ? 'info' : 'success',
+            link: '/announcements'
           }));
           await (supabase.from("notifications" as any) as any).insert(notifications);
         }

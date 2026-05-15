@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -160,6 +161,14 @@ export function AppShell({ children }: { children?: ReactNode }) {
     qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
   };
 
+  const handleNotificationClick = async (n: any) => {
+    if (!n.is_read) {
+      await supabase.from("notifications" as any).update({ is_read: true }).eq("id", n.id);
+      qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    }
+    if (n.link) navigate({ to: n.link });
+  };
+
   useEffect(() => {
     // Only navigate if we're not already on the login page to avoid loops
     // Also check if we're actually logged out and not just loading
@@ -300,7 +309,11 @@ export function AppShell({ children }: { children?: ReactNode }) {
                   {notifications.length === 0 ? (
                     <div className="py-8 text-center text-xs text-muted-foreground font-medium">No recent notifications.</div>
                    ) : notifications.map((n: any) => (
-                    <DropdownMenuItem key={n.id} className="rounded-xl p-3 flex gap-3 cursor-default focus:bg-primary/5 group/item relative">
+                    <DropdownMenuItem 
+                      key={n.id} 
+                      onClick={() => handleNotificationClick(n)}
+                      className="rounded-xl p-3 flex gap-3 cursor-pointer focus:bg-primary/5 group/item relative"
+                    >
                        <div className={cn(
                          "size-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
                          n.type === 'success' ? "bg-green-100 text-green-600" :
@@ -311,7 +324,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                           n.type === 'warning' ? <AlertTriangle className="size-4" /> :
                           n.type === 'error' ? <AlertCircle className="size-4" /> : <Info className="size-4" />}
                        </div>
-                       <div className="flex flex-col gap-0.5 min-w-0 pr-4">
+                       <div className="flex flex-col gap-0.5 min-w-0 pr-4 text-left">
                           <p className={cn("text-xs font-bold leading-none truncate", !n.is_read && "text-primary")}>{n.title}</p>
                           <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
                           <p className="text-[8px] font-black uppercase text-muted-foreground/40 mt-1">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>

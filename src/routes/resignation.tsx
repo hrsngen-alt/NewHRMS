@@ -80,7 +80,8 @@ function ResignationPage() {
           title: "New Resignation Request",
           message: `${empData?.full_name || 'An employee'} has applied for resignation.`,
           is_read: false,
-          type: 'warning'
+          type: 'warning',
+          link: '/resignation'
         }));
         await (supabase.from("notifications" as any) as any).insert(notifications);
       }
