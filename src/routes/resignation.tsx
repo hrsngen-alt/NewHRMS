@@ -1,0 +1,232 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { AppShell } from "@/components/AppShell";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { LogOut, Calendar, ClipboardList, CheckCircle2, XCircle, Clock, Search, Filter } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { cn } from "../lib/utils";
+
+export const Route = createFileRoute("/resignation")({
+  component: () => (
+    <AppShell>
+      <ResignationPage />
+    </AppShell>
+  )
+});
+
+function ResignationPage() {
+  const { user, role, employeeId } = useAuth();
+  const qc = useQueryClient();
+  const isAdmin = role === "admin";
+  const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+
+  // Fetch Resignations
+  const { data: resignations = [], isLoading } = useQuery({
+    queryKey: ["resignations"],
+    queryFn: async () => {
+      let query = supabase.from("resignations").select("*, employees(full_name, employee_code, department)");
+      
+      if (!isAdmin && employeeId) {
+        query = query.eq("employee_id", employeeId);
+      }
+      
+      const { data, error } = await query.order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user
+  });
+
+  const handleApply = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!employeeId) return;
+    setBusy(true);
+
+    const fd = new FormData(e.currentTarget);
+    const lastWorkingDay = fd.get("lastWorkingDay") as string;
+    const reason = fd.get("reason") as string;
+
+    try {
+      const { error } = await supabase.from("resignations").insert({
+        employee_id: employeeId,
+        last_working_day: lastWorkingDay,
+        reason: reason,
+        status: "pending"
+      });
+
+      if (error) throw error;
+      toast.success("Resignation application submitted successfully.");
+      qc.invalidateQueries({ queryKey: ["resignations"] });
+      (e.target as HTMLFormElement).reset();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit resignation.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAction = async (id: string, status: "approved" | "rejected") => {
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("resignations").update({ 
+        status, 
+        approved_by: user?.id 
+      }).eq("id", id);
+      
+      if (error) throw error;
+      toast.success(`Resignation ${status} successfully.`);
+      qc.invalidateQueries({ queryKey: ["resignations"] });
+    } catch (err: any) {
+      toast.error(err.message || "Action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const filtered = resignations.filter(r => 
+    r.employees?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    r.employees?.employee_code?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Resignation Management</h1>
+          <p className="text-sm font-medium text-muted-foreground/60 mt-1">Manage employee offboarding and formal departure requests.</p>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-12 gap-10">
+        {!isAdmin && (
+          <div className="lg:col-span-4 space-y-6">
+            <Card className="rounded-[32px] border-2 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+              <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b">
+                <CardTitle className="text-xl font-black flex items-center gap-2">
+                  <LogOut className="size-5 text-primary" /> Apply for Departure
+                </CardTitle>
+                <CardDescription>Submit your formal resignation request here.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form onSubmit={handleApply} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lastWorkingDay" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Proposed Last Working Day</Label>
+                    <Input id="lastWorkingDay" name="lastWorkingDay" type="date" required className="rounded-xl h-11" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reason for Leaving</Label>
+                    <Textarea id="reason" name="reason" placeholder="Please provide a brief reason..." required className="min-h-[120px] rounded-xl resize-none" />
+                  </div>
+                  <Button type="submit" disabled={busy} className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20">
+                    {busy ? "Submitting..." : "Submit Resignation"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <div className="p-6 rounded-3xl bg-amber-50 border border-amber-100 dark:bg-amber-500/5 dark:border-amber-500/10">
+               <p className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-2 uppercase tracking-widest mb-2">
+                  <Clock className="size-4" /> Notice Period Policy
+               </p>
+               <p className="text-sm text-amber-800/80 dark:text-amber-400/60 leading-relaxed">
+                  Standard notice period is 30 days. Your final settlement will be processed within 15 days of your last working day.
+               </p>
+            </div>
+          </div>
+        )}
+
+        <div className={cn("space-y-6", isAdmin ? "lg:col-span-12" : "lg:col-span-8")}>
+          <div className="flex items-center justify-between gap-4">
+             <h2 className="text-xl font-black tracking-tight">{isAdmin ? "Pending Applications" : "Application History"}</h2>
+             {isAdmin && (
+               <div className="relative w-72">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                 <Input 
+                   placeholder="Search applicants..." 
+                   value={search}
+                   onChange={e => setSearch(e.target.value)}
+                   className="pl-9 rounded-xl h-10 border-slate-200"
+                 />
+               </div>
+             )}
+          </div>
+
+          <div className="rounded-[32px] border-2 bg-white dark:bg-slate-900 shadow-xl shadow-slate-100 dark:shadow-none overflow-hidden">
+            <Table>
+              <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
+                <TableRow className="border-none">
+                  {isAdmin && <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>}
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Applied Date</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Last Day</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Reason</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
+                  {isAdmin && <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={isAdmin ? 6 : 4} className="h-40 text-center animate-pulse font-black text-primary">Loading records...</TableCell></TableRow>
+                ) : (filtered as any[]).length === 0 ? (
+                  <TableRow><TableCell colSpan={isAdmin ? 6 : 4} className="h-40 text-center text-muted-foreground italic">No resignation records found.</TableCell></TableRow>
+                ) : (filtered as any[]).map((r) => (
+                  <TableRow key={r.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                    {isAdmin && (
+                      <TableCell>
+                        <div className="flex flex-col">
+                           <span className="font-bold text-slate-900 dark:text-white">{r.employees?.full_name}</span>
+                           <span className="text-[10px] font-mono text-muted-foreground">{r.employees?.employee_code}</span>
+                        </div>
+                      </TableCell>
+                    )}
+                    <TableCell className="font-medium">{new Date(r.resignation_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-bold text-slate-700 dark:text-slate-300">{new Date(r.last_working_day).toLocaleDateString()}</TableCell>
+                    <TableCell className="max-w-[200px]">
+                       <p className="text-xs text-muted-foreground truncate" title={r.reason}>{r.reason}</p>
+                    </TableCell>
+                    <TableCell className="text-center">
+                       <Badge className={cn(
+                         "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
+                         r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
+                         r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
+                         r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
+                       )}>
+                         {r.status}
+                       </Badge>
+                    </TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        {r.status === 'pending' ? (
+                          <div className="flex items-center justify-end gap-2">
+                             <Button size="icon" variant="ghost" onClick={() => handleAction(r.id, "approved")} disabled={busy} className="text-green-600 hover:bg-green-50 rounded-lg">
+                               <CheckCircle2 className="size-5" />
+                             </Button>
+                             <Button size="icon" variant="ghost" onClick={() => handleAction(r.id, "rejected")} disabled={busy} className="text-red-600 hover:bg-red-50 rounded-lg">
+                               <XCircle className="size-5" />
+                             </Button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-black uppercase text-muted-foreground/40 italic">Handled</span>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

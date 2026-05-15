@@ -40,6 +40,7 @@ const nav: NavItem[] = [
   { to: "/profile", label: "My Profile", icon: User },
   { to: "/kiosk", label: "Kiosk Terminal", icon: QrCode, adminOnly: true, external: true },
   { to: "/settings", label: "Settings", icon: Settings, adminOnly: true },
+  { to: "/resignation", label: "Resignation", icon: LogOut },
 ];
 
 const essNav: NavItem[] = [
