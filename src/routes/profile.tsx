@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Mail, Phone, Calendar, Fingerprint, ShieldCheck, Download, Share2, Scan } from "lucide-react";
+import { Building2, Mail, Phone, Calendar, Fingerprint, ShieldCheck, Download, Share2, Scan, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "../lib/utils";
 import { QRCodeSVG } from "qrcode.react";
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function ProfilePage() {
+  const qc = useQueryClient();
   const { user } = useAuth();
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -87,6 +88,32 @@ function ProfilePage() {
     }
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !employee) return;
+    setDownloading(true);
+    const tid = toast.loading("Uploading your official photo...");
+
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${employee.id}/photo_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("employee_documents").upload(path, file);
+      if (upErr) throw upErr;
+
+      const { data: { publicUrl } } = supabase.storage.from("employee_documents").getPublicUrl(path);
+      const { error: dbErr } = await supabase.from("employees").update({ photo_url: publicUrl } as any).eq("id", employee.id);
+      if (dbErr) throw dbErr;
+
+      toast.success("Photo updated successfully!", { id: tid });
+      qc.invalidateQueries({ queryKey: ["my-profile"] });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to upload photo", { id: tid });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (isLoading) return <div className="p-12 text-center animate-pulse font-black text-primary">Loading Digital ID...</div>;
   if (!employee) return <div className="p-12 text-center text-muted-foreground">Employee record not found. Please contact HR.</div>;
 
@@ -117,7 +144,7 @@ function ProfilePage() {
 
       <div className="grid md:grid-cols-12 gap-12 items-start">
         {/* Physical Card Representation */}
-         <div className="md:col-span-5 perspective-1000">
+        <div className="md:col-span-5 perspective-1000">
             <div ref={cardRef} className="relative w-full aspect-[2/3] max-w-[320px] mx-auto rounded-[32px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] group transition-transform duration-700 hover:rotate-y-12">
               {/* Card Header Background */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary via-indigo-600 to-purple-700" />
@@ -131,10 +158,20 @@ function ProfilePage() {
                     <span className="font-display font-black tracking-widest text-xs uppercase">SN Gene HR Enterprise</span>
                  </div>
 
-                 <div className="size-32 rounded-3xl border-4 border-white/20 p-1 mb-6 shadow-2xl group-hover:scale-105 transition-transform">
-                    <div className="size-full rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-5xl font-black">
-                       {employee.full_name?.charAt(0)}
+                 <div className="relative group/photo">
+                    <div className="size-32 rounded-3xl border-4 border-white/20 p-1 mb-6 shadow-2xl group-hover:scale-105 transition-transform overflow-hidden bg-white/10 backdrop-blur-md">
+                        {(employee as any).photo_url ? (
+                            <img src={(employee as any).photo_url} alt={employee.full_name} className="size-full object-cover rounded-2xl" />
+                        ) : (
+                            <div className="size-full rounded-2xl flex items-center justify-center text-5xl font-black">
+                                {employee.full_name?.charAt(0)}
+                            </div>
+                        )}
                     </div>
+                    <label className="absolute inset-0 mb-6 flex items-center justify-center bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity cursor-pointer rounded-3xl">
+                        <Camera className="size-8 text-white" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={downloading} />
+                    </label>
                  </div>
 
                  <h2 className="text-2xl font-black tracking-tight text-center">{employee.full_name}</h2>
