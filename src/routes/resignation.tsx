@@ -30,12 +30,14 @@ function ResignationPage() {
   const isAdmin = role === "admin";
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [finalDate, setFinalDate] = useState("");
 
   // Fetch Resignations
   const { data: resignations = [], isLoading } = useQuery({
     queryKey: ["resignations"],
     queryFn: async () => {
-      let query = supabase.from("resignations").select("*, employees(full_name, employee_code, department)");
+      let query = (supabase.from("resignations" as any) as any).select("*, employees(full_name, employee_code, department)");
       
       if (!isAdmin && employeeId) {
         query = query.eq("employee_id", employeeId);
@@ -58,7 +60,7 @@ function ResignationPage() {
     const reason = fd.get("reason") as string;
 
     try {
-      const { error } = await supabase.from("resignations").insert({
+      const { error } = await (supabase.from("resignations" as any) as any).insert({
         employee_id: employeeId,
         last_working_day: lastWorkingDay,
         reason: reason,
@@ -76,16 +78,30 @@ function ResignationPage() {
     }
   };
 
-  const handleAction = async (id: string, status: "approved" | "rejected") => {
+  const handleAction = async (status: "approved" | "rejected") => {
+    if (!selectedRequest) return;
     setBusy(true);
     try {
-      const { error } = await supabase.from("resignations").update({ 
+      const updates: any = { 
         status, 
         approved_by: user?.id 
-      }).eq("id", id);
+      };
+
+      if (status === "approved") {
+        if (!finalDate) {
+          toast.error("Please set the Final Last Working Day.");
+          setBusy(false);
+          return;
+        }
+        updates.last_working_day = finalDate;
+      }
+
+      const { error } = await (supabase.from("resignations" as any) as any).update(updates).eq("id", selectedRequest.id);
       
       if (error) throw error;
       toast.success(`Resignation ${status} successfully.`);
+      setSelectedRequest(null);
+      setFinalDate("");
       qc.invalidateQueries({ queryKey: ["resignations"] });
     } catch (err: any) {
       toast.error(err.message || "Action failed.");
@@ -94,7 +110,7 @@ function ResignationPage() {
     }
   };
 
-  const filtered = resignations.filter(r => 
+  const filtered = resignations.filter((r: any) => 
     r.employees?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     r.employees?.employee_code?.toLowerCase().includes(search.toLowerCase())
   );
@@ -119,7 +135,12 @@ function ResignationPage() {
                 <CardDescription>Submit your formal resignation request here.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <form onSubmit={handleApply} className="space-y-4">
+                <form onSubmit={handleApply} className="space-y-6">
+                  <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Application Date</Label>
+                    <p className="font-bold text-slate-900 dark:text-white">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="lastWorkingDay" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Proposed Last Working Day</Label>
                     <Input id="lastWorkingDay" name="lastWorkingDay" type="date" required className="rounded-xl h-11" />
@@ -208,10 +229,20 @@ function ResignationPage() {
                       <TableCell className="text-right">
                         {r.status === 'pending' ? (
                           <div className="flex items-center justify-end gap-2">
-                             <Button size="icon" variant="ghost" onClick={() => handleAction(r.id, "approved")} disabled={busy} className="text-green-600 hover:bg-green-50 rounded-lg">
+                             <Button 
+                               size="icon" 
+                               variant="ghost" 
+                               onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); }} 
+                               className="text-green-600 hover:bg-green-50 rounded-lg"
+                             >
                                <CheckCircle2 className="size-5" />
                              </Button>
-                             <Button size="icon" variant="ghost" onClick={() => handleAction(r.id, "rejected")} disabled={busy} className="text-red-600 hover:bg-red-50 rounded-lg">
+                             <Button 
+                               size="icon" 
+                               variant="ghost" 
+                               onClick={() => { setSelectedRequest(r); handleAction("rejected"); }} 
+                               className="text-red-600 hover:bg-red-50 rounded-lg"
+                             >
                                <XCircle className="size-5" />
                              </Button>
                           </div>
@@ -227,6 +258,37 @@ function ResignationPage() {
           </div>
         </div>
       </div>
+
+      {/* Approval Dialog */}
+      <Dialog open={!!selectedRequest && !busy} onOpenChange={(val) => !val && setSelectedRequest(null)}>
+        <DialogContent className="rounded-[32px] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black tracking-tight">Review Resignation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 space-y-1">
+               <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Applicant</p>
+               <p className="font-bold text-lg">{selectedRequest?.employees?.full_name}</p>
+               <p className="text-xs text-muted-foreground">Proposed: {selectedRequest?.last_working_day}</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs font-black uppercase tracking-widest text-primary">Final Last Working Day</Label>
+              <Input 
+                type="date" 
+                value={finalDate} 
+                onChange={e => setFinalDate(e.target.value)}
+                className="h-12 rounded-xl border-2 focus:border-primary"
+              />
+              <p className="text-[10px] text-muted-foreground italic">Admin: You can override the employee's proposed date here.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setSelectedRequest(null)} className="rounded-xl">Cancel</Button>
+            <Button onClick={() => handleAction("approved")} disabled={busy} className="rounded-xl px-8 font-bold">Approve & Set Date</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
