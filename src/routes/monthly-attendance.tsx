@@ -16,6 +16,7 @@ import {
   Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X
 } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -32,6 +33,8 @@ function AttendancePage() {
   const [viewingEmpId, setViewingEmpId] = useState<string>("");
   const [selMonth, setSelMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selYear, setSelYear] = useState<string>(String(new Date().getFullYear()));
+  const [selectedTimelineDate, setSelectedTimelineDate] = useState<string | null>(null);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
   const { data: allEmployees = [] } = useQuery({
     queryKey: ["employees", "list"],
@@ -333,8 +336,7 @@ function AttendancePage() {
                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Breaks</TableHead>
                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Availability</TableHead>
                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Production</TableHead>
-                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Shift Status</TableHead>
-                <TableHead className="pr-8 text-[10px] font-black uppercase tracking-widest text-right">Location</TableHead>
+                <TableHead className="pr-8 text-[10px] font-black uppercase tracking-widest text-right">Shift Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -350,7 +352,14 @@ function AttendancePage() {
                 const isShiftComplete = prodHours >= 8;
 
                 return (
-                  <TableRow key={date} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all border-b dark:border-slate-800 last:border-0 group">
+                  <TableRow 
+                    key={date} 
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all border-b dark:border-slate-800 last:border-0 group cursor-pointer"
+                    onClick={() => {
+                      setSelectedTimelineDate(date);
+                      setIsTimelineOpen(true);
+                    }}
+                  >
                     <TableCell className="pl-8 py-6">
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-black text-slate-900 dark:text-white">
@@ -381,39 +390,17 @@ function AttendancePage() {
                          </span>
                        </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="pr-8 text-right">
                        <div className="inline-flex items-center justify-center px-4 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-[10px] uppercase tracking-widest">
                           {isShiftComplete ? "YES" : "NO"}
                        </div>
-                    </TableCell>
-                    <TableCell className="pr-8 text-right">
-                        <div className="flex justify-end gap-2">
-                          {sorted.map((s, idx) => (
-                            <div key={idx} className="flex gap-2 p-1">
-                              {s.check_in_lat && (
-                                <a href={`https://www.google.com/maps?q=${s.check_in_lat},${s.check_in_lng}`} target="_blank" rel="noreferrer" 
-                                   className="size-10 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-indigo-500 hover:text-white flex items-center justify-center transition-all text-indigo-500 border border-slate-100 dark:border-slate-700 shadow-sm"
-                                   title={`Check-in Location #${idx+1}`}>
-                                  <MapPin className="size-4" />
-                                </a>
-                              )}
-                              {s.check_out_lat && (
-                                <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 
-                                   className="size-10 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all text-rose-500 border border-slate-100 dark:border-slate-700 shadow-sm"
-                                   title={`Check-out Location #${idx+1}`}>
-                                  <MapPin className="size-4" />
-                                </a>
-                              )}
-                            </div>
-                          ))}
-                        </div>
                     </TableCell>
                   </TableRow>
                 );
               })}
               {(!monthlyMetrics || Object.keys(monthlyMetrics.dailyGroups).length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-20 text-center">
+                  <TableCell colSpan={5} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="size-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-300">
                         <AlertCircle className="size-8" />
@@ -427,6 +414,118 @@ function AttendancePage() {
           </Table>
         </div>
       </div>
+
+      {/* Timeline Sidebar */}
+      <Sheet open={isTimelineOpen} onOpenChange={setIsTimelineOpen}>
+        <SheetContent className="w-full sm:max-w-md bg-white dark:bg-slate-900 border-l dark:border-slate-800 p-0 overflow-y-auto">
+          <div className="p-8 space-y-8">
+            <SheetHeader className="flex flex-row items-center justify-between space-y-0 text-left">
+               <div>
+                 <SheetTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
+                    <Calendar className="size-6 text-indigo-500" />
+                    {selectedTimelineDate ? new Date(selectedTimelineDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : "Timeline"}
+                 </SheetTitle>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">Detailed Log Entry</p>
+               </div>
+               <Button variant="ghost" size="icon" onClick={() => setIsTimelineOpen(false)} className="rounded-full">
+                 <X className="size-5" />
+               </Button>
+            </SheetHeader>
+
+            <div className="relative pl-8 space-y-12 before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100 dark:before:bg-slate-800 before:dashed">
+              {selectedTimelineDate && monthlyMetrics?.dailyGroups[selectedTimelineDate] && (
+                ([...monthlyMetrics.dailyGroups[selectedTimelineDate]].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime())).map((s: any, idx: number, arr: any[]) => {
+                  const checkIn = new Date(s.check_in);
+                  const checkOut = s.check_out ? new Date(s.check_out) : null;
+                  
+                  const prodHrs = checkOut ? (checkOut.getTime() - checkIn.getTime()) / 3600000 : 0;
+                  
+                  let breakHrs = 0;
+                  if (idx > 0) {
+                    const prevOut = arr[idx-1].check_out ? new Date(arr[idx-1].check_out) : null;
+                    if (prevOut) {
+                      breakHrs = (checkIn.getTime() - prevOut.getTime()) / 3600000;
+                    }
+                  }
+
+                  return (
+                    <div key={s.id} className="space-y-12">
+                      {breakHrs > 0 && (
+                        <div className="relative">
+                          <div className="absolute -left-[25px] top-1/2 -translate-y-1/2 size-4 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-900 z-10" />
+                          <div className="flex items-center gap-3">
+                             <div className="px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                               Break: {formatDuration(breakHrs)}
+                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="relative">
+                        <div className="absolute -left-[25px] top-2 size-4 rounded-full bg-indigo-500 border-4 border-white dark:border-slate-900 z-10" />
+                        <div className="flex items-center justify-between gap-4">
+                           <div className="flex items-center gap-3">
+                             <div className="space-y-1">
+                               <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(I)</p>
+                               <p className="text-xs font-bold text-muted-foreground">{checkIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                             </div>
+                             {s.check_in_lat && (
+                               <a href={`https://www.google.com/maps?q=${s.check_in_lat},${s.check_in_lng}`} target="_blank" rel="noreferrer" 
+                                  className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all border border-indigo-100 dark:border-indigo-500/20"
+                                  title="Check-in Location">
+                                 <MapPin className="size-3.5" />
+                               </a>
+                             )}
+                           </div>
+                           <div className="px-4 py-1.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                             <div className="size-1.5 rounded-full bg-current animate-pulse" />
+                             Checked In
+                           </div>
+                        </div>
+                        
+                        {prodHrs > 0 && (
+                          <div className="mt-8 mb-8 relative">
+                            <div className="flex items-center gap-3">
+                               <div className="px-4 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                                 Production: {formatDuration(prodHrs)}
+                               </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {checkOut && (
+                          <div className="mt-12 relative">
+                            <div className="absolute -left-[25px] top-2 size-4 rounded-full bg-rose-500 border-4 border-white dark:border-slate-900 z-10" />
+                            <div className="flex items-center justify-between gap-4">
+                               <div className="flex items-center gap-3">
+                                 <div className="space-y-1">
+                                   <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(O)</p>
+                                   <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                                 </div>
+                                 {s.check_out_lat && (
+                                   <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 
+                                      className="size-8 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all border border-rose-100 dark:border-rose-500/20"
+                                      title="Check-out Location">
+                                     <MapPin className="size-3.5" />
+                                   </a>
+                                 )}
+                               </div>
+                               <div className="px-4 py-1.5 rounded-full bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                 <div className="size-1.5 rounded-full bg-current" />
+                                 Checked Out
+                               </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
