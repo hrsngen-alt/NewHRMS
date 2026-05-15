@@ -663,8 +663,8 @@ function DetailItem({ label, value, badge }: { label: string; value: any; badge?
       {badge ? (
         <span className={cn(
           "w-fit px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-          value === 'Active' ? "bg-green-100 text-green-700" : 
-          value === 'Resigned' ? "bg-red-100 text-red-700" : 
+          value?.toString().toLowerCase() === 'active' ? "bg-green-100 text-green-700" : 
+          value?.toString().toLowerCase() === 'resigned' ? "bg-red-100 text-red-700" : 
           "bg-slate-100 text-slate-700"
         )}>
           {value}

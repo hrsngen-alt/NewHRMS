@@ -11,8 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { LogOut, Calendar, ClipboardList, CheckCircle2, XCircle, Clock, Search, Filter, Pencil } from "lucide-react";
-import { useState } from "react";
+import { LogOut, Calendar, ClipboardList, CheckCircle2, XCircle, Clock, Search, Filter, Pencil, Eye, User, Mail, Phone, Building2, Fingerprint, FileIcon, ShieldCheck } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 
@@ -34,12 +34,13 @@ function ResignationPage() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [finalDate, setFinalDate] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [viewingEmployee, setViewingEmployee] = useState<any>(null);
 
   // Fetch Resignations
   const { data: resignations = [], isLoading } = useQuery({
     queryKey: ["resignations"],
     queryFn: async () => {
-      let query = (supabase.from("resignations" as any) as any).select("*, employees(full_name, employee_code, department)");
+      let query = (supabase.from("resignations" as any) as any).select("*, employees(*)");
       
       if (!isAdmin && employeeId) {
         query = query.eq("employee_id", employeeId);
@@ -274,8 +275,11 @@ function ResignationPage() {
                   <TableRow key={r.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                     {isAdmin && (
                       <TableCell>
-                        <div className="flex flex-col">
-                           <span className="font-bold text-slate-900 dark:text-white">{r.employees?.full_name}</span>
+                        <div 
+                          className="flex flex-col cursor-pointer hover:text-primary group/name"
+                          onClick={() => setViewingEmployee(r.employees)}
+                        >
+                           <span className="font-bold text-slate-900 dark:text-white group-hover/name:underline">{r.employees?.full_name}</span>
                            <span className="text-[10px] font-mono text-muted-foreground">{r.employees?.employee_code}</span>
                         </div>
                       </TableCell>
@@ -392,6 +396,115 @@ function ResignationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Employee Profile Quick View */}
+      <Dialog open={!!viewingEmployee} onOpenChange={(val) => !val && setViewingEmployee(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[32px] border-none shadow-2xl">
+          {viewingEmployee && (
+            <div className="flex flex-col h-[85vh]">
+              {/* Header */}
+              <div className="relative h-48 shrink-0">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-primary to-purple-700" />
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
+                <div className="relative h-full flex items-end p-8 gap-6">
+                  <div className="size-32 rounded-[40px] bg-white p-1 shadow-2xl overflow-hidden shrink-0 translate-y-6 border-4 border-white/20">
+                    {viewingEmployee.photo_url ? (
+                      <img src={viewingEmployee.photo_url} className="size-full object-cover rounded-[32px]" />
+                    ) : (
+                      <div className="size-full bg-slate-100 flex items-center justify-center text-4xl font-black text-primary">
+                        {viewingEmployee.full_name?.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mb-4">
+                    <h2 className="text-3xl font-black text-white tracking-tight">{viewingEmployee.full_name}</h2>
+                    <p className="text-white/70 font-mono text-sm">{viewingEmployee.employee_code}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-8 pt-12">
+                <div className="grid md:grid-cols-2 gap-10">
+                   <div className="space-y-8">
+                      <section className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                           <User className="size-4" /> Personal & Contact
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-3xl">
+                           <DetailItem label="Email" value={viewingEmployee.email} />
+                           <DetailItem label="Phone" value={viewingEmployee.phone} />
+                           <DetailItem label="PAN" value={viewingEmployee.pan_number} />
+                           <DetailItem label="Aadhaar" value={viewingEmployee.aadhaar_number} />
+                        </div>
+                      </section>
+
+                      <section className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                           <ShieldCheck className="size-4" /> Employment Details
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-3xl">
+                           <DetailItem label="Joining Date" value={viewingEmployee.joining_date} />
+                           <DetailItem label="Department" value={viewingEmployee.department} />
+                           <DetailItem label="Designation" value={viewingEmployee.designation} />
+                           <DetailItem label="Status" value={viewingEmployee.status} badge />
+                        </div>
+                      </section>
+                   </div>
+
+                   <div className="space-y-8">
+                      <section className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                           <Fingerprint className="size-4" /> Banking & Payroll
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-3xl">
+                           <DetailItem label="Bank Name" value={viewingEmployee.bank_name} />
+                           <DetailItem label="IFSC Code" value={viewingEmployee.bank_ifsc} />
+                           <DetailItem label="Basic Pay" value={viewingEmployee.basic_salary ? `₹${Number(viewingEmployee.basic_salary).toLocaleString()}` : null} />
+                        </div>
+                      </section>
+
+                      <div className="p-6 rounded-[32px] bg-indigo-50 border border-indigo-100 dark:bg-indigo-500/5 dark:border-indigo-500/10 flex items-center gap-4">
+                         <div className="size-12 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                            <Clock className="size-6 text-indigo-600" />
+                         </div>
+                         <div>
+                            <p className="text-sm font-black text-indigo-900 dark:text-indigo-300">Resignation Status</p>
+                            <p className="text-[10px] text-indigo-600/60 uppercase font-black tracking-widest">Active Review</p>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 dark:bg-slate-900/80 border-t flex justify-end">
+                <Button onClick={() => setViewingEmployee(null)} className="rounded-xl px-8 font-black">Close Profile</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function DetailItem({ label, value, badge }: { label: string; value: any; badge?: boolean }) {
+  if (!value) return null;
+  return (
+    <div className="flex flex-col gap-0.5 overflow-hidden">
+      <span className="text-[8px] font-black uppercase text-muted-foreground/60 tracking-widest">{label}</span>
+      {badge ? (
+        <Badge className={cn(
+          "w-fit px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border-none",
+          value?.toString().toLowerCase() === 'active' ? "bg-green-100 text-green-700" : 
+          value?.toString().toLowerCase() === 'resigned' ? "bg-red-100 text-red-700" : 
+          "bg-slate-100 text-slate-700"
+        )}>
+          {value}
+        </Badge>
+      ) : (
+        <span className="text-xs font-bold text-slate-900 dark:text-white truncate" title={value}>{value}</span>
+      )}
     </div>
   );
 }
