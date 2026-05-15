@@ -56,13 +56,12 @@ function ResignationPage() {
     setBusy(true);
 
     const fd = new FormData(e.currentTarget);
-    const lastWorkingDay = fd.get("lastWorkingDay") as string;
     const reason = fd.get("reason") as string;
 
     try {
       const { error } = await (supabase.from("resignations" as any) as any).insert({
         employee_id: employeeId,
-        last_working_day: lastWorkingDay,
+        last_working_day: new Date().toISOString().split('T')[0], // Dummy initially, will be updated by admin
         reason: reason,
         status: "pending"
       });
@@ -138,16 +137,12 @@ function ResignationPage() {
                 <form onSubmit={handleApply} className="space-y-6">
                   <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Application Date</Label>
-                    <p className="font-bold text-slate-900 dark:text-white">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                    <p className="font-bold text-slate-900 dark:text-white">{new Date().toLocaleDateString('en-GB')}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="lastWorkingDay" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Proposed Last Working Day</Label>
-                    <Input id="lastWorkingDay" name="lastWorkingDay" type="date" required className="rounded-xl h-11" />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reason for Leaving</Label>
-                    <Textarea id="reason" name="reason" placeholder="Please provide a brief reason..." required className="min-h-[120px] rounded-xl resize-none" />
+                    <Textarea id="reason" name="reason" placeholder="Please explain your reason for resignation..." required className="min-h-[150px] rounded-xl resize-none" />
                   </div>
                   <Button type="submit" disabled={busy} className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20">
                     {busy ? "Submitting..." : "Submit Resignation"}
@@ -210,8 +205,12 @@ function ResignationPage() {
                         </div>
                       </TableCell>
                     )}
-                    <TableCell className="font-medium">{new Date(r.resignation_date).toLocaleDateString()}</TableCell>
-                    <TableCell className="font-bold text-slate-700 dark:text-slate-300">{new Date(r.last_working_day).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-medium">{new Date(r.resignation_date).toLocaleDateString('en-GB')}</TableCell>
+                    <TableCell className="font-bold text-slate-700 dark:text-slate-300">
+                      {r.status === 'approved' ? new Date(r.last_working_day).toLocaleDateString('en-GB') : (
+                        <span className="text-[10px] font-black uppercase text-muted-foreground/40 italic">TBD</span>
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-[200px]">
                        <p className="text-xs text-muted-foreground truncate" title={r.reason}>{r.reason}</p>
                     </TableCell>
@@ -269,7 +268,7 @@ function ResignationPage() {
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 space-y-1">
                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Applicant</p>
                <p className="font-bold text-lg">{selectedRequest?.employees?.full_name}</p>
-               <p className="text-xs text-muted-foreground">Proposed: {selectedRequest?.last_working_day}</p>
+               <p className="text-xs text-muted-foreground">Applied on: {new Date(selectedRequest?.resignation_date).toLocaleDateString('en-GB')}</p>
             </div>
             
             <div className="space-y-2">
