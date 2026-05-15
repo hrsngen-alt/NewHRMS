@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { LogOut, Calendar, ClipboardList, CheckCircle2, XCircle, Clock, Search, Filter } from "lucide-react";
+import { LogOut, Calendar, ClipboardList, CheckCircle2, XCircle, Clock, Search, Filter, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -30,8 +30,10 @@ function ResignationPage() {
   const isAdmin = role === "admin";
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState("all");
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [finalDate, setFinalDate] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
 
   // Fetch Resignations
   const { data: resignations = [], isLoading } = useQuery({
@@ -124,10 +126,35 @@ function ResignationPage() {
     }
   };
 
-  const filtered = resignations.filter((r: any) => 
-    r.employees?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    r.employees?.employee_code?.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleUpdateDate = async () => {
+    if (!selectedRequest || !finalDate) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase.from("resignations" as any) as any).update({ 
+        last_working_day: finalDate 
+      }).eq("id", selectedRequest.id);
+      
+      if (error) throw error;
+      toast.success("Exit date updated successfully.");
+      setSelectedRequest(null);
+      setFinalDate("");
+      setIsEditing(false);
+      qc.invalidateQueries({ queryKey: ["resignations"] });
+    } catch (err: any) {
+      toast.error(err.message || "Update failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const filtered = resignations.filter((r: any) => {
+    const matchesSearch = r.employees?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+                         r.employees?.employee_code?.toLowerCase().includes(search.toLowerCase());
+    const matchesDept = deptFilter === "all" || r.employees?.department === deptFilter;
+    return matchesSearch && matchesDept;
+  });
+
+  const departments = Array.from(new Set(resignations.map((r: any) => r.employees?.department).filter(Boolean))).sort();
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -181,14 +208,26 @@ function ResignationPage() {
           <div className="flex items-center justify-between gap-4">
              <h2 className="text-xl font-black tracking-tight">{isAdmin ? "Pending Applications" : "Application History"}</h2>
              {isAdmin && (
-               <div className="relative w-72">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                 <Input 
-                   placeholder="Search applicants..." 
-                   value={search}
-                   onChange={e => setSearch(e.target.value)}
-                   className="pl-9 rounded-xl h-10 border-slate-200"
-                 />
+               <div className="flex flex-wrap items-center gap-3">
+                 <div className="relative w-64">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                   <Input 
+                     placeholder="Search applicants..." 
+                     value={search}
+                     onChange={e => setSearch(e.target.value)}
+                     className="pl-9 rounded-xl h-10 border-slate-200"
+                   />
+                 </div>
+                 <select 
+                   value={deptFilter} 
+                   onChange={e => setDeptFilter(e.target.value)}
+                   className="h-10 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:border-primary"
+                 >
+                   <option value="all">All Departments</option>
+                   {departments.map((d: any) => (
+                     <option key={d} value={d}>{d}</option>
+                   ))}
+                 </select>
                </div>
              )}
           </div>
@@ -261,7 +300,16 @@ function ResignationPage() {
                              </Button>
                           </div>
                         ) : (
-                          <span className="text-[10px] font-black uppercase text-muted-foreground/40 italic">Handled</span>
+                          <div className="flex items-center justify-end gap-2">
+                             <Button 
+                               size="sm" 
+                               variant="ghost" 
+                               onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); setIsEditing(true); }} 
+                               className="text-primary hover:bg-primary/5 font-bold text-xs rounded-lg"
+                             >
+                               <Pencil className="size-4 mr-1" /> Edit Date
+                             </Button>
+                          </div>
                         )
                       ) : (
                         r.status === 'pending' && (
@@ -289,13 +337,15 @@ function ResignationPage() {
       <Dialog open={!!selectedRequest && !busy} onOpenChange={(val) => !val && setSelectedRequest(null)}>
         <DialogContent className="rounded-[32px] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black tracking-tight">Review Resignation</DialogTitle>
+            <DialogTitle className="text-2xl font-black tracking-tight">
+              {isEditing ? "Update Exit Date" : "Review Resignation"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 space-y-1">
                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Applicant</p>
                <p className="font-bold text-lg">{selectedRequest?.employees?.full_name}</p>
-               <p className="text-xs text-muted-foreground">Applied on: {new Date(selectedRequest?.resignation_date).toLocaleDateString('en-GB')}</p>
+               <p className="text-[10px] font-mono text-muted-foreground">{selectedRequest?.employees?.department}</p>
             </div>
             
             <div className="space-y-2">
@@ -306,12 +356,18 @@ function ResignationPage() {
                 onChange={e => setFinalDate(e.target.value)}
                 className="h-12 rounded-xl border-2 focus:border-primary"
               />
-              <p className="text-[10px] text-muted-foreground italic">Admin: You can override the employee's proposed date here.</p>
+              <p className="text-[10px] text-muted-foreground italic">Admin: Setting the official exit date for this employee.</p>
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setSelectedRequest(null)} className="rounded-xl">Cancel</Button>
-            <Button onClick={() => handleAction("approved")} disabled={busy} className="rounded-xl px-8 font-bold">Approve & Set Date</Button>
+            <Button variant="ghost" onClick={() => { setSelectedRequest(null); setIsEditing(false); }} className="rounded-xl">Cancel</Button>
+            <Button 
+              onClick={() => isEditing ? handleUpdateDate() : handleAction("approved")} 
+              disabled={busy} 
+              className="rounded-xl px-8 font-bold"
+            >
+              {isEditing ? "Update Date" : "Approve & Set Date"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
