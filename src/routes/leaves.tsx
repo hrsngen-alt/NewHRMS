@@ -91,8 +91,8 @@ function LeavesPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Leave Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">Track and manage time-off requests.</p>
+          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Leave Management</h1>
+          <p className="text-sm font-medium text-muted-foreground/60 mt-1">Track and manage employee time-off requests, approvals, and balances.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

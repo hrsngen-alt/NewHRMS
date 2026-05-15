@@ -67,8 +67,8 @@ function ReportsPage() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Analytics & Reports</h1>
-          <p className="text-muted-foreground font-medium mt-1">Exportable workforce insights and departmental performance metrics.</p>
+          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Analytics & Reports</h1>
+          <p className="text-sm font-medium text-muted-foreground/60 mt-1">Exportable workforce insights and departmental performance metrics.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="gap-2 rounded-xl h-11 border-2">

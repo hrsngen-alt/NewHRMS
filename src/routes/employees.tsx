@@ -304,8 +304,8 @@ function EmployeesPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Employees</h1>
-          <p className="text-sm text-muted-foreground mt-1">{isLoading ? "Fetching records..." : `Showing ${employees.length} employees`}</p>
+          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Employees</h1>
+          <p className="text-sm font-medium text-muted-foreground/60 mt-1">{isLoading ? "Fetching records..." : `Managing ${employees.length} active workforce members`}</p>
         </div>
         {isAdmin && (
           <div className="flex items-center gap-3">
