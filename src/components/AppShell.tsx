@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText, 
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -143,8 +143,21 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   const markAllAsRead = async () => {
     if (unreadCount === 0) return;
-    await supabase.from("notifications" as any).update({ is_read: true }).eq("user_id", user!.id);
-    qc.invalidateQueries({ queryKey: ["notifications"] });
+    await supabase.from("notifications" as any).update({ is_read: true }).eq("user_id", user?.id);
+    qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+  };
+
+  const clearAll = async () => {
+    if (notifications.length === 0) return;
+    if (!confirm("Are you sure you want to clear all notifications?")) return;
+    await supabase.from("notifications" as any).delete().eq("user_id", user?.id);
+    qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    toast.success("Notifications cleared");
+  };
+
+  const deleteNotification = async (id: string) => {
+    await supabase.from("notifications" as any).delete().eq("id", id);
+    qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
   };
 
   useEffect(() => {
@@ -269,15 +282,25 @@ export function AppShell({ children }: { children?: ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2 shadow-elegant border-2 border-primary/5">
                 <DropdownMenuLabel className="font-black text-xs uppercase tracking-widest px-3 py-2 flex items-center justify-between">
-                   Notifications
-                   {unreadCount > 0 && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{unreadCount} New</span>}
+                    <div className="flex items-center gap-2">
+                      Notifications
+                      {unreadCount > 0 && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{unreadCount} New</span>}
+                    </div>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); clearAll(); }} 
+                        className="text-[9px] font-black text-rose-500 hover:text-rose-600 transition-colors bg-rose-50 px-2 py-1 rounded-lg"
+                      >
+                        Clear All
+                      </button>
+                    )}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-96 overflow-y-auto space-y-1 p-1">
                   {notifications.length === 0 ? (
                     <div className="py-8 text-center text-xs text-muted-foreground font-medium">No recent notifications.</div>
-                  ) : notifications.map((n: any) => (
-                    <DropdownMenuItem key={n.id} className="rounded-xl p-3 flex gap-3 cursor-default focus:bg-primary/5">
+                   ) : notifications.map((n: any) => (
+                    <DropdownMenuItem key={n.id} className="rounded-xl p-3 flex gap-3 cursor-default focus:bg-primary/5 group/item relative">
                        <div className={cn(
                          "size-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
                          n.type === 'success' ? "bg-green-100 text-green-600" :
@@ -288,11 +311,17 @@ export function AppShell({ children }: { children?: ReactNode }) {
                           n.type === 'warning' ? <AlertTriangle className="size-4" /> :
                           n.type === 'error' ? <AlertCircle className="size-4" /> : <Info className="size-4" />}
                        </div>
-                       <div className="flex flex-col gap-0.5 min-w-0">
+                       <div className="flex flex-col gap-0.5 min-w-0 pr-4">
                           <p className={cn("text-xs font-bold leading-none truncate", !n.is_read && "text-primary")}>{n.title}</p>
                           <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
                           <p className="text-[8px] font-black uppercase text-muted-foreground/40 mt-1">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                        </div>
+                       <button 
+                         onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
+                         className="absolute top-2 right-2 size-5 rounded-md flex items-center justify-center text-muted-foreground hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all"
+                       >
+                          <X className="size-3" />
+                       </button>
                     </DropdownMenuItem>
                   ))}
                 </div>
