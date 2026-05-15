@@ -69,6 +69,21 @@ function ResignationPage() {
       });
 
       if (error) throw error;
+
+      // Notify Admins
+      const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      if (admins && admins.length > 0) {
+        const { data: empData } = await supabase.from("employees").select("full_name").eq("id", employeeId).single();
+        const notifications = admins.map(admin => ({
+          user_id: admin.user_id,
+          title: "New Resignation Request",
+          message: `${empData?.full_name || 'An employee'} has applied for resignation.`,
+          is_read: false,
+          type: 'warning'
+        }));
+        await (supabase.from("notifications" as any) as any).insert(notifications);
+      }
+
       toast.success("Resignation application submitted successfully.");
       qc.invalidateQueries({ queryKey: ["resignations"] });
       (e.target as HTMLFormElement).reset();
@@ -100,6 +115,12 @@ function ResignationPage() {
       const { error } = await (supabase.from("resignations" as any) as any).update(updates).eq("id", selectedRequest.id);
       
       if (error) throw error;
+
+      // Automatically update employee status to 'Resigned'
+      if (status === "approved") {
+        await supabase.from("employees").update({ status: "Resigned" }).eq("id", selectedRequest.employee_id);
+      }
+
       toast.success(`Resignation ${status} successfully.`);
       setSelectedRequest(null);
       setFinalDate("");

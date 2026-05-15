@@ -661,7 +661,14 @@ function DetailItem({ label, value, badge }: { label: string; value: any; badge?
     <div className="flex flex-col gap-0.5">
       <span className="text-[10px] font-bold uppercase text-muted-foreground/60">{label}</span>
       {badge ? (
-        <span className="w-fit px-2 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-bold uppercase">{value}</span>
+        <span className={cn(
+          "w-fit px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+          value === 'Active' ? "bg-green-100 text-green-700" : 
+          value === 'Resigned' ? "bg-red-100 text-red-700" : 
+          "bg-slate-100 text-slate-700"
+        )}>
+          {value}
+        </span>
       ) : (
         <span className="text-foreground font-medium">{value}</span>
       )}
