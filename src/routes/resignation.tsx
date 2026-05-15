@@ -129,7 +129,7 @@ function ResignationPage() {
             <Card className="rounded-[32px] border-2 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
               <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b">
                 <CardTitle className="text-xl font-black flex items-center gap-2">
-                  <LogOut className="size-5 text-primary" /> Apply for Departure
+                  <LogOut className="size-5 text-primary" /> Apply for Resignation
                 </CardTitle>
                 <CardDescription>Submit your formal resignation request here.</CardDescription>
               </CardHeader>
