@@ -8,6 +8,10 @@ import { Building2, Mail, Phone, Calendar, Fingerprint, ShieldCheck, Download, S
 import { Button } from "@/components/ui/button";
 import { cn } from "../lib/utils";
 import { QRCodeSVG } from "qrcode.react";
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({ 
   component: () => (
@@ -19,6 +23,8 @@ export const Route = createFileRoute("/profile")({
 
 function ProfilePage() {
   const { user } = useAuth();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -30,6 +36,57 @@ function ProfilePage() {
     },
   });
 
+  const handleDownload = async () => {
+    if (!cardRef.current || !employee) return;
+    setDownloading(true);
+    const toastId = toast.loading("Generating your high-fidelity Digital ID...");
+    
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 3, // High quality
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [85.6, 120] // Standard ID card size-ish
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, 85.6, 120);
+      pdf.save(`SNGENE_ID_${employee.employee_code}.pdf`);
+      toast.success("ID Card downloaded successfully!", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate PDF. Please try again.", { id: toastId });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!employee) return;
+    const shareData = {
+      title: `Digital ID - ${employee.full_name}`,
+      text: `Official Digital ID for ${employee.full_name} (${employee.employee_code}) at SN Gene HR.`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("Profile link copied to clipboard!");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (isLoading) return <div className="p-12 text-center animate-pulse font-black text-primary">Loading Digital ID...</div>;
   if (!employee) return <div className="p-12 text-center text-muted-foreground">Employee record not found. Please contact HR.</div>;
 
@@ -40,16 +97,28 @@ function ProfilePage() {
           <h1 className="font-display text-4xl font-black tracking-tight text-foreground text-center md:text-left">Digital ID Card</h1>
           <p className="text-muted-foreground font-medium mt-1 text-center md:text-left">Your official corporate identity and employment summary.</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" className="gap-2 rounded-xl border-2"><Download className="size-4" /> Download PDF</Button>
-          <Button className="gap-2 rounded-xl shadow-lg shadow-primary/20"><Share2 className="size-4" /> Share ID</Button>
-        </div>
+         <div className="flex gap-3">
+           <Button 
+             variant="outline" 
+             className="gap-2 rounded-xl border-2"
+             onClick={handleDownload}
+             disabled={downloading}
+           >
+             <Download className="size-4" /> {downloading ? "Generating..." : "Download PDF"}
+           </Button>
+           <Button 
+             className="gap-2 rounded-xl shadow-lg shadow-primary/20"
+             onClick={handleShare}
+           >
+             <Share2 className="size-4" /> Share ID
+           </Button>
+         </div>
       </div>
 
       <div className="grid md:grid-cols-12 gap-12 items-start">
         {/* Physical Card Representation */}
-        <div className="md:col-span-5 perspective-1000">
-           <div className="relative w-full aspect-[2/3] max-w-[320px] mx-auto rounded-[32px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] group transition-transform duration-700 hover:rotate-y-12">
+         <div className="md:col-span-5 perspective-1000">
+            <div ref={cardRef} className="relative w-full aspect-[2/3] max-w-[320px] mx-auto rounded-[32px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] group transition-transform duration-700 hover:rotate-y-12">
               {/* Card Header Background */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary via-indigo-600 to-purple-700" />
               <div className="absolute top-0 inset-x-0 h-40 bg-white/10 backdrop-blur-3xl rounded-b-[40px]" />
