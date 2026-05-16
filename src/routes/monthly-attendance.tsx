@@ -40,7 +40,7 @@ function AttendancePage() {
     queryKey: ["employees", "list"],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department").eq("status", "active");
+      const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
       if (error) return [];
       return data;
     }
