@@ -189,6 +189,13 @@ function Dashboard() {
   const today = new Date().toLocaleDateString('en-CA');
   const { myEmployee, isLoading: empLoading } = useMyEmployee();
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   const isMarketing = myEmployee?.department?.toLowerCase() === "marketing";
 
   const { data: stats } = useQuery({
@@ -311,7 +318,7 @@ function Dashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-1">
         <h1 className="font-display text-4xl font-black tracking-tight text-foreground">
-          Good Morning, <span className="text-primary">{isAdmin ? "Admin" : myEmployee?.full_name?.split(' ')[0] || 'User'}</span>
+          {getGreeting()}, <span className="text-primary">{isAdmin ? "Admin" : myEmployee?.full_name?.split(' ')[0] || 'User'}</span>
         </h1>
         <p className="text-muted-foreground font-medium">SN Gene HR Dashboard Overview • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
       </div>
