@@ -177,7 +177,7 @@ function AttendancePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {allEmployees.filter((e: any) => 
-                      !q || e.full_name.toLowerCase().includes(q.toLowerCase()) || e.employee_code.toLowerCase().includes(q.toLowerCase())
+                      !q || e.full_name?.toLowerCase().includes(q.toLowerCase()) || e.employee_code?.toLowerCase().includes(q.toLowerCase())
                     ).map((e: any) => (
                       <SelectItem key={e.id} value={e.id}>{e.full_name} ({e.employee_code})</SelectItem>
                     ))}
@@ -324,7 +324,7 @@ function AttendancePage() {
         <div className="flex items-center justify-between px-2">
            <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-3">
              <Timer className="size-6 text-indigo-500" /> 
-             TIME LOG {targetEmployee && <span className="text-muted-foreground/40 font-normal">: {targetEmployee.full_name.toUpperCase()}</span>}
+             TIME LOG {targetEmployee && <span className="text-muted-foreground/40 font-normal">: {targetEmployee.full_name?.toUpperCase()}</span>}
            </h2>
         </div>
 
