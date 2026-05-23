@@ -754,7 +754,6 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
   const [pf, setPf] = useState(editingEmployee?.pf_amount ?? 0);
   const [esic, setEsic] = useState(editingEmployee?.esic_amount ?? 0);
   const [gratuity, setGratuity] = useState(editingEmployee?.gratuity_amount ?? 0);
-  const [ctcInput, setCtcInput] = useState("");
 
   useEffect(() => {
     setBasic(editingEmployee?.basic_salary ?? 0);
@@ -763,38 +762,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
     setPf(editingEmployee?.pf_amount ?? 0);
     setEsic(editingEmployee?.esic_amount ?? 0);
     setGratuity(editingEmployee?.gratuity_amount ?? 0);
-    setCtcInput("");
   }, [editingEmployee]);
-
-  const handleCtcChange = (val: number) => {
-    if (!val || val <= 0) return;
-    
-    // 1. Gross Salary = CTC / 1.01625
-    const computedGross = val / 1.01625;
-    const grossRounded = Math.round(computedGross);
-    
-    // 2. Earnings breakup (50% Basic, 42.53% HRA, 7.47% Bonus)
-    const computedBasic = Math.round(grossRounded * 0.50);
-    const computedHra = Math.round(grossRounded * 0.4253);
-    const computedBonus = Math.round(grossRounded * 0.0747);
-    
-    // Adjust rounding difference so sum equals Gross exactly
-    const diff = grossRounded - (computedBasic + computedHra + computedBonus);
-    const finalBonus = computedBonus + diff;
-
-    // 3. Deductions breakup
-    const computedEsic = Math.round(computedBasic * 0.0075); // 0.75% of Basic
-    const computedGratuity = Math.round(computedBasic * 0.048); // 4.8% of Basic
-    const computedPf = 0; // default to 0
-
-    // Update state variables
-    setBasic(computedBasic);
-    setHra(computedHra);
-    setBonus(finalBonus);
-    setEsic(computedEsic);
-    setGratuity(computedGratuity);
-    setPf(computedPf);
-  };
 
   const grossSalary = Number(basic || 0) + Number(hra || 0) + Number(bonus || 0);
 
@@ -823,28 +791,6 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
       
       <div className="col-span-2 border-t pt-4 mt-2">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Salary Structure</h3>
-        
-        {/* CTC Auto-Bifurcation Input */}
-        <div className="bg-indigo-50/50 border border-indigo-100/80 rounded-xl p-4 mb-4 grid grid-cols-2 gap-4 items-center">
-          <div>
-            <Label htmlFor="ctc_bifurcate" className="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-1.5 block">Auto-Bifurcate from CTC</Label>
-            <Input 
-              id="ctc_bifurcate" 
-              type="number" 
-              placeholder="Enter Monthly CTC (e.g. 38100)"
-              className="bg-white border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 font-bold"
-              value={ctcInput}
-              onChange={(e) => {
-                const val = e.target.value;
-                setCtcInput(val);
-                handleCtcChange(Number(val) || 0);
-              }}
-            />
-          </div>
-          <div className="text-[10px] text-indigo-900/60 font-medium leading-relaxed">
-            Type in the monthly CTC amount to automatically calculate and populate the Basic Pay, HRA, Monthly Bonus, ESIC, and Gratuity fields based on statutory payroll percentages.
-          </div>
-        </div>
 
         <div className="grid grid-cols-3 gap-4">
           <div>

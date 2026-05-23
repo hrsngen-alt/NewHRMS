@@ -108,7 +108,7 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
 
   // Employer Contributions Section
   const finalY = (doc as any).lastAutoTable?.finalY || (doc as any).autoTable?.previous?.finalY || (y + 44 + deductions.length * 22);
-  const esicCompany = Math.round(p.basic * 0.0325);
+  const esicCompany = p.basic <= 21000 ? Math.round(p.basic * 0.0325) : 0;
   
   doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(80);
   doc.text("Employer Contributions (Not deducted from Net Pay)", 40, finalY + 20);

@@ -96,7 +96,7 @@ function PayrollPage() {
       const bonus = Number((e as any).bonus ?? 0) * factor;
       const gross = basic + hra + conveyance + medical + special + bonus;
       const pf = Number(e.pf_amount ?? 0);
-      const esic = Number(e.esic_amount ?? 0);
+      const esic = Number(e.basic_salary) <= 21000 ? Number(e.esic_amount ?? 0) : 0;
       const gratuity = Number(e.gratuity_amount ?? 0);
       const pt = gross > 15000 ? 200 : 0;
       const tds = gross > 50000 ? gross * 0.05 : 0;
