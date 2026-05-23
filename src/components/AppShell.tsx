@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText, 
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ const nav: NavItem[] = [
   { to: "/leaves", label: "Leaves", icon: CalendarDays },
   { to: "/performance", label: "Performance", icon: Award },
   { to: "/payroll", label: "Payroll", icon: Wallet, adminOnly: true },
+  { to: "/salary-structure", label: "Salary Structure", icon: IndianRupee, adminOnly: true },
   { to: "/reports", label: "Reports", icon: BarChart3, adminOnly: true },
   { to: "/payslips", label: "Salary Slips", icon: FileText },
   { to: "/profile", label: "My Profile", icon: User },

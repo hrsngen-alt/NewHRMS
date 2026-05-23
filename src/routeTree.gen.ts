@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SalaryStructureRouteImport } from './routes/salary-structure'
 import { Route as ResignationRouteImport } from './routes/resignation'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -35,6 +36,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalaryStructureRoute = SalaryStructureRouteImport.update({
+  id: '/salary-structure',
+  path: '/salary-structure',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResignationRoute = ResignationRouteImport.update({
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resignation': typeof ResignationRoute
+  '/salary-structure': typeof SalaryStructureRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resignation': typeof ResignationRoute
+  '/salary-structure': typeof SalaryStructureRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resignation': typeof ResignationRoute
+  '/salary-structure': typeof SalaryStructureRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/reset-password'
     | '/resignation'
+    | '/salary-structure'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/reset-password'
     | '/resignation'
+    | '/salary-structure'
     | '/settings'
   id:
     | '__root__'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/reset-password'
     | '/resignation'
+    | '/salary-structure'
     | '/settings'
   fileRoutesById: FileRoutesById
 }
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ResignationRoute: typeof ResignationRoute
+  SalaryStructureRoute: typeof SalaryStructureRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -323,6 +336,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/salary-structure': {
+      id: '/salary-structure'
+      path: '/salary-structure'
+      fullPath: '/salary-structure'
+      preLoaderRoute: typeof SalaryStructureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/resignation': {
@@ -497,6 +517,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ResignationRoute: ResignationRoute,
+  SalaryStructureRoute: SalaryStructureRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SalaryStructureRouteImport } from './routes/salary-structure'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -30,6 +31,11 @@ import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AnnouncementsRouteImport } from './routes/announcements'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SalaryStructureRoute = SalaryStructureRouteImport.update({
+  id: '/salary-structure',
+  path: '/salary-structure',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/salary-structure': typeof SalaryStructureRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/salary-structure': typeof SalaryStructureRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/salary-structure': typeof SalaryStructureRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/reset-password'
+    | '/salary-structure'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/reset-password'
+    | '/salary-structure'
     | '/settings'
   id:
     | '__root__'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/reset-password'
+    | '/salary-structure'
     | '/settings'
   fileRoutesById: FileRoutesById
 }
@@ -287,11 +299,19 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SalaryStructureRoute: typeof SalaryStructureRoute
   SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/salary-structure': {
+      id: '/salary-structure'
+      path: '/salary-structure'
+      fullPath: '/salary-structure'
+      preLoaderRoute: typeof SalaryStructureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -455,6 +475,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SalaryStructureRoute: SalaryStructureRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
