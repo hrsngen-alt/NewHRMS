@@ -6,14 +6,11 @@ const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 async function check() {
-  const { data: empData, error: empError } = await supabase.from("employees").select("*").limit(1);
-  if (empError) {
-    console.error("Error querying employees:", empError);
+  const { data, error } = await supabase.from("employees").select("*").eq("email", "hr@sngenelab.com").single();
+  if (error) {
+    console.error("Error:", error);
   } else {
-    console.log("Employees columns:");
-    if (empData && empData.length > 0) {
-      console.log(Object.keys(empData[0]));
-    }
+    console.log("Krupa More record:", data);
   }
 }
 
