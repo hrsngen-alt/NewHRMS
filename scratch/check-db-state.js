@@ -6,12 +6,15 @@ const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 async function check() {
-  const { data: rpcData, error: rpcError } = await supabase.rpc("create_invited_user", {
-    p_email: "test_check_rpc_non_existent@example.com",
-    p_full_name: "Test Check"
-  });
-  console.log("RPC check error status:", rpcError ? rpcError.message : "Success");
-  console.log("RPC check data:", rpcData);
+  const { data: empData, error: empError } = await supabase.from("employees").select("*").limit(1);
+  if (empError) {
+    console.error("Error querying employees:", empError);
+  } else {
+    console.log("Employees columns:");
+    if (empData && empData.length > 0) {
+      console.log(Object.keys(empData[0]));
+    }
+  }
 }
 
 check();
