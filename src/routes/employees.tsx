@@ -751,37 +751,131 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
   const [basic, setBasic] = useState(editingEmployee?.basic_salary ?? 0);
   const [hra, setHra] = useState(editingEmployee?.hra ?? 0);
   const [bonus, setBonus] = useState(editingEmployee?.bonus ?? 0);
+  const [pf, setPf] = useState(editingEmployee?.pf_amount ?? 0);
+  const [esic, setEsic] = useState(editingEmployee?.esic_amount ?? 0);
+  const [gratuity, setGratuity] = useState(editingEmployee?.gratuity_amount ?? 0);
+  const [ctcInput, setCtcInput] = useState("");
+
+  useEffect(() => {
+    setBasic(editingEmployee?.basic_salary ?? 0);
+    setHra(editingEmployee?.hra ?? 0);
+    setBonus(editingEmployee?.bonus ?? 0);
+    setPf(editingEmployee?.pf_amount ?? 0);
+    setEsic(editingEmployee?.esic_amount ?? 0);
+    setGratuity(editingEmployee?.gratuity_amount ?? 0);
+    setCtcInput("");
+  }, [editingEmployee]);
+
+  const handleCtcChange = (val: number) => {
+    if (!val || val <= 0) return;
+    
+    // 1. Gross Salary = CTC / 1.01625
+    const computedGross = val / 1.01625;
+    const grossRounded = Math.round(computedGross);
+    
+    // 2. Earnings breakup (50% Basic, 42.53% HRA, 7.47% Bonus)
+    const computedBasic = Math.round(grossRounded * 0.50);
+    const computedHra = Math.round(grossRounded * 0.4253);
+    const computedBonus = Math.round(grossRounded * 0.0747);
+    
+    // Adjust rounding difference so sum equals Gross exactly
+    const diff = grossRounded - (computedBasic + computedHra + computedBonus);
+    const finalBonus = computedBonus + diff;
+
+    // 3. Deductions breakup
+    const computedEsic = Math.round(computedBasic * 0.0075); // 0.75% of Basic
+    const computedGratuity = Math.round(computedBasic * 0.048); // 4.8% of Basic
+    const computedPf = 0; // default to 0
+
+    // Update state variables
+    setBasic(computedBasic);
+    setHra(computedHra);
+    setBonus(finalBonus);
+    setEsic(computedEsic);
+    setGratuity(computedGratuity);
+    setPf(computedPf);
+  };
 
   const grossSalary = Number(basic || 0) + Number(hra || 0) + Number(bonus || 0);
 
+  const personalFields = [
+    ["full_name", "Full Name", true], ["email", "Work Email", true],
+    ["phone", "Phone Number"], ["department", "Department"],
+    ["designation", "Designation"], ["joining_date", "Joining Date", false, "date"],
+    ["pan_number", "PAN Card"], ["aadhaar_number", "Aadhaar Number"],
+    ["uan_number", "UAN Number"], ["reporting_manager", "Reporting Manager"],
+    ["bank_name", "Bank Name"], ["bank_account", "Account Number"],
+    ["bank_ifsc", "IFSC Code"],
+  ];
+
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-2 gap-5 mt-4">
-      {[
-        ["full_name", "Full Name", true], ["email", "Work Email", true],
-        ["phone", "Phone Number"], ["department", "Department"],
-        ["designation", "Designation"], ["joining_date", "Joining Date", false, "date"],
-        ["pan_number", "PAN Card"], ["aadhaar_number", "Aadhaar Number"],
-        ["uan_number", "UAN Number"], ["reporting_manager", "Reporting Manager"],
-        ["bank_name", "Bank Name"], ["bank_account", "Account Number"],
-        ["bank_ifsc", "IFSC Code"],
-        ["basic_salary", "Basic Pay", false, "number"], ["hra", "HRA", false, "number"],
-        ["bonus", "Monthly Bonus", false, "number"],
-      ].map(([name, label, req, type]) => (
+      {personalFields.map(([name, label, req, type]) => (
         <div key={name as string} className={name === "full_name" || name === "email" ? "col-span-2" : ""}>
           <Label htmlFor={name as string} className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">{label as string}</Label>
           <Input 
             id={name as string} name={name as string} type={(type as string) || "text"} 
             required={Boolean(req)} className="bg-muted/30 focus:bg-white" 
             defaultValue={editingEmployee ? editingEmployee[name as string] : ""}
-            onChange={(e) => {
-              const val = Number(e.target.value) || 0;
-              if (name === "basic_salary") setBasic(val);
-              else if (name === "hra") setHra(val);
-              else if (name === "bonus") setBonus(val);
-            }}
           />
         </div>
       ))}
+      
+      <div className="col-span-2 border-t pt-4 mt-2">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Salary Structure</h3>
+        
+        {/* CTC Auto-Bifurcation Input */}
+        <div className="bg-indigo-50/50 border border-indigo-100/80 rounded-xl p-4 mb-4 grid grid-cols-2 gap-4 items-center">
+          <div>
+            <Label htmlFor="ctc_bifurcate" className="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-1.5 block">Auto-Bifurcate from CTC</Label>
+            <Input 
+              id="ctc_bifurcate" 
+              type="number" 
+              placeholder="Enter Monthly CTC (e.g. 38100)"
+              className="bg-white border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 font-bold"
+              value={ctcInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCtcInput(val);
+                handleCtcChange(Number(val) || 0);
+              }}
+            />
+          </div>
+          <div className="text-[10px] text-indigo-900/60 font-medium leading-relaxed">
+            Type in the monthly CTC amount to automatically calculate and populate the Basic Pay, HRA, Monthly Bonus, ESIC, and Gratuity fields based on statutory payroll percentages.
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="basic_salary" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Basic Pay</Label>
+            <Input 
+              id="basic_salary" name="basic_salary" type="number" 
+              className="bg-muted/30 focus:bg-white font-medium" 
+              value={basic}
+              onChange={(e) => setBasic(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="hra" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">HRA</Label>
+            <Input 
+              id="hra" name="hra" type="number" 
+              className="bg-muted/30 focus:bg-white font-medium" 
+              value={hra}
+              onChange={(e) => setHra(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bonus" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Monthly Bonus</Label>
+            <Input 
+              id="bonus" name="bonus" type="number" 
+              className="bg-muted/30 focus:bg-white font-medium" 
+              value={bonus}
+              onChange={(e) => setBonus(Number(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+      </div>
       
       <div className="col-span-2 bg-slate-50/50 border border-slate-100 rounded-xl p-4 mt-2 flex justify-between items-center">
         <div>
@@ -800,24 +894,27 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
             <Label htmlFor="pf_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">PF Deduction</Label>
             <Input 
               id="pf_amount" name="pf_amount" type="number" step="0.01"
-              className="bg-muted/30 focus:bg-white" 
-              defaultValue={editingEmployee ? editingEmployee.pf_amount ?? 0 : 0}
+              className="bg-muted/30 focus:bg-white font-medium" 
+              value={pf}
+              onChange={(e) => setPf(Number(e.target.value) || 0)}
             />
           </div>
           <div>
             <Label htmlFor="esic_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">ESIC Deduction</Label>
             <Input 
               id="esic_amount" name="esic_amount" type="number" step="0.01"
-              className="bg-muted/30 focus:bg-white" 
-              defaultValue={editingEmployee ? editingEmployee.esic_amount ?? 0 : 0}
+              className="bg-muted/30 focus:bg-white font-medium" 
+              value={esic}
+              onChange={(e) => setEsic(Number(e.target.value) || 0)}
             />
           </div>
           <div>
             <Label htmlFor="gratuity_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Gratuity Deduction</Label>
             <Input 
               id="gratuity_amount" name="gratuity_amount" type="number" step="0.01"
-              className="bg-muted/30 focus:bg-white" 
-              defaultValue={editingEmployee ? editingEmployee.gratuity_amount ?? 0 : 0}
+              className="bg-muted/30 focus:bg-white font-medium" 
+              value={gratuity}
+              onChange={(e) => setGratuity(Number(e.target.value) || 0)}
             />
           </div>
         </div>
