@@ -83,7 +83,7 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
     ["Bonus", fmt(p.bonus)],
   ];
   const deductions = [
-    ["PF", fmt(p.pf)], ["ESIC", fmt(p.esic)], ["Professional tax", fmt(p.pt)],
+    ["PF", fmt(p.pf)], ["ESIC (Employee)", fmt(p.esic)], ["Professional tax", fmt(p.pt)],
     ["TDS", fmt(p.tds)], ["Leave deduction", fmt(p.leave_deduction)],
   ];
 
@@ -106,16 +106,35 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
     styles: { fontSize: 10 },
   });
 
-  // Net pay strip
-  const finalY = (doc as any).lastAutoTable?.finalY || (doc as any).autoTable?.previous?.finalY || (y + 44 + earnings.length * 22);
-  const yEnd = Math.max(finalY, y + 44 + earnings.length * 22) + 20;
+  // Employer Contributions Section
+  const finalY = (doc as any).lastAutoTable?.finalY || (doc as any).autoTable?.previous?.finalY || (y + 44 + deductions.length * 22);
+  const esicCompany = Math.round(p.basic * 0.0325);
+  
+  doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(80);
+  doc.text("Employer Contributions (Not deducted from Net Pay)", 40, finalY + 20);
+  
+  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(100);
+  doc.text("ESIC Company Share (3.25% of Basic)", 40, finalY + 36);
+  doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(30);
+  doc.text(fmt(esicCompany), 240, finalY + 36);
+
+  // Net pay & CTC strip
+  const yEnd = finalY + 55;
   doc.setFillColor(34, 34, 60);
-  doc.rect(40, yEnd, W - 80, 56, "F");
+  doc.rect(40, yEnd, W - 80, 70, "F");
+  
   doc.setTextColor(255);
-  doc.setFont("helvetica", "normal").setFontSize(11).text("Net pay", 56, yEnd + 22);
-  doc.setFont("helvetica", "bold").setFontSize(20).text(fmt(p.net_pay), W - 56, yEnd + 30, { align: "right" });
-  doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(220);
-  doc.text(numToWords(p.net_pay), 56, yEnd + 46);
+  // Monthly CTC Line
+  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(200).text("Monthly CTC", 56, yEnd + 22);
+  doc.setFont("helvetica", "bold").setFontSize(12).setTextColor(255).text(fmt(p.gross + esicCompany), 140, yEnd + 22);
+  
+  // Net Pay Line
+  doc.setFont("helvetica", "normal").setFontSize(11).setTextColor(255).text("Net pay", 56, yEnd + 44);
+  doc.setFont("helvetica", "bold").setFontSize(20).text(fmt(p.net_pay), W - 56, yEnd + 44, { align: "right" });
+  
+  // Net Pay in words
+  doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(200);
+  doc.text(numToWords(p.net_pay), 56, yEnd + 60);
 
   // Footer
   doc.setFontSize(8).setTextColor(140);
