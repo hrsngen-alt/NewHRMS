@@ -29,7 +29,7 @@ function numToWords(num: number): string {
     if (n < 1000) return a[Math.floor(n/100)] + " Hundred" + (n%100 ? " " + inWords(n%100) : "");
     if (n < 100000) return inWords(Math.floor(n/1000)) + " Thousand" + (n%1000 ? " " + inWords(n%1000) : "");
     if (n < 10000000) return inWords(Math.floor(n/100000)) + " Lakh" + (n%100000 ? " " + inWords(n%100000) : "");
-    return inWords(Math.floor(n/10000000)) + " Crore" + (n%10000000 ? " " + inWords(n%10000000) : "");
+    return inWords(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 ? " " + inWords(n % 10000000) : "");
   };
   return inWords(Math.floor(num)) + " Rupees Only";
 }
@@ -80,11 +80,10 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
   // Earnings & Deductions tables
   const earnings = [
     ["Basic", fmt(p.basic)], ["HRA", fmt(p.hra)],
-    ["Conveyance", fmt(p.conveyance)], ["Medical", fmt(p.medical)],
-    ["Special allowance", fmt(p.special_allowance)], ["Bonus", fmt(p.bonus)],
+    ["Bonus", fmt(p.bonus)],
   ];
   const deductions = [
-    ["PF", fmt(p.pf)], ["ESIC", fmt(p.esic)], ["Gratuity", fmt(p.gratuity || 0)], ["Professional tax", fmt(p.pt)],
+    ["PF", fmt(p.pf)], ["ESIC", fmt(p.esic)], ["Professional tax", fmt(p.pt)],
     ["TDS", fmt(p.tds)], ["Leave deduction", fmt(p.leave_deduction)],
   ];
 
@@ -108,7 +107,6 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
   });
 
   // Net pay strip
-
   const finalY = (doc as any).lastAutoTable?.finalY || (doc as any).autoTable?.previous?.finalY || (y + 44 + earnings.length * 22);
   const yEnd = Math.max(finalY, y + 44 + earnings.length * 22) + 20;
   doc.setFillColor(34, 34, 60);
