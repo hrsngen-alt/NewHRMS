@@ -7,7 +7,7 @@ export type Payslip = {
   paid_days: number;
   basic: number; hra: number; conveyance: number; medical: number;
   special_allowance: number; bonus: number;
-  pf: number; esic: number; pt: number; tds: number; leave_deduction: number;
+  pf: number; esic: number; pt: number; tds: number; leave_deduction: number; gratuity: number;
   gross: number; total_deductions: number; net_pay: number;
   payroll_runs?: { period_month: number; period_year: number };
   employees?: {
@@ -84,7 +84,7 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
     ["Special allowance", fmt(p.special_allowance)], ["Bonus", fmt(p.bonus)],
   ];
   const deductions = [
-    ["PF", fmt(p.pf)], ["ESIC", fmt(p.esic)], ["Professional tax", fmt(p.pt)],
+    ["PF", fmt(p.pf)], ["ESIC", fmt(p.esic)], ["Gratuity", fmt(p.gratuity || 0)], ["Professional tax", fmt(p.pt)],
     ["TDS", fmt(p.tds)], ["Leave deduction", fmt(p.leave_deduction)],
   ];
 

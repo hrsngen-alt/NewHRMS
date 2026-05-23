@@ -78,6 +78,9 @@ function EmployeesPage() {
     const obj: any = {};
     fd.forEach((v, k) => { obj[k] = v === "" ? null : v; });
     ["basic_salary", "hra", "conveyance", "medical", "special_allowance"].forEach((k) => { obj[k] = Number(obj[k] ?? 0); });
+    obj.pf_amount = Number(fd.get("pf_amount") ?? 0);
+    obj.esic_amount = Number(fd.get("esic_amount") ?? 0);
+    obj.gratuity_amount = Number(fd.get("gratuity_amount") ?? 0);
     
     let error;
     if (editingEmployee) {
@@ -235,6 +238,9 @@ function EmployeesPage() {
             conveyance: Number(get("conveyance", "conveyance_allowance") || 0),
             medical: Number(get("medical", "medical_allowance") || 0),
             special_allowance: Number(get("special_allowance", "special") || 0),
+            pf_amount: Number(get("pf_amount", "pf", "pf_deduction") || 0),
+            esic_amount: Number(get("esic_amount", "esic", "esic_deduction") || 0),
+            gratuity_amount: Number(get("gratuity_amount", "gratuity", "gratuity_deduction") || 0),
           };
           return emp;
         }).filter(row => {
@@ -325,13 +331,32 @@ function EmployeesPage() {
                   
                   setBusy(true);
                   let success = 0;
+                  let failed = 0;
                   for (const emp of pending) {
-                    const { error } = await supabase.auth.resetPasswordForEmail(emp.email, {
-                      redirectTo: `${window.location.origin}/reset-password`,
-                    });
-                    if (!error) success++;
+                    try {
+                      // 1. Securely pre-create the user in auth.users
+                      const { data: userId, error: rpcError } = await supabase.rpc('create_invited_user', {
+                        p_email: emp.email,
+                        p_full_name: emp.full_name
+                      });
+                      if (rpcError) throw rpcError;
+
+                      // 2. Trigger the reset password / onboarding email
+                      const { error } = await supabase.auth.resetPasswordForEmail(emp.email, {
+                        redirectTo: `${window.location.origin}/reset-password`,
+                      });
+                      if (error) throw error;
+                      success++;
+                    } catch (err) {
+                      console.error(`Failed to invite ${emp.email}:`, err);
+                      failed++;
+                    }
                   }
-                  toast.success(`Sent ${success} invites!`);
+                  if (failed > 0) {
+                    toast.success(`Invited ${success} employees. Failed to invite ${failed}.`);
+                  } else {
+                    toast.success(`Sent ${success} invites!`);
+                  }
                   setSelectedIds(new Set());
                   setBusy(false);
                 }}
@@ -354,11 +379,24 @@ function EmployeesPage() {
                 let failed = 0;
 
                 for (const emp of pending) {
-                  const { error } = await supabase.auth.resetPasswordForEmail(emp.email, {
-                    redirectTo: `${window.location.origin}/reset-password`,
-                  });
-                  if (error) failed++;
-                  else success++;
+                  try {
+                    // 1. Securely pre-create the user in auth.users
+                    const { data: userId, error: rpcError } = await supabase.rpc('create_invited_user', {
+                      p_email: emp.email,
+                      p_full_name: emp.full_name
+                    });
+                    if (rpcError) throw rpcError;
+
+                    // 2. Trigger the reset password / onboarding email
+                    const { error } = await supabase.auth.resetPasswordForEmail(emp.email, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    if (error) throw error;
+                    success++;
+                  } catch (err) {
+                    console.error(`Failed to invite ${emp.email}:`, err);
+                    failed++;
+                  }
                 }
 
                 toast.success(`Onboarding complete! ${success} invited, ${failed} failed.`);
@@ -432,6 +470,20 @@ function EmployeesPage() {
                           <DetailItem label="Basic Pay" value={`₹${Number(viewingEmployee.basic_salary).toLocaleString("en-IN")}`} />
                           <DetailItem label="HRA" value={`₹${Number(viewingEmployee.hra).toLocaleString("en-IN")}`} />
                           <DetailItem label="Special Allw." value={`₹${Number(viewingEmployee.special_allowance).toLocaleString("en-IN")}`} />
+                          <div className="flex flex-col gap-1 mt-1">
+                            <span className="text-[10px] font-bold uppercase text-muted-foreground/60">Deduction Details (Monthly)</span>
+                            <div className="flex flex-wrap gap-2 mt-0.5">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50 text-slate-700 border-slate-200">
+                                PF: ₹{Number(viewingEmployee.pf_amount || 0).toLocaleString("en-IN")}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50 text-slate-700 border-slate-200">
+                                ESIC: ₹{Number(viewingEmployee.esic_amount || 0).toLocaleString("en-IN")}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50 text-slate-700 border-slate-200">
+                                Gratuity: ₹{Number(viewingEmployee.gratuity_amount || 0).toLocaleString("en-IN")}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </section>
 
@@ -622,11 +674,23 @@ function EmployeesPage() {
                             disabled={busy}
                             onClick={async () => {
                               setBusy(true);
-                              const { error } = await supabase.auth.resetPasswordForEmail(e.email, {
-                                redirectTo: `${window.location.origin}/reset-password`,
-                              });
-                              if (error) toast.error(error.message);
-                              else toast.success("Invite sent!");
+                              try {
+                                // 1. Securely pre-create the user in auth.users
+                                const { data: userId, error: rpcError } = await supabase.rpc('create_invited_user', {
+                                  p_email: e.email,
+                                  p_full_name: e.full_name
+                                });
+                                if (rpcError) throw rpcError;
+
+                                // 2. Trigger the reset password / onboarding email
+                                const { error } = await supabase.auth.resetPasswordForEmail(e.email, {
+                                  redirectTo: `${window.location.origin}/reset-password`,
+                                });
+                                if (error) throw error;
+                                toast.success("Invite sent!");
+                              } catch (err: any) {
+                                toast.error(err.message || "Failed to send invite");
+                              }
                               setBusy(false);
                             }}
                           >
@@ -700,6 +764,35 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
           />
         </div>
       ))}
+      <div className="col-span-2 border-t pt-4 mt-2">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Deduction Details (Monthly Amounts)</h3>
+        <div className="grid grid-cols-3 gap-4 animate-in fade-in duration-300">
+          <div>
+            <Label htmlFor="pf_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">PF Deduction</Label>
+            <Input 
+              id="pf_amount" name="pf_amount" type="number" step="0.01"
+              className="bg-muted/30 focus:bg-white" 
+              defaultValue={editingEmployee ? editingEmployee.pf_amount ?? 0 : 0}
+            />
+          </div>
+          <div>
+            <Label htmlFor="esic_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">ESIC Deduction</Label>
+            <Input 
+              id="esic_amount" name="esic_amount" type="number" step="0.01"
+              className="bg-muted/30 focus:bg-white" 
+              defaultValue={editingEmployee ? editingEmployee.esic_amount ?? 0 : 0}
+            />
+          </div>
+          <div>
+            <Label htmlFor="gratuity_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Gratuity Deduction</Label>
+            <Input 
+              id="gratuity_amount" name="gratuity_amount" type="number" step="0.01"
+              className="bg-muted/30 focus:bg-white" 
+              defaultValue={editingEmployee ? editingEmployee.gratuity_amount ?? 0 : 0}
+            />
+          </div>
+        </div>
+      </div>
       <DialogFooter className="col-span-2 pt-4 border-t mt-2">
         <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
         <Button type="submit" disabled={busy} className="px-8">{busy ? "Processing..." : "Save Details"}</Button>

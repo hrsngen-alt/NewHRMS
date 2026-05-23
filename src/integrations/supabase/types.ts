@@ -84,6 +84,13 @@ export type Database = {
           uan_number: string | null
           updated_at: string
           user_id: string | null
+          photo_url: string | null
+          pf_eligible: boolean | null
+          esic_eligible: boolean | null
+          gratuity_eligible: boolean | null
+          pf_amount: number | null
+          esic_amount: number | null
+          gratuity_amount: number | null
         }
         Insert: {
           aadhaar_number?: string | null
@@ -110,6 +117,13 @@ export type Database = {
           uan_number?: string | null
           updated_at?: string
           user_id?: string | null
+          photo_url?: string | null
+          pf_eligible?: boolean | null
+          esic_eligible?: boolean | null
+          gratuity_eligible?: boolean | null
+          pf_amount?: number | null
+          esic_amount?: number | null
+          gratuity_amount?: number | null
         }
         Update: {
           aadhaar_number?: string | null
@@ -136,6 +150,13 @@ export type Database = {
           uan_number?: string | null
           updated_at?: string
           user_id?: string | null
+          photo_url?: string | null
+          pf_eligible?: boolean | null
+          esic_eligible?: boolean | null
+          gratuity_eligible?: boolean | null
+          pf_amount?: number | null
+          esic_amount?: number | null
+          gratuity_amount?: number | null
         }
         Relationships: []
       }
@@ -238,6 +259,7 @@ export type Database = {
           tds: number
           total_deductions: number
           working_days: number
+          gratuity: number
         }
         Insert: {
           basic?: number
@@ -260,6 +282,7 @@ export type Database = {
           tds?: number
           total_deductions?: number
           working_days?: number
+          gratuity?: number
         }
         Update: {
           basic?: number
@@ -282,6 +305,7 @@ export type Database = {
           tds?: number
           total_deductions?: number
           working_days?: number
+          gratuity?: number
         }
         Relationships: [
           {
@@ -347,6 +371,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_invited_user: {
+        Args: {
+          p_email: string
+          p_full_name: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

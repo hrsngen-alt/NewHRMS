@@ -95,16 +95,17 @@ function PayrollPage() {
       const special = Number(e.special_allowance) * factor;
       const bonus = 0;
       const gross = basic + hra + conveyance + medical + special + bonus;
-      const pf = Math.min(basic * 0.12, 1800);
-      const esic = gross < 21000 ? gross * 0.0075 : 0;
+      const pf = Number(e.pf_amount ?? 0);
+      const esic = Number(e.esic_amount ?? 0);
+      const gratuity = Number(e.gratuity_amount ?? 0);
       const pt = gross > 15000 ? 200 : 0;
       const tds = gross > 50000 ? gross * 0.05 : 0;
       const leaveDeduction = (Number(e.basic_salary) / workingDays) * leaveDays * 0;
-      const totalDed = pf + esic + pt + tds + leaveDeduction;
+      const totalDed = pf + esic + gratuity + pt + tds + leaveDeduction;
       return {
         payroll_run_id: run.id, employee_id: e.id, working_days: workingDays, paid_days: paidDays,
         basic, hra, conveyance, medical, special_allowance: special, bonus,
-        pf, esic, pt, tds, leave_deduction: leaveDeduction,
+        pf, esic, pt, tds, leave_deduction: leaveDeduction, gratuity,
         gross, total_deductions: totalDed, net_pay: gross - totalDed,
       };
     });
