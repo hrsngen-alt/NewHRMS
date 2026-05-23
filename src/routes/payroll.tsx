@@ -93,11 +93,11 @@ function PayrollPage() {
       const conveyance = Number(e.conveyance) * factor;
       const medical = Number(e.medical) * factor;
       const special = Number(e.special_allowance) * factor;
-      const bonus = 0;
+      const bonus = Number((e as any).bonus ?? 0) * factor;
       const gross = basic + hra + conveyance + medical + special + bonus;
-      const pf = Number(e.pf_amount ?? 0);
-      const esic = Number(e.esic_amount ?? 0);
-      const gratuity = Number(e.gratuity_amount ?? 0);
+      const pf = Math.min(basic * 0.12, 1800);
+      const esic = gross < 21000 ? gross * 0.0075 : 0;
+      const gratuity = 0;
       const pt = gross > 15000 ? 200 : 0;
       const tds = gross > 50000 ? gross * 0.05 : 0;
       const leaveDeduction = (Number(e.basic_salary) / workingDays) * leaveDays * 0;

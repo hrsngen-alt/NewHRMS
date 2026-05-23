@@ -77,10 +77,10 @@ function EmployeesPage() {
     const fd = new FormData(e.currentTarget);
     const obj: any = {};
     fd.forEach((v, k) => { obj[k] = v === "" ? null : v; });
-    ["basic_salary", "hra", "conveyance", "medical", "special_allowance"].forEach((k) => { obj[k] = Number(obj[k] ?? 0); });
-    obj.pf_amount = Number(fd.get("pf_amount") ?? 0);
-    obj.esic_amount = Number(fd.get("esic_amount") ?? 0);
-    obj.gratuity_amount = Number(fd.get("gratuity_amount") ?? 0);
+    ["basic_salary", "hra", "conveyance", "medical", "special_allowance", "bonus"].forEach((k) => { obj[k] = Number(obj[k] ?? 0); });
+    obj.pf_amount = 0;
+    obj.esic_amount = 0;
+    obj.gratuity_amount = 0;
     
     let error;
     if (editingEmployee) {
@@ -238,9 +238,10 @@ function EmployeesPage() {
             conveyance: Number(get("conveyance", "conveyance_allowance") || 0),
             medical: Number(get("medical", "medical_allowance") || 0),
             special_allowance: Number(get("special_allowance", "special") || 0),
-            pf_amount: Number(get("pf_amount", "pf", "pf_deduction") || 0),
-            esic_amount: Number(get("esic_amount", "esic", "esic_deduction") || 0),
-            gratuity_amount: Number(get("gratuity_amount", "gratuity", "gratuity_deduction") || 0),
+            bonus: Number(get("bonus", "monthly_bonus") || 0),
+            pf_amount: 0,
+            esic_amount: 0,
+            gratuity_amount: 0,
           };
           return emp;
         }).filter(row => {
@@ -469,20 +470,19 @@ function EmployeesPage() {
                         <div className="grid grid-cols-1 gap-3 text-sm ml-4">
                           <DetailItem label="Basic Pay" value={`₹${Number(viewingEmployee.basic_salary).toLocaleString("en-IN")}`} />
                           <DetailItem label="HRA" value={`₹${Number(viewingEmployee.hra).toLocaleString("en-IN")}`} />
+                          <DetailItem label="Conveyance" value={`₹${Number(viewingEmployee.conveyance || 0).toLocaleString("en-IN")}`} />
+                          <DetailItem label="Medical" value={`₹${Number(viewingEmployee.medical || 0).toLocaleString("en-IN")}`} />
                           <DetailItem label="Special Allw." value={`₹${Number(viewingEmployee.special_allowance).toLocaleString("en-IN")}`} />
-                          <div className="flex flex-col gap-1 mt-1">
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground/60">Deduction Details (Monthly)</span>
-                            <div className="flex flex-wrap gap-2 mt-0.5">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50 text-slate-700 border-slate-200">
-                                PF: ₹{Number(viewingEmployee.pf_amount || 0).toLocaleString("en-IN")}
-                              </span>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50 text-slate-700 border-slate-200">
-                                ESIC: ₹{Number(viewingEmployee.esic_amount || 0).toLocaleString("en-IN")}
-                              </span>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-slate-50 text-slate-700 border-slate-200">
-                                Gratuity: ₹{Number(viewingEmployee.gratuity_amount || 0).toLocaleString("en-IN")}
-                              </span>
-                            </div>
+                          <DetailItem label="Monthly Bonus" value={`₹${Number(viewingEmployee.bonus || 0).toLocaleString("en-IN")}`} />
+                          <div className="border-t pt-2 mt-2">
+                            <DetailItem label="Gross Salary" value={`₹${Number(
+                              Number(viewingEmployee.basic_salary || 0) +
+                              Number(viewingEmployee.hra || 0) +
+                              Number(viewingEmployee.conveyance || 0) +
+                              Number(viewingEmployee.medical || 0) +
+                              Number(viewingEmployee.special_allowance || 0) +
+                              Number(viewingEmployee.bonus || 0)
+                            ).toLocaleString("en-IN")}`} />
                           </div>
                         </div>
                       </section>
@@ -741,6 +741,15 @@ function DetailItem({ label, value, badge }: { label: string; value: any; badge?
 }
 
 function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
+  const [basic, setBasic] = useState(editingEmployee?.basic_salary ?? 0);
+  const [hra, setHra] = useState(editingEmployee?.hra ?? 0);
+  const [conveyance, setConveyance] = useState(editingEmployee?.conveyance ?? 0);
+  const [medical, setMedical] = useState(editingEmployee?.medical ?? 0);
+  const [special, setSpecial] = useState(editingEmployee?.special_allowance ?? 0);
+  const [bonus, setBonus] = useState(editingEmployee?.bonus ?? 0);
+
+  const grossSalary = Number(basic || 0) + Number(hra || 0) + Number(conveyance || 0) + Number(medical || 0) + Number(special || 0) + Number(bonus || 0);
+
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-2 gap-5 mt-4">
       {[
@@ -754,6 +763,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
         ["basic_salary", "Basic Pay", false, "number"], ["hra", "HRA", false, "number"],
         ["conveyance", "Conveyance", false, "number"], ["medical", "Medical", false, "number"],
         ["special_allowance", "Special Allowance", false, "number"],
+        ["bonus", "Monthly Bonus", false, "number"],
       ].map(([name, label, req, type]) => (
         <div key={name as string} className={name === "full_name" || name === "email" ? "col-span-2" : ""}>
           <Label htmlFor={name as string} className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">{label as string}</Label>
@@ -761,38 +771,29 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
             id={name as string} name={name as string} type={(type as string) || "text"} 
             required={Boolean(req)} className="bg-muted/30 focus:bg-white" 
             defaultValue={editingEmployee ? editingEmployee[name as string] : ""}
+            onChange={(e) => {
+              const val = Number(e.target.value) || 0;
+              if (name === "basic_salary") setBasic(val);
+              else if (name === "hra") setHra(val);
+              else if (name === "conveyance") setConveyance(val);
+              else if (name === "medical") setMedical(val);
+              else if (name === "special_allowance") setSpecial(val);
+              else if (name === "bonus") setBonus(val);
+            }}
           />
         </div>
       ))}
-      <div className="col-span-2 border-t pt-4 mt-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Deduction Details (Monthly Amounts)</h3>
-        <div className="grid grid-cols-3 gap-4 animate-in fade-in duration-300">
-          <div>
-            <Label htmlFor="pf_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">PF Deduction</Label>
-            <Input 
-              id="pf_amount" name="pf_amount" type="number" step="0.01"
-              className="bg-muted/30 focus:bg-white" 
-              defaultValue={editingEmployee ? editingEmployee.pf_amount ?? 0 : 0}
-            />
-          </div>
-          <div>
-            <Label htmlFor="esic_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">ESIC Deduction</Label>
-            <Input 
-              id="esic_amount" name="esic_amount" type="number" step="0.01"
-              className="bg-muted/30 focus:bg-white" 
-              defaultValue={editingEmployee ? editingEmployee.esic_amount ?? 0 : 0}
-            />
-          </div>
-          <div>
-            <Label htmlFor="gratuity_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Gratuity Deduction</Label>
-            <Input 
-              id="gratuity_amount" name="gratuity_amount" type="number" step="0.01"
-              className="bg-muted/30 focus:bg-white" 
-              defaultValue={editingEmployee ? editingEmployee.gratuity_amount ?? 0 : 0}
-            />
-          </div>
+      
+      <div className="col-span-2 bg-slate-50/50 border border-slate-100 rounded-xl p-4 mt-2 flex justify-between items-center">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 block">Calculated Gross Salary</span>
+          <span className="text-xl font-black text-slate-900 mt-1 block">₹{grossSalary.toLocaleString("en-IN")}</span>
+        </div>
+        <div className="text-right text-[10px] text-muted-foreground font-medium leading-relaxed max-w-xs">
+          Gross pay is the sum of Basic Pay, HRA, Conveyance, Medical, Special Allowance, and Monthly Bonus.
         </div>
       </div>
+
       <DialogFooter className="col-span-2 pt-4 border-t mt-2">
         <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
         <Button type="submit" disabled={busy} className="px-8">{busy ? "Processing..." : "Save Details"}</Button>

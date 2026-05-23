@@ -91,6 +91,7 @@ export type Database = {
           pf_amount: number | null
           esic_amount: number | null
           gratuity_amount: number | null
+          bonus: number | null
         }
         Insert: {
           aadhaar_number?: string | null
@@ -124,6 +125,7 @@ export type Database = {
           pf_amount?: number | null
           esic_amount?: number | null
           gratuity_amount?: number | null
+          bonus?: number | null
         }
         Update: {
           aadhaar_number?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           pf_amount?: number | null
           esic_amount?: number | null
           gratuity_amount?: number | null
+          bonus?: number | null
         }
         Relationships: []
       }
