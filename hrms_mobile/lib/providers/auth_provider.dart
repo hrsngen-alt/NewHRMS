@@ -35,14 +35,17 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    print("🚀 Attempting login for: $email");
     try {
       await _supabaseService.signIn(email, password);
+      print("✅ Login successful, fetching profile...");
       await _fetchProfileAndRole();
       
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
+      print("❌ Login error: $e");
       _errorMessage = e.toString().replaceAll("Exception:", "").trim();
       _isLoading = false;
       notifyListeners();
