@@ -37,9 +37,13 @@ function EmployeesPage() {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("*").order("created_at", { ascending: false });
+      const { data: res, error } = await supabase.functions.invoke("employees-cached", {
+        method: "GET",
+      });
       if (error) throw error;
-      return data;
+      if (!res) return [];
+      const finalData = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+      return (finalData as any[]) || [];
     },
   });
 

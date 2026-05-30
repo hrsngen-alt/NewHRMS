@@ -35,17 +35,14 @@ function AttendancePage() {
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["attendance", role, myEmployee?.id],
     queryFn: async () => {
-      let query = supabase
-        .from("attendance" as any)
-        .select("*, employees(full_name, employee_code, department)")
-        .order("check_in", { ascending: false });
-      
-      if (!isAdmin && myEmployee) query = query.eq("employee_id", myEmployee.id).limit(200);
-      else query = query.limit(500);
-      
-      const { data, error } = await query;
+      const { data: res, error } = await supabase.functions.invoke(
+        `attendance-cached?role=${role || "employee"}&employee_id=${myEmployee?.id || ""}`,
+        { method: "GET" }
+      );
       if (error) throw error;
-      return (data as any) || [];
+      if (!res) return [];
+      const finalData = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+      return (finalData as any[]) || [];
     },
     enabled: !!user && (isAdmin || !!myEmployee),
   });

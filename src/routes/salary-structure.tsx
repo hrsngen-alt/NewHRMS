@@ -59,12 +59,13 @@ function SalaryStructurePage() {
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-salary"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("employees")
-        .select("id,full_name,department,designation,basic_salary,hra,bonus,pf_amount,esic_amount,gratuity_amount,employee_code")
-        .eq("status", "active")
-        .order("full_name");
-      return data ?? [];
+      const { data: res, error } = await supabase.functions.invoke("salary-structure-cached", {
+        method: "GET",
+      });
+      if (error) throw error;
+      if (!res) return [];
+      const finalData = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+      return (finalData as any[]) || [];
     },
   });
 
