@@ -35,33 +35,33 @@ class Employee {
 
   factory Employee.fromJson(Map<String, dynamic> json) {
     return Employee(
-      id: json['id'] as String,
-      fullName: (json['full_name'] ?? '') as String,
-      email: (json['email'] ?? '') as String,
-      phone: json['phone'] as String?,
-      department: json['department'] as String?,
-      designation: json['designation'] as String?,
-      employeeCode: (json['employee_code'] ?? '') as String,
-      basicSalary: (json['basic_salary'] ?? 0.0) is int 
-          ? (json['basic_salary'] as int).toDouble() 
-          : (json['basic_salary'] as num).toDouble(),
-      hra: (json['hra'] ?? 0.0) is int 
-          ? (json['hra'] as int).toDouble() 
-          : (json['hra'] as num).toDouble(),
-      bonus: (json['bonus'] ?? 0.0) is int 
-          ? (json['bonus'] as int).toDouble() 
-          : (json['bonus'] as num).toDouble(),
-      pfAmount: (json['pf_amount'] ?? 0.0) is int 
-          ? (json['pf_amount'] as int).toDouble() 
-          : (json['pf_amount'] as num).toDouble(),
-      esicAmount: (json['esic_amount'] ?? 0.0) is int 
-          ? (json['esic_amount'] as int).toDouble() 
-          : (json['esic_amount'] as num).toDouble(),
-      gratuityAmount: (json['gratuity_amount'] ?? 0.0) is int 
-          ? (json['gratuity_amount'] as int).toDouble() 
-          : (json['gratuity_amount'] as num).toDouble(),
-      status: (json['status'] ?? 'active') as String,
-      userId: json['user_id'] as String?,
+      id: (json['id'] ?? '').toString(),
+      fullName: (json['full_name'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      phone: json['phone']?.toString(),
+      department: json['department']?.toString(),
+      designation: json['designation']?.toString(),
+      employeeCode: (json['employee_code'] ?? '').toString(),
+      basicSalary: json['basic_salary'] != null 
+          ? double.tryParse(json['basic_salary'].toString()) ?? 0.0 
+          : 0.0,
+      hra: json['hra'] != null 
+          ? double.tryParse(json['hra'].toString()) ?? 0.0 
+          : 0.0,
+      bonus: json['bonus'] != null 
+          ? double.tryParse(json['bonus'].toString()) ?? 0.0 
+          : 0.0,
+      pfAmount: json['pf_amount'] != null 
+          ? double.tryParse(json['pf_amount'].toString()) ?? 0.0 
+          : 0.0,
+      esicAmount: json['esic_amount'] != null 
+          ? double.tryParse(json['esic_amount'].toString()) ?? 0.0 
+          : 0.0,
+      gratuityAmount: json['gratuity_amount'] != null 
+          ? double.tryParse(json['gratuity_amount'].toString()) ?? 0.0 
+          : 0.0,
+      status: (json['status'] ?? 'active').toString(),
+      userId: json['user_id']?.toString(),
     );
   }
 

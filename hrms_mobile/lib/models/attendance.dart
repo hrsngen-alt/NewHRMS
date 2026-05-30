@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'employee.dart';
 
 class Attendance {
@@ -35,34 +36,51 @@ class Attendance {
     // Check if there is an employee relation nested
     Employee? employeeRelation;
     if (json['employees'] != null) {
-      employeeRelation = Employee.fromJson(json['employees'] as Map<String, dynamic>);
+      try {
+        if (json['employees'] is Map) {
+          employeeRelation = Employee.fromJson(Map<String, dynamic>.from(json['employees'] as Map));
+        }
+      } catch (e) {
+        print("❌ Error parsing employeeRelation in Attendance.fromJson: $e");
+      }
+    }
+
+    Map<String, dynamic>? metadataMap;
+    if (json['metadata'] != null) {
+      if (json['metadata'] is String) {
+        try {
+          metadataMap = jsonDecode(json['metadata'] as String) as Map<String, dynamic>;
+        } catch (_) {}
+      } else if (json['metadata'] is Map) {
+        metadataMap = Map<String, dynamic>.from(json['metadata'] as Map);
+      }
     }
 
     return Attendance(
-      id: json['id'] as String,
-      employeeId: (json['employee_id'] ?? '') as String,
-      date: (json['date'] ?? '') as String,
-      checkIn: DateTime.parse(json['check_in'] as String),
+      id: (json['id'] ?? '').toString(),
+      employeeId: (json['employee_id'] ?? '').toString(),
+      date: (json['date'] ?? '').toString(),
+      checkIn: DateTime.tryParse(json['check_in']?.toString() ?? '') ?? DateTime.now(),
       checkOut: json['check_out'] != null 
-          ? DateTime.parse(json['check_out'] as String) 
+          ? DateTime.tryParse(json['check_out'].toString()) 
           : null,
       hoursWorked: json['hours_worked'] != null 
-          ? (json['hours_worked'] as num).toDouble() 
+          ? double.tryParse(json['hours_worked'].toString()) 
           : null,
-      status: (json['status'] ?? 'present') as String,
+      status: (json['status'] ?? 'present').toString(),
       checkInLat: json['check_in_lat'] != null 
-          ? (json['check_in_lat'] as num).toDouble() 
+          ? double.tryParse(json['check_in_lat'].toString()) 
           : null,
       checkInLng: json['check_in_lng'] != null 
-          ? (json['check_in_lng'] as num).toDouble() 
+          ? double.tryParse(json['check_in_lng'].toString()) 
           : null,
       checkOutLat: json['check_out_lat'] != null 
-          ? (json['check_out_lat'] as num).toDouble() 
+          ? double.tryParse(json['check_out_lat'].toString()) 
           : null,
       checkOutLng: json['check_out_lng'] != null 
-          ? (json['check_out_lng'] as num).toDouble() 
+          ? double.tryParse(json['check_out_lng'].toString()) 
           : null,
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      metadata: metadataMap,
       employee: employeeRelation,
     );
   }

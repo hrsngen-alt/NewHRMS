@@ -9,6 +9,8 @@ import 'profile_screen.dart';
 class MainShell extends StatefulWidget {
   const MainShell({Key? key}) : super(key: key);
 
+  static final ValueNotifier<int> selectedIndexNotifier = ValueNotifier<int>(0);
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -25,6 +27,8 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
+    MainShell.selectedIndexNotifier.value = 0;
+    MainShell.selectedIndexNotifier.addListener(_onTabChanged);
     // Pre-fetch initial logs for the authenticated employee
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -35,6 +39,20 @@ class _MainShellState extends State<MainShell> {
         );
       }
     });
+  }
+
+  void _onTabChanged() {
+    if (mounted) {
+      setState(() {
+        _selectedIndex = MainShell.selectedIndexNotifier.value;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    MainShell.selectedIndexNotifier.removeListener(_onTabChanged);
+    super.dispose();
   }
 
   @override

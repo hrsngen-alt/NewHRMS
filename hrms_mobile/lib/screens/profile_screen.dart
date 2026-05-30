@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
+import '../services/payslip_share_service.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -20,6 +22,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final employee = auth.currentEmployee;
 
     return Scaffold(
@@ -143,7 +146,42 @@ class ProfileScreen extends StatelessWidget {
               ]),
               const SizedBox(height: 32),
 
-              // 4. SALARY STRUCTURE SECTION
+              // 4. APPLICATION SETTINGS
+              _buildSectionHeader("APPLICATION SETTINGS"),
+              const SizedBox(height: 12),
+              _buildInfoContainer([
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          themeProvider.isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                          color: const Color(0xFF818CF8),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          themeProvider.isDark ? "DARK THEME ACTIVE" : "LIGHT THEME ACTIVE",
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: themeProvider.isDark,
+                      onChanged: (val) => themeProvider.toggleTheme(),
+                      activeColor: const Color(0xFF818CF8),
+                      activeTrackColor: const Color(0xFF818CF8).withOpacity(0.3),
+                    ),
+                  ],
+                ),
+              ]),
+              const SizedBox(height: 32),
+
+              // 5. SALARY STRUCTURE SECTION
               if (employee != null) ...[
                 _buildSectionHeader("SALARY STRUCTURE (MONTHLY)"),
                 const SizedBox(height: 12),
@@ -166,6 +204,27 @@ class ProfileScreen extends StatelessWidget {
                     "₹${employee.netPay.toStringAsFixed(0)}", 
                     isBold: true,
                     highlightColor: const Color(0xFF818CF8),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => PayslipShareService.sharePayslip(employee),
+                    icon: const Icon(Icons.share_rounded, size: 16, color: Colors.white),
+                    label: const Text(
+                      "SHARE OFFICIAL PAYSLIP",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
                   ),
                 ]),
                 const SizedBox(height: 32),
