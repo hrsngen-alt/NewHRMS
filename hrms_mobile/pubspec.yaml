@@ -1,0 +1,44 @@
+name: hrms_mobile
+description: "Professional native mobile client for SN Gene HRMS."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  
+  # Supabase Integration
+  supabase_flutter: ^2.8.0
+  
+  # State Management
+  provider: ^6.1.2
+  
+  # Device Location GPS
+  geolocator: ^13.0.1
+  
+  # API / HTTP requests for Edge functions
+  http: ^1.2.2
+  
+  # Custom visual styles & parsing
+  google_fonts: ^6.2.1
+  cached_network_image: ^3.4.1
+  flutter_svg: ^2.0.10
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Asset image directory mapping for future use (like logos)
+  assets:
+    - assets/images/
