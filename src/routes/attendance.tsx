@@ -162,6 +162,10 @@ function AttendancePage() {
           status: "present", check_in_lat: lat, check_in_lng: lng,
           metadata: isMarketing ? { mode: 'field' } : { mode: 'office' }
         });
+        await supabase.functions.invoke("attendance-cached", {
+          method: "POST",
+          body: { employee_id: myEmployee?.id }
+        });
         toast.success("Shift started!");
       } else {
         const start = new Date(latestRecord!.check_in!);
@@ -170,6 +174,10 @@ function AttendancePage() {
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
           check_out_lat: lat, check_out_lng: lng
         }).eq("id", latestRecord!.id);
+        await supabase.functions.invoke("attendance-cached", {
+          method: "POST",
+          body: { employee_id: myEmployee?.id }
+        });
         toast.success("Shift ended!");
       }
       qc.invalidateQueries({ queryKey: ["attendance"] });

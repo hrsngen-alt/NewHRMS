@@ -292,23 +292,36 @@ function Dashboard() {
       toast.warning("Approximate location captured for Field Work.");
     }
 
-    if (type === "in") {
-      await (supabase.from("attendance") as any).insert({ 
-        employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
-        status: "present", check_in_lat: lat, check_in_lng: lng,
-        metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
-      });
-      toast.success(isMarketing ? "Field Work Check-in Successful!" : "Checked in successfully!");
-    } else {
-      const hours = Math.max(0, (Date.now() - new Date(latestSession!.check_in!).getTime()) / 3600000);
-      await (supabase.from("attendance") as any).update({ 
-        check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
-        check_out_lat: lat, check_out_lng: lng
-      }).eq("id", latestSession!.id);
-      toast.success("Checked out successfully!");
+    try {
+      if (type === "in") {
+        await (supabase.from("attendance") as any).insert({ 
+          employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
+          status: "present", check_in_lat: lat, check_in_lng: lng,
+          metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
+        });
+        await supabase.functions.invoke("attendance-cached", {
+          method: "POST",
+          body: { employee_id: myEmployee.id }
+        });
+        toast.success(isMarketing ? "Field Work Check-in Successful!" : "Checked in successfully!");
+      } else {
+        const hours = Math.max(0, (Date.now() - new Date(latestSession!.check_in!).getTime()) / 3600000);
+        await (supabase.from("attendance") as any).update({ 
+          check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
+          check_out_lat: lat, check_out_lng: lng
+        }).eq("id", latestSession!.id);
+        await supabase.functions.invoke("attendance-cached", {
+          method: "POST",
+          body: { employee_id: myEmployee.id }
+        });
+        toast.success("Checked out successfully!");
+      }
+      qc.invalidateQueries({ queryKey: ["my-attendance-today"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      qc.invalidateQueries({ queryKey: ["attendance"] });
+    } catch (err: any) {
+      toast.error("Failed to update attendance.");
     }
-    qc.invalidateQueries({ queryKey: ["my-attendance-today"] });
-    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
   const chartColors = ["#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", "#f59e0b", "#10b981"];
