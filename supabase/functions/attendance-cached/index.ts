@@ -26,7 +26,7 @@ if (isRedisConfigured) {
   console.warn("⚠️ REDIS_URL not configured. Running direct database fallback mode.");
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -105,7 +105,7 @@ serve(async (req) => {
         const record = body.record || body.old_record || body;
         targetEmployeeId = record?.employee_id || null;
       } catch (parseError) {
-        console.warn("Could not parse JSON body of webhook invalidation:", parseError.message);
+        console.warn("Could not parse JSON body of webhook invalidation:", (parseError as any).message);
       }
 
       if (redis) {
@@ -128,7 +128,7 @@ serve(async (req) => {
         } catch (redisError) {
           console.error("❌ Redis Cloud purge error:", redisError);
           return new Response(
-            JSON.stringify({ error: 'Failed to purge cache', details: redisError.message }),
+            JSON.stringify({ error: 'Failed to purge cache', details: (redisError as any).message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
@@ -147,7 +147,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("🔥 Edge Function error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as any).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

@@ -28,7 +28,7 @@ if (isRedisConfigured) {
   console.warn("⚠️ REDIS_URL not configured. Running direct database fallback mode.");
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -102,7 +102,7 @@ serve(async (req) => {
         } catch (redisError) {
           console.error("❌ Failed to invalidate Redis Cloud cache:", redisError);
           return new Response(
-            JSON.stringify({ error: 'Failed to purge cache', details: redisError.message }),
+            JSON.stringify({ error: 'Failed to purge cache', details: (redisError as any).message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
@@ -121,7 +121,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("🔥 Edge Function error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as any).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
