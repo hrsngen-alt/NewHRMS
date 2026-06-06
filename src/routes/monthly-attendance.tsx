@@ -48,6 +48,7 @@ function AttendancePage() {
   const [selYear, setSelYear] = useState<string>(String(new Date().getFullYear()));
   const [selectedTimelineDate, setSelectedTimelineDate] = useState<string | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const { data: allEmployees = [] } = useQuery({
     queryKey: ["employees", "list"],
@@ -66,6 +67,15 @@ function AttendancePage() {
     }
     return [];
   }, [allEmployees, isAdmin, isManager, myEmployee]);
+
+  const suggestions = useMemo(() => {
+    if (!q) return [];
+    const search = q.toLowerCase();
+    return visibleEmployees.filter((e: any) =>
+      e.full_name?.toLowerCase().includes(search) ||
+      e.employee_code?.toLowerCase().includes(search)
+    );
+  }, [visibleEmployees, q]);
 
   const departments = useMemo(() => Array.from(new Set(visibleEmployees.map((e: any) => e.department).filter(Boolean))), [visibleEmployees]);
 
@@ -184,8 +194,37 @@ function AttendancePage() {
                   placeholder="Search employee name/code..." 
                   className="pl-12 h-12 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setShowSuggestions(false)}
                 />
+
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto p-2 space-y-1">
+                    {suggestions.map((e: any) => (
+                      <button
+                        key={e.id}
+                        onMouseDown={() => {
+                          setSelectedEmpId(e.id);
+                          setQ(e.full_name);
+                          setShowSuggestions(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-between text-sm font-bold text-slate-700 dark:text-slate-300"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold">{e.full_name}</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">{e.department}</span>
+                        </div>
+                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg text-muted-foreground font-mono">
+                          {e.employee_code}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -244,7 +283,13 @@ function AttendancePage() {
 
            <Button 
             variant="ghost" 
-            onClick={() => { setSelectedEmpId(""); setSelectedDept("all"); setSelMonth(String(new Date().getMonth() + 1)); setQ(""); }}
+            onClick={() => { 
+              setSelectedEmpId(""); 
+              setSelectedDept("all"); 
+              setSelMonth(String(new Date().getMonth() + 1)); 
+              setQ(""); 
+              setShowSuggestions(false); 
+            }}
             className="h-12 px-6 rounded-xl font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
            >
              Clear Filters
