@@ -167,7 +167,19 @@ export function AppShell({ children }: { children?: ReactNode }) {
           // Invalidate notifications query to refresh badge and dropdown list
           qc.invalidateQueries({ queryKey: ["notifications", user.id] });
 
-          // Show browser notification
+          // 1. Show real-time in-app toast fallback
+          toast(payload.new.title || "New Notification", {
+            description: payload.new.message || "",
+            action: {
+              label: "View",
+              onClick: () => {
+                const link = payload.new.link || getNotificationFallbackLink(payload.new);
+                if (link) navigate({ to: link });
+              }
+            }
+          });
+
+          // 2. Show browser notification
           if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
             const title = payload.new.title || "New Notification";
             const options = {
