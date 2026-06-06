@@ -11,14 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Receipt, Plus, Clock, CheckCircle2, XCircle, Wallet, FileText, IndianRupee, Upload, ExternalLink, Eye, Search, TrendingUp, Building2, X, Users as UsersIcon, ListFilter, LayoutGrid } from "lucide-react";
+import { Receipt, Plus, Clock, CheckCircle2, XCircle, Wallet, FileText, IndianRupee, Upload, ExternalLink, Eye, Search, TrendingUp, Building2, X, Users as UsersIcon, ListFilter, LayoutGrid, Pencil, Trash2 } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-
 export const Route = createFileRoute("/expenses")({ component: () => <AppShell><ExpensesPage /></AppShell> });
 
 const getWhatsAppUrl = (phone: string, employeeName: string, title: string, amount: number) => {
@@ -40,11 +39,30 @@ function ExpensesPage() {
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"claims" | "employees">("employees");
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
   const [reviewingClaim, setReviewingClaim] = useState<{ id: string, status: 'approved' | 'rejected' } | null>(null);
   const [reviewNote, setReviewNote] = useState("");
+  const [editingClaim, setEditingClaim] = useState<any | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
+  const [deleteReceipt, setDeleteReceipt] = useState(false);
+  const [selectedEditFile, setSelectedEditFile] = useState<File | null>(null);
+
+  const startEditing = (claim: any) => {
+    setEditingClaim(claim);
+    setDeleteReceipt(false);
+    setSelectedEditFile(null);
+  };
+
+  const closeEditing = () => {
+    setEditingClaim(null);
+    setDeleteReceipt(false);
+    setSelectedEditFile(null);
+  };
+
   const fileRef = useRef<HTMLInputElement>(null);
+  const editFileRef = useRef<HTMLInputElement>(null);
   const { myEmployee } = useMyEmployee();
 
   const { data: departmentEmployees = [] } = useQuery({
@@ -82,10 +100,41 @@ function ExpensesPage() {
     enabled: !!user && (role === "admin" || !!myEmployee),
   });
 
-  // Grouping Logic
+  // Dynamically compute available months from claims
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    claims.forEach((c: any) => {
+      if (c.created_at) {
+        const date = new Date(c.created_at);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        months.add(`${year}-${month}`);
+      }
+    });
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [claims]);
+
+  const formatMonthYear = (monthStr: string) => {
+    const [year, month] = monthStr.split("-");
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  };
+
+  // Filter claims by month for department spending and grouped employee views
+  const groupedClaims = useMemo(() => {
+    return claims.filter((c: any) => {
+      if (monthFilter === "all") return true;
+      if (!c.created_at) return false;
+      const claimDate = new Date(c.created_at);
+      const claimMonthYear = `${claimDate.getFullYear()}-${String(claimDate.getMonth() + 1).padStart(2, '0')}`;
+      return claimMonthYear === monthFilter;
+    });
+  }, [claims, monthFilter]);
+
+  // Grouping Logic (using month-filtered claims)
   const groupedData = useMemo(() => {
     const map: Record<string, any> = {};
-    claims.forEach((c: any) => {
+    groupedClaims.forEach((c: any) => {
       const eid = c.employee_id;
       if (!map[eid]) {
         map[eid] = {
@@ -104,22 +153,30 @@ function ExpensesPage() {
       if (new Date(c.created_at) > new Date(map[eid].latest)) map[eid].latest = c.created_at;
     });
     return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [claims]);
+  }, [groupedClaims]);
 
   const deptData = useMemo(() => {
     const map: Record<string, number> = {};
-    claims.forEach((c: any) => {
+    groupedClaims.forEach((c: any) => {
       if (c.status === 'rejected') return;
       const dept = c.employees?.department || "Other";
       map[dept] = (map[dept] ?? 0) + Number(c.amount);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [claims]);
+  }, [groupedClaims]);
 
   const filteredClaims = claims.filter((c: any) => {
     const matchesSearch = c.employees?.full_name?.toLowerCase().includes(search.toLowerCase()) || c.title.toLowerCase().includes(search.toLowerCase());
     const matchesDept = deptFilter === "all" || c.employees?.department === deptFilter;
-    return matchesSearch && matchesDept;
+    
+    let matchesMonth = true;
+    if (monthFilter !== "all" && c.created_at) {
+      const claimDate = new Date(c.created_at);
+      const claimMonthYear = `${claimDate.getFullYear()}-${String(claimDate.getMonth() + 1).padStart(2, '0')}`;
+      matchesMonth = claimMonthYear === monthFilter;
+    }
+    
+    return matchesSearch && matchesDept && matchesMonth;
   });
 
   const filteredGroups = groupedData.filter((g: any) => {
@@ -131,7 +188,12 @@ function ExpensesPage() {
   const empDetailData = useMemo(() => {
     if (!selectedEmpId) return null;
     const empClaims = claims.filter((c: any) => c.employee_id === selectedEmpId);
-    const emp = empClaims[0]?.employees || { full_name: "Employee", department: "Unknown" };
+    const empFromClaim = empClaims[0]?.employees || {};
+    const emp = {
+      full_name: empFromClaim.full_name || "Employee",
+      department: empFromClaim.department || "Unknown",
+      phone: empFromClaim.phone || null,
+    };
     const total = empClaims.reduce((s: number, c: any) => s + Number(c.amount), 0);
     const approved = empClaims.filter((c: any) => c.status === 'approved').length;
     return { emp, claims: empClaims, total, approved };
@@ -194,6 +256,46 @@ function ExpensesPage() {
     }
   };
 
+  const editClaim = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingClaim || !myEmployee) return;
+    setEditBusy(true);
+    const fd = new FormData(e.currentTarget);
+    const file = selectedEditFile;
+    let receiptUrl = deleteReceipt ? null : editingClaim.receipt_url;
+
+    try {
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${myEmployee.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("expense_receipts")
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from("expense_receipts").getPublicUrl(fileName);
+        receiptUrl = publicUrl;
+      }
+
+      const { error: updateError } = await supabase.from("expense_claims" as any).update({
+        title: String(fd.get("title")),
+        amount: Number(fd.get("amount")),
+        category: String(fd.get("category")),
+        notes: fd.get("notes") ? String(fd.get("notes")) : null,
+        receipt_url: receiptUrl,
+      }).eq("id", editingClaim.id).eq("employee_id", myEmployee.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Expense claim updated successfully!");
+      closeEditing();
+      qc.invalidateQueries({ queryKey: ["expense-claims"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update claim.");
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -208,8 +310,8 @@ function ExpensesPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {isAuthorized && (
-            <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border-2 border-primary/5">
+          <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border-2 border-primary/5">
+            {isAuthorized && (
               <div className="flex p-1 bg-white/50 rounded-lg border border-primary/5 mr-2">
                 <button
                   onClick={() => setViewMode("employees")}
@@ -226,33 +328,54 @@ function ExpensesPage() {
                   <ListFilter className="size-4" />
                 </button>
               </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-10 pl-9 w-[180px] border-none bg-transparent focus-visible:ring-0 text-xs font-bold"
-                />
-              </div>
-              {role === "admin" && (
-                <>
-                  <div className="h-6 w-[1px] bg-primary/10" />
-                  <Select value={deptFilter} onValueChange={setDeptFilter}>
-                    <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest w-[140px]">
-                      <SelectValue placeholder="Dept" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="all">All Depts</SelectItem>
-                      {Array.from(new Set(claims.map((c: any) => c.employees?.department).filter(Boolean))).map((d: any) => (
-                        <SelectItem key={d as string} value={d as string}>{d as string}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
+            )}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 pl-9 w-[180px] border-none bg-transparent focus-visible:ring-0 text-xs font-bold"
+              />
             </div>
-          )}
+
+            {/* Month Filter */}
+            {availableMonths.length > 0 && (
+              <>
+                <div className="h-6 w-[1px] bg-primary/10" />
+                <Select value={monthFilter} onValueChange={setMonthFilter}>
+                  <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest w-[140px]">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">All Months</SelectItem>
+                    {availableMonths.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {formatMonthYear(m)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+
+            {role === "admin" && (
+              <>
+                <div className="h-6 w-[1px] bg-primary/10" />
+                <Select value={deptFilter} onValueChange={setDeptFilter}>
+                  <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest w-[140px]">
+                    <SelectValue placeholder="Dept" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">All Depts</SelectItem>
+                    {Array.from(new Set(claims.map((c: any) => c.employees?.department).filter(Boolean))).map((d: any) => (
+                      <SelectItem key={d as string} value={d as string}>{d as string}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+          </div>
           {myEmployee && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
@@ -468,7 +591,7 @@ function ExpensesPage() {
                                   "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
                                   c.status === 'approved' ? "bg-green-100 text-green-700" :
                                     c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
-                                )}>
+                                  )}>
                                   {c.status}
                                 </span>
                                 {c.admin_notes && (
@@ -481,6 +604,17 @@ function ExpensesPage() {
                             <TableCell className="text-right font-black">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
                             <TableCell className="text-right pr-6">
                               <div className="flex justify-end items-center gap-1.5">
+                                {myEmployee && c.employee_id === myEmployee.id && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="size-8 rounded-lg text-indigo-500 hover:bg-indigo-50 hover:text-indigo-600"
+                                    title="Edit Claim"
+                                    onClick={() => startEditing(c)}
+                                  >
+                                    <Pencil className="size-4" />
+                                  </Button>
+                                )}
                                 {c.receipt_url && (
                                   <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild title="View Bill Copy">
                                     <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
@@ -667,6 +801,19 @@ function ExpensesPage() {
                   </TableCell>
                   <TableCell className="text-right pr-8">
                     <div className="flex justify-end items-center gap-1.5">
+                      {/* Edit — always for own claims */}
+                      {myEmployee && c.employee_id === myEmployee.id && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 rounded-lg text-indigo-500 hover:bg-indigo-50 hover:text-indigo-600"
+                          title="Edit Claim"
+                          onClick={() => startEditing(c)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                      )}
+
                       {c.receipt_url ? (
                         <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild title="View Bill Copy">
                           <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
@@ -777,6 +924,136 @@ function ExpensesPage() {
               Confirm {reviewingClaim?.status}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Claim Dialog */}
+      <Dialog open={!!editingClaim} onOpenChange={(v) => !v && closeEditing()}>
+        <DialogContent className="rounded-3xl p-0 border-2 border-primary/5 shadow-elegant max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="p-8 pb-4 shrink-0">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-2">
+                <Pencil className="size-5 text-indigo-500" /> Edit Expense Claim
+              </DialogTitle>
+              <CardDescription>Update your claim details. Only pending claims can be edited.</CardDescription>
+            </DialogHeader>
+          </div>
+          {editingClaim && (
+            <form onSubmit={editClaim} className="flex flex-col flex-1 min-h-0">
+              <div className="overflow-y-auto flex-1 px-8 pb-2 space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Expense Title</Label>
+                  <Input name="title" defaultValue={editingClaim.title} required className="h-12 rounded-xl border-2" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Amount (₹)</Label>
+                    <Input name="amount" type="number" defaultValue={editingClaim.amount} required className="h-12 rounded-xl border-2" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
+                    <Select name="category" defaultValue={editingClaim.category || "travel"} required>
+                      <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="travel">Travel</SelectItem>
+                        <SelectItem value="food">Food & Dining</SelectItem>
+                        <SelectItem value="fuel">Fuel / Transport</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                    Notes / Description <span className="normal-case font-normal text-muted-foreground/60">(optional)</span>
+                  </Label>
+                  <Textarea
+                    name="notes"
+                    defaultValue={editingClaim.notes || ""}
+                    placeholder="Describe the reason for this expense..."
+                    className="rounded-xl border-2 min-h-[90px] resize-none"
+                  />
+                </div>
+                <div className="space-y-2 pb-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Replace / Remove Bill</Label>
+                  
+                  {editingClaim.receipt_url && !deleteReceipt && !selectedEditFile && (
+                    <div className="flex items-center gap-2 mb-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                      <Eye className="size-4 text-primary shrink-0" />
+                      <span className="text-xs font-bold text-foreground flex-1 truncate">Current bill attached</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a href={editingClaim.receipt_url} target="_blank" rel="noreferrer" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline mr-1">View</a>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          className="h-6 px-2 text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 rounded-md" 
+                          onClick={() => setDeleteReceipt(true)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {deleteReceipt && !selectedEditFile && (
+                    <div className="flex items-center gap-2 mb-2 p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/10 border border-rose-100/30">
+                      <Trash2 className="size-4 text-rose-500 shrink-0" />
+                      <span className="text-xs font-bold text-rose-600 flex-1">Bill marked for removal</span>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        className="h-6 px-2 text-[10px] font-black text-primary uppercase tracking-widest hover:bg-primary/5 rounded-md" 
+                        onClick={() => setDeleteReceipt(false)}
+                      >
+                        Undo
+                      </Button>
+                    </div>
+                  )}
+
+                  {selectedEditFile && (
+                    <div className="flex items-center gap-2 mb-2 p-3 rounded-xl bg-green-50/50 dark:bg-green-950/10 border border-green-100/30">
+                      <FileText className="size-4 text-green-600 shrink-0" />
+                      <span className="text-xs font-bold text-foreground flex-1 truncate">{selectedEditFile.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-6 px-2 text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 rounded-md shrink-0"
+                        onClick={() => {
+                          setSelectedEditFile(null);
+                          if (editFileRef.current) editFileRef.current.value = "";
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-5 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group" onClick={() => editFileRef.current?.click()}>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      ref={editFileRef} 
+                      accept="image/*,application/pdf" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setSelectedEditFile(file);
+                        if (file) setDeleteReceipt(false);
+                      }}
+                    />
+                    <Upload className="size-7 text-muted-foreground group-hover:text-primary transition-colors mb-1.5" />
+                    <p className="text-xs font-bold text-muted-foreground">Click to upload new bill (replaces current)</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1">Image or PDF, max 5MB</p>
+                  </div>
+                </div>
+              </div>
+              <div className="px-8 py-5 border-t border-border/40 bg-muted/10 shrink-0 flex gap-3">
+                <Button type="button" variant="ghost" className="flex-1 h-12 rounded-xl font-bold" onClick={closeEditing}>Cancel</Button>
+                <Button type="submit" disabled={editBusy} className="flex-1 h-12 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700">
+                  {editBusy ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
