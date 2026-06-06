@@ -43,6 +43,31 @@ export function useMyEmployee() {
             .eq("id", byEmail.id);
 
           return { ...byEmail, user_id: user.id };
+        } else {
+          // If no employee record at all, create one
+          console.log("[useMyEmployee] No employee record found by email. Creating one...");
+          const fullName = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split("@")[0];
+          const { data: newEmp, error: insertErr } = await (supabase.from("employees") as any)
+            .insert({
+              user_id: user.id,
+              full_name: fullName,
+              email: user.email.toLowerCase(),
+              status: 'active',
+              joining_date: new Date().toISOString().split('T')[0],
+              basic_salary: 0,
+              hra: 0,
+              conveyance: 0,
+              medical: 0,
+              special_allowance: 0
+            })
+            .select("*")
+            .maybeSingle();
+
+          if (insertErr) {
+            console.error("[useMyEmployee] Failed to create new employee record:", insertErr);
+          } else if (newEmp) {
+            return newEmp;
+          }
         }
       }
 

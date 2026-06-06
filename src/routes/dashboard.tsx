@@ -282,21 +282,29 @@ function Dashboard() {
     
     let lat, lng;
     try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 }));
+      const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { 
+        enableHighAccuracy: true,
+        timeout: 10000, 
+        maximumAge: 0 
+      }));
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
     } catch (e) {
-      if (!isMarketing) {
-        return toast.error("Location access is required for office check-ins.");
+      if (type === "in") {
+        if (!isMarketing) {
+          return toast.error("Location access is required for office check-ins.");
+        }
+        toast.warning("Approximate location captured for Field Work.");
+      } else {
+        toast.warning("Check-out location could not be fetched, proceeding with check-out.");
       }
-      toast.warning("Approximate location captured for Field Work.");
     }
 
     try {
       if (type === "in") {
         await (supabase.from("attendance") as any).insert({ 
           employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
-          status: "present", check_in_lat: lat, check_in_lng: lng,
+          status: "present", check_in_lat: lat || null, check_in_lng: lng || null,
           metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
         });
         await supabase.functions.invoke("attendance-cached", {
@@ -308,7 +316,7 @@ function Dashboard() {
         const hours = Math.max(0, (Date.now() - new Date(latestSession!.check_in!).getTime()) / 3600000);
         await (supabase.from("attendance") as any).update({ 
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
-          check_out_lat: lat, check_out_lng: lng
+          check_out_lat: lat || null, check_out_lng: lng || null
         }).eq("id", latestSession!.id);
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",

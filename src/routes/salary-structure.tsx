@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { useAuth } from "@/hooks/useAuth";
+
 export const Route = createFileRoute("/salary-structure")({
   component: () => (
     <AppShell>
@@ -51,6 +53,18 @@ const Badge = ({
    MAIN PAGE
    ═══════════════════════════════════════════════════════════ */
 function SalaryStructurePage() {
+  const { role } = useAuth();
+
+  if (role !== "admin") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <AlertTriangle className="size-12 text-destructive animate-pulse" />
+        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin users. If you believe this is an error, please contact support.</p>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<"lookup" | "calculator">("lookup");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");

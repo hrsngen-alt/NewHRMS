@@ -154,14 +154,48 @@ $$;
 -- 12. NEW USER TRIGGER
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  row_count INT;
 BEGIN
+  -- Insert profile
   INSERT INTO public.profiles (id, full_name)
     VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)))
     ON CONFLICT (id) DO NOTHING;
 
+  -- Insert employee role
   INSERT INTO public.user_roles (user_id, role)
     VALUES (NEW.id, 'employee')
     ON CONFLICT (user_id, role) DO NOTHING;
+
+  -- Auto-link newly created user to matching employee record (by email)
+  UPDATE public.employees
+  SET user_id = NEW.id
+  WHERE LOWER(email) = LOWER(NEW.email);
+
+  GET DIAGNOSTICS row_count = ROW_COUNT;
+
+  -- If no matching employee record was found, insert a new one
+  IF row_count = 0 THEN
+    INSERT INTO public.employees (
+      user_id,
+      full_name,
+      email,
+      joining_date,
+      basic_salary,
+      hra,
+      conveyance,
+      medical,
+      special_allowance,
+      status
+    ) VALUES (
+      NEW.id,
+      COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+      LOWER(NEW.email),
+      CURRENT_DATE,
+      0, 0, 0, 0, 0,
+      'active'
+    );
+  END IF;
 
   RETURN NEW;
 EXCEPTION WHEN OTHERS THEN

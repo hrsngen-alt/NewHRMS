@@ -2,12 +2,15 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-type Role = "admin" | "employee";
+type Role = "admin" | "manager" | "employee";
 
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   role: Role | null;
+  isAdmin: boolean;
+  isManager: boolean;
+  isEmployee: boolean;
   loading: boolean;
   employeeId: string | null; // Expose linked employee ID directly
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -39,7 +42,7 @@ async function fetchRole(userId: string, email: string): Promise<Role> {
       .select("role")
       .eq("user_id", userId);
     const roles = (data ?? []).map((r) => r.role as Role);
-    return roles.includes("admin") ? "admin" : roles[0] ?? "employee";
+    return roles.includes("admin") ? "admin" : roles.includes("manager") ? "manager" : roles[0] ?? "employee";
   } catch {
     return "employee";
   }
@@ -95,6 +98,30 @@ async function syncUserRecords(user: User): Promise<string | null> {
 
       await (supabase.from("employees") as any).update(updates).eq("id", employee.id);
       return employee.id;
+    } else {
+      console.log("[Auth] No employee record found. Creating new employee record for", email);
+      const { data: newEmp, error: insertErr } = await (supabase.from("employees") as any)
+        .insert({
+          user_id: user.id,
+          full_name: fullName,
+          email: email.toLowerCase(),
+          status: 'active',
+          joining_date: new Date().toISOString().split('T')[0],
+          basic_salary: 0,
+          hra: 0,
+          conveyance: 0,
+          medical: 0,
+          special_allowance: 0
+        })
+        .select("id")
+        .maybeSingle() as any;
+
+      if (insertErr) {
+        console.error("[Auth] Failed to create new employee record:", insertErr);
+      } else if (newEmp) {
+        console.log("[Auth] Created new employee record id:", newEmp.id);
+        return newEmp.id;
+      }
     }
 
     // 4. Ensure roles are set correctly
@@ -241,8 +268,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isEmployee = role === "employee";
+
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, employeeId, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, isAdmin, isManager, isEmployee, loading, employeeId, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

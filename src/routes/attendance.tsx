@@ -152,14 +152,19 @@ function AttendancePage() {
     } catch (e: any) {
       let msg = "Location access is mandatory for attendance tracking.";
       if (e.code === 1) msg = "Permission denied. Please allow location access.";
-      return toast.error(msg);
+      
+      if (type === "in") {
+        return toast.error(msg);
+      } else {
+        toast.warning("Check-out location could not be fetched, proceeding with check-out.");
+      }
     }
 
     try {
       if (type === "in") {
         await (supabase.from("attendance") as any).insert({ 
           employee_id: myEmployee?.id, date: todayStr, check_in: new Date().toISOString(), 
-          status: "present", check_in_lat: lat, check_in_lng: lng,
+          status: "present", check_in_lat: lat || null, check_in_lng: lng || null,
           metadata: isMarketing ? { mode: 'field' } : { mode: 'office' }
         });
         await supabase.functions.invoke("attendance-cached", {
@@ -172,7 +177,7 @@ function AttendancePage() {
         const hours = Math.max(0, (Date.now() - start.getTime()) / 3_600_000);
         await (supabase.from("attendance") as any).update({ 
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
-          check_out_lat: lat, check_out_lng: lng
+          check_out_lat: lat || null, check_out_lng: lng || null
         }).eq("id", latestRecord!.id);
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",

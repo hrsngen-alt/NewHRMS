@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Calculator, MapPin, Save, ShieldCheck, QrCode, Plus, Trash2 } from "lucide-react";
+import { Building2, Calculator, MapPin, Save, ShieldCheck, QrCode, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/settings")({ 
   component: () => (
@@ -108,8 +109,64 @@ function SettingsPage() {
     }
   };
 
+  const { data: allEmployees = [], isLoading: loadingEmployees } = useQuery({
+    queryKey: ["employees-list-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, user_id, full_name, email, department, designation")
+        .not("user_id", "is", null);
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const { data: userRoles = [], isLoading: loadingRoles } = useQuery({
+    queryKey: ["user-roles-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    setBusy(true);
+    try {
+      // 1. Delete existing roles for this user to avoid multiple role assignments
+      const { error: delErr } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId);
+      if (delErr) throw delErr;
+      
+      // 2. Insert the new role
+      const { error: insErr } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: newRole });
+      if (insErr) throw insErr;
+      
+      toast.success("User role updated successfully!");
+      qc.invalidateQueries({ queryKey: ["user-roles-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update role");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loadingSettings) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading settings...</div>;
-  if (!isAdmin) return <div className="p-8 text-center text-destructive font-bold">Access Denied: Admins Only.</div>;
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <AlertTriangle className="size-12 text-destructive animate-pulse" />
+        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin users. If you believe this is an error, please contact support.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -124,7 +181,7 @@ function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 h-14 bg-muted/50 p-1.5 rounded-2xl">
+        <TabsList className="grid w-full grid-cols-4 mb-8 h-14 bg-muted/50 p-1.5 rounded-2xl">
           <TabsTrigger value="general" className="rounded-xl font-bold gap-2 data-[state=active]:shadow-md">
             <Building2 className="size-4" /> General
           </TabsTrigger>
@@ -133,6 +190,9 @@ function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="location" className="rounded-xl font-bold gap-2 data-[state=active]:shadow-md">
             <MapPin className="size-4" /> Office Locations
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="rounded-xl font-bold gap-2 data-[state=active]:shadow-md">
+            <ShieldCheck className="size-4" /> User Access Controls
           </TabsTrigger>
         </TabsList>
 
@@ -265,6 +325,88 @@ function SettingsPage() {
                   )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-6">
+          <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
+            <CardHeader className="bg-muted/30 border-b">
+              <CardTitle>User Access Controls</CardTitle>
+              <CardDescription>Assign roles and manage database access permissions for registered employees.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8">
+              {(loadingEmployees || loadingRoles) ? (
+                <div className="py-10 text-center text-muted-foreground animate-pulse font-medium">
+                  Loading employees and access records...
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-primary/5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <th className="pb-4 text-left font-bold pl-4">Employee</th>
+                        <th className="pb-4 text-left font-bold">Email</th>
+                        <th className="pb-4 text-left font-bold">Department</th>
+                        <th className="pb-4 text-left font-bold">Designation</th>
+                        <th className="pb-4 text-right font-bold pr-4">Access Role</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-primary/5">
+                      {allEmployees.map((emp: any) => {
+                        const matchingRole = userRoles.find((r: any) => r.user_id === emp.user_id)?.role || "employee";
+                        return (
+                          <tr key={emp.id} className="group hover:bg-muted/10 transition-colors">
+                            <td className="py-4 pl-4">
+                              <div className="flex items-center gap-3">
+                                <div className="size-10 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center font-bold text-primary text-sm shadow-sm group-hover:scale-105 transition-transform">
+                                  {emp.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-sm tracking-tight text-foreground">{emp.full_name}</p>
+                                  <p className="text-[10px] text-muted-foreground font-medium">ID: {emp.id.slice(0, 8)}...</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 text-sm font-medium text-muted-foreground">{emp.email}</td>
+                            <td className="py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/5 text-primary border border-primary/10">
+                                {emp.department || "N/A"}
+                              </span>
+                            </td>
+                            <td className="py-4 text-sm font-medium text-muted-foreground">{emp.designation || "N/A"}</td>
+                            <td className="py-4 text-right pr-4">
+                              <div className="inline-block w-40 text-left">
+                                <Select
+                                  value={matchingRole}
+                                  disabled={busy}
+                                  onValueChange={(val) => handleRoleChange(emp.user_id, val)}
+                                >
+                                  <SelectTrigger className="h-10 rounded-xl border border-muted-foreground/20 bg-background/50 backdrop-blur-sm focus:ring-primary shadow-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl border shadow-elegant">
+                                    <SelectItem value="employee" className="rounded-lg font-medium">Employee</SelectItem>
+                                    <SelectItem value="manager" className="rounded-lg font-medium">Manager</SelectItem>
+                                    <SelectItem value="admin" className="rounded-lg font-medium">Admin</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {allEmployees.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="text-center py-10 text-muted-foreground italic">
+                            No registered employees with active accounts found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

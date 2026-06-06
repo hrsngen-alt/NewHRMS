@@ -22,6 +22,8 @@ function LeavesPage() {
   const qc = useQueryClient();
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isAuthorized = isAdmin || isManager;
   const [open, setOpen] = useState(false);
   const [deptFilter, setDeptFilter] = useState("all");
   const [q, setQ] = useState("");
@@ -33,15 +35,39 @@ function LeavesPage() {
     queryFn: async () => (await supabase.from("employees").select("id, full_name").eq("status", "active").order("full_name")).data || [],
   });
 
-  const { data: leaves = [] } = useQuery({
-    queryKey: ["leaves", role, myEmployee?.id],
+  const { data: departmentEmployees = [] } = useQuery({
+    queryKey: ["department-employees-leaves", myEmployee?.department],
+    enabled: role === "manager" && !!myEmployee?.department,
     queryFn: async () => {
-      let q = supabase.from("leaves").select("*, employees(full_name, employee_code, department)").order("created_at", { ascending: false });
-      if (role !== "admin" && myEmployee) q = (q as any).eq("employee_id", myEmployee.id);
-      const { data, error } = await q;
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("department", myEmployee!.department);
+      if (error) throw error;
+      return data.map(e => e.id) || [];
+    }
+  });
+
+  const { data: leaves = [] } = useQuery({
+    queryKey: ["leaves", role, myEmployee?.id, departmentEmployees],
+    queryFn: async () => {
+      let query = supabase.from("leaves").select("*, employees(full_name, employee_code, department)").order("created_at", { ascending: false });
+      
+      if (role === "manager" && myEmployee) {
+        if (departmentEmployees.length > 0) {
+          query = query.in("employee_id", departmentEmployees);
+        } else {
+          query = query.eq("employee_id", myEmployee.id);
+        }
+      } else if (role !== "admin" && myEmployee) {
+        query = query.eq("employee_id", myEmployee.id);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: !!user && (role === "admin" || !!myEmployee),
   });
 
   const departments = useMemo(() => {
@@ -153,23 +179,25 @@ function LeavesPage() {
       <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
         <div className="bg-muted/20 px-6 py-2 border-b flex flex-wrap items-center gap-4">
           <h3 className="font-semibold shrink-0">Leave Requests</h3>
-          {isAdmin && (
+          {isAuthorized && (
             <div className="flex flex-1 items-center gap-3 min-w-[300px]">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or reason..." className="pl-9 h-9 bg-background" />
               </div>
-              <Select value={deptFilter} onValueChange={setDeptFilter}>
-                <SelectTrigger className="w-48 h-9 bg-background">
-                  <SelectValue placeholder="All Departments" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {role === "admin" && (
+                <Select value={deptFilter} onValueChange={setDeptFilter}>
+                  <SelectTrigger className="w-48 h-9 bg-background">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
         </div>
@@ -177,20 +205,20 @@ function LeavesPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                {role === "admin" && <TableHead className="font-bold text-foreground pl-6">Employee</TableHead>}
-                <TableHead className={cn("font-bold text-foreground", role !== "admin" && "pl-6")}>Type</TableHead>
+                {isAuthorized && <TableHead className="font-bold text-foreground pl-6">Employee</TableHead>}
+                <TableHead className={cn("font-bold text-foreground", !isAuthorized && "pl-6")}>Type</TableHead>
                 <TableHead className="font-bold text-foreground">Duration</TableHead>
                 <TableHead className="font-bold text-foreground">Days</TableHead>
                 <TableHead className="font-bold text-foreground">Reason</TableHead>
                 <TableHead className="font-bold text-foreground">Status</TableHead>
-                {role === "admin" && <TableHead className="text-right pr-6">Actions</TableHead>}
+                {isAuthorized && <TableHead className="text-right pr-6">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLeaves.map((l: any) => (
                 <TableRow key={l.id} className="hover:bg-muted/5 transition-colors">
-                  {role === "admin" && <TableCell className="font-semibold pl-6">{l.employees?.full_name}</TableCell>}
-                  <TableCell className={cn("capitalize font-medium", role !== "admin" && "pl-6")}>{l.leave_type} Leave</TableCell>
+                  {isAuthorized && <TableCell className="font-semibold pl-6">{l.employees?.full_name}</TableCell>}
+                  <TableCell className={cn("capitalize font-medium", !isAuthorized && "pl-6")}>{l.leave_type} Leave</TableCell>
                   <TableCell className="text-sm">
                     <div className="flex flex-col">
                       <span className="font-medium text-foreground">{l.start_date}</span>
@@ -207,17 +235,21 @@ function LeavesPage() {
                       {l.status}
                     </span>
                   </TableCell>
-                  {role === "admin" && (
+                  {isAuthorized && (
                     <TableCell className="text-right pr-6">
                       {l.status === "pending" && (
-                        <div className="flex items-center justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => decide(l.id, "approved")} className="hover:bg-green-50">
-                            <Check className="size-4 text-success" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => decide(l.id, "rejected")} className="hover:bg-red-50">
-                            <X className="size-4 text-destructive" />
-                          </Button>
-                        </div>
+                        role === "manager" && l.employee_id === myEmployee?.id ? (
+                          <span className="text-[10px] font-bold text-muted-foreground/50 uppercase">Self Request</span>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="icon" variant="ghost" onClick={() => decide(l.id, "approved")} className="hover:bg-green-50" title="Approve">
+                              <Check className="size-4 text-success" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => decide(l.id, "rejected")} className="hover:bg-red-50" title="Reject">
+                              <X className="size-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )
                       )}
                     </TableCell>
                   )}

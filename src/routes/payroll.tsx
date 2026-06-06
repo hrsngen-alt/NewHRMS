@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
-import { Lock, Play, FileDown, Wallet } from "lucide-react";
+import { Lock, Play, FileDown, Wallet, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { generatePayslipPDF } from "@/lib/payslip";
 import { cn } from "../lib/utils";
 
@@ -18,6 +19,18 @@ const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 function PayrollPage() {
   const qc = useQueryClient();
+  const { role } = useAuth();
+
+  if (role !== "admin") {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <AlertTriangle className="size-12 text-destructive animate-pulse" />
+        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin users. If you believe this is an error, please contact support.</p>
+      </div>
+    );
+  }
+
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());

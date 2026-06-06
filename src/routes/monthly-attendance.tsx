@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { 
   Clock, Play, Square, Search, Users, Calendar, Activity, 
   CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, 
-  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X
+  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, AlertTriangle
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -26,6 +26,19 @@ function AttendancePage() {
   const qc = useQueryClient();
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isAuthorized = isAdmin || isManager;
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <AlertTriangle className="size-12 text-destructive animate-pulse" />
+        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin or Manager users. If you believe this is an error, please contact support.</p>
+      </div>
+    );
+  }
+
   const [q, setQ] = useState("");
   const { myEmployee, isLoading: empLoading } = useMyEmployee();
   const [selectedEmpId, setSelectedEmpId] = useState<string>("");
@@ -38,7 +51,7 @@ function AttendancePage() {
 
   const { data: allEmployees = [] } = useQuery({
     queryKey: ["employees", "list"],
-    enabled: isAdmin,
+    enabled: isAuthorized,
     queryFn: async () => {
       const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
       if (error) return [];
@@ -46,10 +59,18 @@ function AttendancePage() {
     }
   });
 
-  const departments = useMemo(() => Array.from(new Set(allEmployees.map((e: any) => e.department).filter(Boolean))), [allEmployees]);
+  const visibleEmployees = useMemo(() => {
+    if (isAdmin) return allEmployees;
+    if (isManager && myEmployee) {
+      return allEmployees.filter((e: any) => e.department === myEmployee.department);
+    }
+    return [];
+  }, [allEmployees, isAdmin, isManager, myEmployee]);
 
-  const targetEmployeeId = isAdmin ? (selectedEmpId || myEmployee?.id) : myEmployee?.id;
-  const targetEmployee = isAdmin ? (allEmployees.find((e: any) => e.id === targetEmployeeId) || myEmployee) : myEmployee;
+  const departments = useMemo(() => Array.from(new Set(visibleEmployees.map((e: any) => e.department).filter(Boolean))), [visibleEmployees]);
+
+  const targetEmployeeId = isAuthorized ? (selectedEmpId || myEmployee?.id) : myEmployee?.id;
+  const targetEmployee = isAuthorized ? (visibleEmployees.find((e: any) => e.id === targetEmployeeId) || myEmployee) : myEmployee;
 
   const isMarketing = targetEmployee?.department?.toLowerCase() === "marketing";
 
@@ -61,14 +82,14 @@ function AttendancePage() {
         .select("*, employees(full_name, employee_code, department)")
         .order("check_in", { ascending: false });
       
-      if (!isAdmin && myEmployee) query = query.eq("employee_id", myEmployee.id).limit(200);
+      if (!isAdmin && !isManager && myEmployee) query = query.eq("employee_id", myEmployee.id).limit(200);
       else query = query.limit(500);
       
       const { data, error } = await query;
       if (error) throw error;
       return (data as any) || [];
     },
-    enabled: !!user && (isAdmin || !!myEmployee),
+    enabled: !!user && (isAuthorized || !!myEmployee),
   });
 
   useEffect(() => {
@@ -152,11 +173,11 @@ function AttendancePage() {
       {/* Header Section */}
       <div className="space-y-6">
         <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-          {isAdmin ? "Team Monthly Attendance" : "My Monthly Attendance"}
+          {isAuthorized ? "Team Monthly Attendance" : "My Monthly Attendance"}
         </h1>
 
         <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-3xl border-2 border-slate-50 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-            {isAdmin && (
+            {isAuthorized && (
               <div className="relative min-w-[280px]">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input 
@@ -168,7 +189,7 @@ function AttendancePage() {
               </div>
             )}
 
-            {isAdmin && (
+            {isAuthorized && (
               <div className="relative min-w-[240px]">
                 <Users className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
@@ -176,7 +197,7 @@ function AttendancePage() {
                     <SelectValue placeholder="Select Employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    {allEmployees.filter((e: any) => 
+                    {visibleEmployees.filter((e: any) => 
                       !q || e.full_name?.toLowerCase().includes(q.toLowerCase()) || e.employee_code?.toLowerCase().includes(q.toLowerCase())
                     ).map((e: any) => (
                       <SelectItem key={e.id} value={e.id}>{e.full_name} ({e.employee_code})</SelectItem>
@@ -186,7 +207,7 @@ function AttendancePage() {
               </div>
             )}
 
-            {isAdmin && (
+            {isAuthorized && (
               <div className="relative min-w-[180px]">
                 <Select value={selectedDept} onValueChange={setSelectedDept}>
                   <SelectTrigger className="h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold">

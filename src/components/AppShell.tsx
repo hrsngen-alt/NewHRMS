@@ -27,21 +27,21 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-type NavItem = { to: string; label: string; icon: any; adminOnly?: boolean; external?: boolean };
+type NavItem = { to: string; label: string; icon: any; allowedRoles?: ("admin" | "manager" | "employee")[]; external?: boolean };
 const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/employees", label: "Employees", icon: Users, adminOnly: true },
+  { to: "/employees", label: "Employees", icon: Users, allowedRoles: ["admin"] },
   { to: "/attendance", label: "Attendance", icon: Clock },
-  { to: "/monthly-attendance", label: "Monthly Attendance", icon: CalendarIcon, adminOnly: true },
+  { to: "/monthly-attendance", label: "Monthly Attendance", icon: CalendarIcon, allowedRoles: ["admin", "manager"] },
   { to: "/leaves", label: "Leaves", icon: CalendarDays },
   { to: "/performance", label: "Performance", icon: Award },
-  { to: "/payroll", label: "Payroll", icon: Wallet, adminOnly: true },
-  { to: "/salary-structure", label: "Salary Structure", icon: IndianRupee, adminOnly: true },
-  { to: "/reports", label: "Reports", icon: BarChart3, adminOnly: true },
+  { to: "/payroll", label: "Payroll", icon: Wallet, allowedRoles: ["admin"] },
+  { to: "/salary-structure", label: "Salary Structure", icon: IndianRupee, allowedRoles: ["admin"] },
+  { to: "/reports", label: "Reports", icon: BarChart3, allowedRoles: ["admin", "manager"] },
   { to: "/payslips", label: "Salary Slips", icon: FileText },
   { to: "/profile", label: "My Profile", icon: User },
-  { to: "/kiosk", label: "Kiosk Terminal", icon: QrCode, adminOnly: true, external: true },
-  { to: "/settings", label: "Settings", icon: Settings, adminOnly: true },
+  { to: "/kiosk", label: "Kiosk Terminal", icon: QrCode, allowedRoles: ["admin"], external: true },
+  { to: "/settings", label: "Settings", icon: Settings, allowedRoles: ["admin"] },
   { to: "/resignation", label: "Resignation", icon: LogOut },
 ];
 
@@ -58,7 +58,7 @@ function NavContent({ role, location, onNavClick }: { role: string | null, locat
     <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 custom-scrollbar py-4">
       <nav className="space-y-1">
         <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Main Menu</p>
-        {nav.filter((n) => !n.adminOnly || role === "admin").map((n) => {
+        {nav.filter((n) => !n.allowedRoles || (role && n.allowedRoles.includes(role as any))).map((n) => {
           const active = location.pathname.startsWith(n.to);
           const content = (
             <>
@@ -145,29 +145,77 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   const markAllAsRead = async () => {
     if (unreadCount === 0) return;
-    await supabase.from("notifications" as any).update({ is_read: true }).eq("user_id", user?.id);
-    qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    try {
+      const { error } = await supabase.from("notifications" as any).update({ is_read: true }).eq("user_id", user?.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    } catch (err: any) {
+      console.error("Failed to mark all as read:", err);
+    }
   };
 
   const clearAll = async () => {
     if (notifications.length === 0) return;
     if (!confirm("Are you sure you want to clear all notifications?")) return;
-    await supabase.from("notifications" as any).delete().eq("user_id", user?.id);
-    qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
-    toast.success("Notifications cleared");
+    try {
+      const { error } = await supabase.from("notifications" as any).delete().eq("user_id", user?.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+      toast.success("Notifications cleared");
+    } catch (err: any) {
+      console.error("Failed to clear notifications:", err);
+      toast.error("Failed to clear notifications: " + err.message);
+    }
   };
 
   const deleteNotification = async (id: string) => {
-    await supabase.from("notifications" as any).delete().eq("id", id);
-    qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    try {
+      const { error } = await supabase.from("notifications" as any).delete().eq("id", id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    } catch (err: any) {
+      console.error("Failed to delete notification:", err);
+      toast.error("Failed to delete notification: " + err.message);
+    }
+  };
+
+  const getNotificationFallbackLink = (n: any) => {
+    const title = (n.title || "").toLowerCase();
+    const msg = (n.message || "").toLowerCase();
+    if (title.includes("resignation") || msg.includes("resignation")) {
+      return "/resignation";
+    }
+    if (
+      title.includes("announcement") ||
+      title.includes("bulletin") ||
+      title.includes("event") ||
+      msg.includes("announcement") ||
+      msg.includes("bulletin") ||
+      msg.includes("event")
+    ) {
+      return "/announcements";
+    }
+    if (title.includes("appraisal") || title.includes("performance") || msg.includes("appraisal") || msg.includes("performance")) {
+      return "/performance";
+    }
+    return null;
   };
 
   const handleNotificationClick = async (n: any) => {
-    if (!n.is_read) {
-      await supabase.from("notifications" as any).update({ is_read: true }).eq("id", n.id);
-      qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+    try {
+      if (!n.is_read) {
+        const { error } = await supabase.from("notifications" as any).update({ is_read: true }).eq("id", n.id);
+        if (error) throw error;
+        qc.invalidateQueries({ queryKey: ["notifications", user?.id] });
+      }
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
     }
-    if (n.link) navigate({ to: n.link });
+
+    const targetLink = n.link || getNotificationFallbackLink(n);
+    if (targetLink) {
+      navigate({ to: targetLink });
+    }
   };
 
   useEffect(() => {
@@ -360,10 +408,14 @@ export function AppShell({ children }: { children?: ReactNode }) {
                  <Sun className="size-4 transition-transform group-hover:rotate-45" />
                )}
             </Button>
-            <div className="h-9 w-px bg-border mx-2" />
-            <Button variant="outline" size="icon" className="rounded-full border-2 hover:bg-primary/10 hover:text-primary transition-all shadow-sm" asChild>
-               <Link to="/settings"><Settings className="size-4" /></Link>
-            </Button>
+            {role === "admin" && (
+              <>
+                <div className="h-9 w-px bg-border mx-2" />
+                <Button variant="outline" size="icon" className="rounded-full border-2 hover:bg-primary/10 hover:text-primary transition-all shadow-sm" asChild>
+                   <Link to="/settings"><Settings className="size-4" /></Link>
+                </Button>
+              </>
+            )}
           </div>
         </header>
         

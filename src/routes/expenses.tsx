@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Receipt, Plus, Clock, CheckCircle2, XCircle, Wallet, FileText, IndianRupee, Upload, ExternalLink, Eye, Search, TrendingUp, Building2, X, Users as UsersIcon, ListFilter, LayoutGrid } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
@@ -19,55 +21,89 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export const Route = createFileRoute("/expenses")({ component: () => <AppShell><ExpensesPage /></AppShell> });
 
+const getWhatsAppUrl = (phone: string, employeeName: string, title: string, amount: number) => {
+  let cleaned = (phone || "").replace(/\D/g, "");
+  if (cleaned.length === 10) {
+    cleaned = "91" + cleaned; // Default to India prefix
+  }
+  const text = `Hi ${employeeName}, I have a doubt regarding your expense claim "${title}" of amount ₹${Number(amount).toLocaleString('en-IN')}.`;
+  return `https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`;
+};
+
 function ExpensesPage() {
   const qc = useQueryClient();
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isAuthorized = isAdmin || isManager;
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"claims" | "employees">("employees");
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
-  const [reviewingClaim, setReviewingClaim] = useState<{id: string, status: 'approved' | 'rejected'} | null>(null);
+  const [reviewingClaim, setReviewingClaim] = useState<{ id: string, status: 'approved' | 'rejected' } | null>(null);
   const [reviewNote, setReviewNote] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const { myEmployee } = useMyEmployee();
 
-  const { data: claims = [] as any[], isLoading } = useQuery({
-    queryKey: ["expense-claims", role, myEmployee?.id],
+  const { data: departmentEmployees = [] } = useQuery({
+    queryKey: ["department-employees-expenses", myEmployee?.department],
+    enabled: role === "manager" && !!myEmployee?.department,
     queryFn: async () => {
-      let q = supabase.from("expense_claims" as any).select("*, employees(full_name, department)").order("created_at", { ascending: false });
-      if (!isAdmin && myEmployee) q = q.eq("employee_id", myEmployee.id);
-      const { data, error } = await q;
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("department", myEmployee!.department);
+      if (error) throw error;
+      return data.map(e => e.id) || [];
+    }
+  });
+
+  const { data: claims = [] as any[], isLoading } = useQuery({
+    queryKey: ["expense-claims", role, myEmployee?.id, departmentEmployees],
+    queryFn: async () => {
+      let query = supabase.from("expense_claims" as any).select("*, employees(full_name, department, phone)").order("created_at", { ascending: false });
+
+      if (role === "manager" && myEmployee) {
+        if (departmentEmployees.length > 0) {
+          query = query.in("employee_id", departmentEmployees);
+        } else {
+          query = query.eq("employee_id", myEmployee.id);
+        }
+      } else if (!isAdmin && myEmployee) {
+        query = query.eq("employee_id", myEmployee.id);
+      }
+
+      const { data, error } = await query;
       if (error) return [];
       return data as any[];
     },
-    enabled: !!user && (isAdmin || !!myEmployee),
+    enabled: !!user && (role === "admin" || !!myEmployee),
   });
 
   // Grouping Logic
   const groupedData = useMemo(() => {
     const map: Record<string, any> = {};
     claims.forEach((c: any) => {
-       const eid = c.employee_id;
-       if (!map[eid]) {
-          map[eid] = {
-             id: eid,
-             name: c.employees?.full_name || "Unknown",
-             dept: c.employees?.department || "Other",
-             total: 0,
-             count: 0,
-             pending: 0,
-             latest: c.created_at
-          };
-       }
-       map[eid].total += Number(c.amount);
-       map[eid].count += 1;
-       if (c.status === 'pending') map[eid].pending += 1;
-       if (new Date(c.created_at) > new Date(map[eid].latest)) map[eid].latest = c.created_at;
+      const eid = c.employee_id;
+      if (!map[eid]) {
+        map[eid] = {
+          id: eid,
+          name: c.employees?.full_name || "Unknown",
+          dept: c.employees?.department || "Other",
+          total: 0,
+          count: 0,
+          pending: 0,
+          latest: c.created_at
+        };
+      }
+      map[eid].total += Number(c.amount);
+      map[eid].count += 1;
+      if (c.status === 'pending') map[eid].pending += 1;
+      if (new Date(c.created_at) > new Date(map[eid].latest)) map[eid].latest = c.created_at;
     });
-    return Object.values(map).sort((a,b) => b.total - a.total);
+    return Object.values(map).sort((a, b) => b.total - a.total);
   }, [claims]);
 
   const deptData = useMemo(() => {
@@ -77,7 +113,7 @@ function ExpensesPage() {
       const dept = c.employees?.department || "Other";
       map[dept] = (map[dept] ?? 0) + Number(c.amount);
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [claims]);
 
   const filteredClaims = claims.filter((c: any) => {
@@ -97,7 +133,7 @@ function ExpensesPage() {
     const empClaims = claims.filter((c: any) => c.employee_id === selectedEmpId);
     const emp = empClaims[0]?.employees || { full_name: "Employee", department: "Unknown" };
     const total = empClaims.reduce((s: number, c: any) => s + Number(c.amount), 0);
-    const approved = empClaims.filter((c:any) => c.status === 'approved').length;
+    const approved = empClaims.filter((c: any) => c.status === 'approved').length;
     return { emp, claims: empClaims, total, approved };
   }, [selectedEmpId, claims]);
 
@@ -129,11 +165,12 @@ function ExpensesPage() {
         amount: Number(fd.get("amount")),
         category: fd.get("category"),
         receipt_url: receiptUrl,
+        notes: fd.get("notes") ? String(fd.get("notes")) : null,
         status: "pending"
       });
 
       if (insertError) throw insertError;
-      
+
       toast.success("Expense claim submitted successfully!");
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["expense-claims"] });
@@ -145,11 +182,11 @@ function ExpensesPage() {
   };
 
   const updateStatus = async (id: string, status: string, notes?: string) => {
-    const { error } = await supabase.from("expense_claims" as any).update({ 
+    const { error } = await supabase.from("expense_claims" as any).update({
       status,
-      admin_notes: notes || null 
+      admin_notes: notes || null
     }).eq("id", id);
-    
+
     if (error) toast.error(error.message);
     else {
       toast.success(`Claim ${status} successfully.`);
@@ -162,122 +199,143 @@ function ExpensesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-3">
-             <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                <IndianRupee className="size-5" />
-             </div>
-             <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Expense Hub</h1>
+            <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+              <IndianRupee className="size-5" />
+            </div>
+            <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Expense Hub</h1>
           </div>
           <p className="text-muted-foreground font-medium">Consolidated financial operations and reimbursements.</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
-           {isAdmin && (
-             <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border-2 border-primary/5">
-                <div className="flex p-1 bg-white/50 rounded-lg border border-primary/5 mr-2">
-                   <button 
-                      onClick={() => setViewMode("employees")}
-                      className={cn("p-1.5 rounded-md transition-all", viewMode === "employees" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-primary/5")}
-                      title="Group by Employee"
-                   >
-                      <UsersIcon className="size-4" />
-                   </button>
-                   <button 
-                      onClick={() => setViewMode("claims")}
-                      className={cn("p-1.5 rounded-md transition-all", viewMode === "claims" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-primary/5")}
-                      title="Individual Claims"
-                   >
-                      <ListFilter className="size-4" />
-                   </button>
-                </div>
-                <div className="relative">
-                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                   <Input 
-                      placeholder="Search..." 
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="h-10 pl-9 w-[180px] border-none bg-transparent focus-visible:ring-0 text-xs font-bold"
-                   />
-                </div>
-                <div className="h-6 w-[1px] bg-primary/10" />
-                <Select value={deptFilter} onValueChange={setDeptFilter}>
-                   <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest w-[140px]">
+          {isAuthorized && (
+            <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border-2 border-primary/5">
+              <div className="flex p-1 bg-white/50 rounded-lg border border-primary/5 mr-2">
+                <button
+                  onClick={() => setViewMode("employees")}
+                  className={cn("p-1.5 rounded-md transition-all", viewMode === "employees" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-primary/5")}
+                  title="Group by Employee"
+                >
+                  <UsersIcon className="size-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("claims")}
+                  className={cn("p-1.5 rounded-md transition-all", viewMode === "claims" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-primary/5")}
+                  title="Individual Claims"
+                >
+                  <ListFilter className="size-4" />
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-10 pl-9 w-[180px] border-none bg-transparent focus-visible:ring-0 text-xs font-bold"
+                />
+              </div>
+              {role === "admin" && (
+                <>
+                  <div className="h-6 w-[1px] bg-primary/10" />
+                  <Select value={deptFilter} onValueChange={setDeptFilter}>
+                    <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest w-[140px]">
                       <SelectValue placeholder="Dept" />
-                   </SelectTrigger>
-                   <SelectContent className="rounded-xl">
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
                       <SelectItem value="all">All Depts</SelectItem>
                       {Array.from(new Set(claims.map((c: any) => c.employees?.department).filter(Boolean))).map((d: any) => (
                         <SelectItem key={d as string} value={d as string}>{d as string}</SelectItem>
                       ))}
-                   </SelectContent>
-                </Select>
-             </div>
-           )}
-           {!isAdmin && (
-             <Dialog open={open} onOpenChange={setOpen}>
-               <DialogTrigger asChild>
-                 <Button className="h-12 px-8 rounded-xl font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-                   <Plus className="size-5" /> Submit Claim
-                 </Button>
-               </DialogTrigger>
-               <DialogContent className="rounded-3xl p-8 border-2 border-primary/5 shadow-elegant max-w-xl">
-                 <DialogHeader>
-                   <DialogTitle className="text-2xl font-black tracking-tight">Submit Expense Claim</DialogTitle>
-                   <CardDescription>Enter details and attach your bill copy for approval.</CardDescription>
-                 </DialogHeader>
-                 <form onSubmit={submitClaim} className="space-y-6 mt-6">
-                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Expense Title</Label>
-                     <Input name="title" placeholder="e.g. Client Dinner, Taxi to Airport" required className="h-12 rounded-xl border-2" />
-                   </div>
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Amount (₹)</Label>
-                       <Input name="amount" type="number" placeholder="0.00" required className="h-12 rounded-xl border-2" />
-                     </div>
-                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
-                       <Select name="category" required defaultValue="travel">
-                         <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="travel">Travel</SelectItem>
-                           <SelectItem value="food">Food & Dining</SelectItem>
-                           <SelectItem value="fuel">Fuel / Transport</SelectItem>
-                           <SelectItem value="other">Other</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
-                   </div>
-                   
-                   <div className="space-y-2">
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+            </div>
+          )}
+          {myEmployee && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="h-12 px-8 rounded-xl font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+                  <Plus className="size-5" /> Submit Claim
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-3xl p-0 border-2 border-primary/5 shadow-elegant max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-8 pb-4 shrink-0">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-black tracking-tight">Submit Expense Claim</DialogTitle>
+                    <CardDescription>Enter details and attach your bill copy for approval.</CardDescription>
+                  </DialogHeader>
+                </div>
+                <form onSubmit={submitClaim} className="flex flex-col flex-1 min-h-0">
+                  <div className="overflow-y-auto flex-1 px-8 pb-2 space-y-5">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Expense Title</Label>
+                      <Input name="title" placeholder="e.g. Client Dinner, Taxi to Airport" required className="h-12 rounded-xl border-2" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Amount (₹)</Label>
+                        <Input name="amount" type="number" placeholder="0.00" required className="h-12 rounded-xl border-2" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
+                        <Select name="category" required defaultValue="travel">
+                          <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="travel">Travel</SelectItem>
+                            <SelectItem value="food">Food & Dining</SelectItem>
+                            <SelectItem value="fuel">Fuel / Transport</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                        Notes / Description <span className="normal-case font-normal text-muted-foreground/60">(optional)</span>
+                      </Label>
+                      <Textarea
+                        name="notes"
+                        placeholder="Describe the reason for this expense, e.g. client meeting, team lunch..."
+                        className="rounded-xl border-2 min-h-[90px] resize-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2 pb-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Attach Receipt (Bill Copy)</Label>
                       <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group" onClick={() => fileRef.current?.click()}>
-                         <input type="file" className="hidden" ref={fileRef} accept="image/*,application/pdf" />
-                         <Upload className="size-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                         <p className="text-xs font-bold text-muted-foreground">Click to upload image or PDF</p>
-                         <p className="text-[10px] text-muted-foreground/50 mt-1">Maximum size: 5MB</p>
+                        <input type="file" className="hidden" ref={fileRef} accept="image/*,application/pdf" />
+                        <Upload className="size-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                        <p className="text-xs font-bold text-muted-foreground">Click to upload image or PDF</p>
+                        <p className="text-[10px] text-muted-foreground/50 mt-1">Maximum size: 5MB</p>
                       </div>
-                   </div>
+                    </div>
+                  </div>
 
-                   <DialogFooter className="pt-6">
-                      <Button type="submit" disabled={busy} className="w-full h-12 rounded-xl font-black">{busy ? "Submitting..." : "Submit for Approval"}</Button>
-                   </DialogFooter>
-                 </form>
-               </DialogContent>
-             </Dialog>
-           )}
+                  <div className="px-8 py-5 border-t border-border/40 bg-muted/10 shrink-0">
+                    <Button type="submit" disabled={busy} className="w-full h-12 rounded-xl font-black">
+                      {busy ? "Submitting..." : "Submit for Approval"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
-      {isAdmin && claims.length > 0 && (
+      {isAuthorized && claims.length > 0 && (
         <div className="grid gap-6 lg:grid-cols-12">
           <Card className="lg:col-span-7 rounded-[2rem] border-2 border-primary/5 shadow-card p-8 bg-card relative overflow-hidden group">
             <div className="flex items-center justify-between mb-8">
-               <div>
-                  <h3 className="font-black text-xl tracking-tight flex items-center gap-2">
-                    <Building2 className="size-5 text-indigo-500" /> Dept-wise Spending
-                  </h3>
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Operational cost distribution</p>
-               </div>
+              <div>
+                <h3 className="font-black text-xl tracking-tight flex items-center gap-2">
+                  <Building2 className="size-5 text-indigo-500" /> Dept-wise Spending
+                </h3>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Operational cost distribution</p>
+              </div>
             </div>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -297,12 +355,12 @@ function ExpensesPage() {
 
           <Card className="lg:col-span-5 rounded-[2rem] border-2 border-primary/5 shadow-card p-8 bg-card relative overflow-hidden group">
             <div className="flex items-center justify-between mb-8">
-               <div>
-                  <h3 className="font-black text-xl tracking-tight flex items-center gap-2">
-                    <TrendingUp className="size-5 text-teal-500" /> Top Claimants
-                  </h3>
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Individual expense leadership</p>
-               </div>
+              <div>
+                <h3 className="font-black text-xl tracking-tight flex items-center gap-2">
+                  <TrendingUp className="size-5 text-teal-500" /> Top Claimants
+                </h3>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Individual expense leadership</p>
+              </div>
             </div>
             <div className="space-y-4">
               {groupedData.slice(0, 5).map((emp, i) => (
@@ -327,122 +385,164 @@ function ExpensesPage() {
       )}
 
       <div className="grid gap-6 md:grid-cols-3">
-         <StatCard icon={Wallet} label="Net Spending Volume" value={`₹${(viewMode === 'employees' ? filteredGroups : filteredClaims).reduce((s: number, c: any) => s + Number(c.total || c.amount), 0).toLocaleString('en-IN')}`} color="bg-indigo-500" />
-         <StatCard icon={CheckCircle2} label="Approved Assets" value={`₹${claims.filter((c: any) => c.status === 'approved').reduce((s: number, c: any) => s + Number(c.amount), 0).toLocaleString('en-IN')}`} color="bg-teal-500" />
-         <StatCard icon={Clock} label="Action Required" value={claims.filter((c: any) => c.status === 'pending').length} color="bg-amber-500" />
+        <StatCard icon={Wallet} label="Net Spending Volume" value={`₹${(viewMode === 'employees' ? filteredGroups : filteredClaims).reduce((s: number, c: any) => s + Number(c.total || c.amount), 0).toLocaleString('en-IN')}`} color="bg-indigo-500" />
+        <StatCard icon={CheckCircle2} label="Approved Assets" value={`₹${claims.filter((c: any) => c.status === 'approved').reduce((s: number, c: any) => s + Number(c.amount), 0).toLocaleString('en-IN')}`} color="bg-teal-500" />
+        <StatCard icon={Clock} label="Action Required" value={claims.filter((c: any) => c.status === 'pending').length} color="bg-amber-500" />
       </div>
 
       <Dialog open={!!selectedEmpId} onOpenChange={(v) => !v && setSelectedEmpId(null)}>
         <DialogContent className="max-w-5xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-slate-50 dark:bg-slate-950">
-           {empDetailData && (
-             <div className="flex flex-col h-[85vh]">
-                <div className="bg-white dark:bg-slate-900 p-8 border-b border-slate-200 dark:border-slate-800">
-                   <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-5">
-                         <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/5">
-                            <UsersIcon className="size-8" />
-                         </div>
-                         <div>
-                            <h2 className="text-3xl font-black tracking-tight">{empDetailData.emp.full_name}</h2>
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{empDetailData.emp.department} • Financial Ledger</p>
-                         </div>
-                      </div>
-                      <div className="text-right">
-                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Aggregate Claim Value</p>
-                         <p className="text-3xl font-black text-foreground">₹{empDetailData.total.toLocaleString('en-IN')}</p>
-                      </div>
-                   </div>
+          {empDetailData && (
+            <div className="flex flex-col h-[85vh]">
+              <div className="bg-white dark:bg-slate-900 p-8 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-5">
+                    <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/5">
+                      <UsersIcon className="size-8" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black tracking-tight">{empDetailData.emp.full_name}</h2>
+                      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{empDetailData.emp.department} • Financial Ledger</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Aggregate Claim Value</p>
+                    <p className="text-3xl font-black text-foreground">₹{empDetailData.total.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-8 space-y-8">
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Submission Count</p>
+                    <p className="text-2xl font-black">{empDetailData.claims.length} Documents</p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Mean Claim Value</p>
+                    <p className="text-2xl font-black">₹{Math.round(empDetailData.total / (empDetailData.claims.length || 1)).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Governance Performance</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="size-3 rounded-full bg-green-500" />
+                      <span className="text-xs font-bold">{empDetailData.approved} Approved Claims</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex-1 overflow-auto p-8 space-y-8">
-                   <div className="grid grid-cols-3 gap-6">
-                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Submission Count</p>
-                         <p className="text-2xl font-black">{empDetailData.claims.length} Documents</p>
-                      </div>
-                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Mean Claim Value</p>
-                         <p className="text-2xl font-black">₹{Math.round(empDetailData.total / (empDetailData.claims.length || 1)).toLocaleString('en-IN')}</p>
-                      </div>
-                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Governance Performance</p>
-                         <div className="flex items-center gap-2 mt-1">
-                            <div className="size-3 rounded-full bg-green-500" />
-                            <span className="text-xs font-bold">{empDetailData.approved} Approved Claims</span>
-                         </div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-4">
-                      <h3 className="font-black text-lg tracking-tight uppercase">Consolidated Claim History</h3>
-                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                         <Table>
-                            <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
-                               <TableRow>
-                                  <TableHead className="pl-6 font-black uppercase text-[9px] tracking-widest">Entry Details</TableHead>
-                                  <TableHead className="font-black uppercase text-[9px] tracking-widest">Category</TableHead>
-                                  <TableHead className="font-black uppercase text-[9px] tracking-widest text-center">Status</TableHead>
-                                  <TableHead className="font-black uppercase text-[9px] tracking-widest text-right">Value</TableHead>
-                                  <TableHead className="font-black uppercase text-[9px] tracking-widest text-right pr-6">Proof</TableHead>
-                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                               {empDetailData.claims.map((c: any) => (
-                                 <TableRow key={c.id} className="hover:bg-primary/5 transition-colors">
-                                    <TableCell className="pl-6">
-                                       <p className="font-bold text-sm">{c.title}</p>
-                                       <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
-                                    </TableCell>
-                                    <TableCell>
-                                       <span className="px-2 py-0.5 rounded-lg bg-muted text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                                          {c.category}
-                                       </span>
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                       <div className="flex flex-col items-center">
-                                          <span className={cn(
-                                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
-                                            c.status === 'approved' ? "bg-green-100 text-green-700" :
-                                            c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
-                                          )}>
-                                             {c.status}
-                                          </span>
-                                          {c.admin_notes && (
-                                             <p className="text-[8px] font-bold text-muted-foreground italic mt-1 max-w-[100px] truncate" title={c.admin_notes}>
-                                                "{c.admin_notes}"
-                                             </p>
-                                          )}
-                                       </div>
-                                    </TableCell>
-                                    <TableCell className="text-right font-black">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
-                                    <TableCell className="text-right pr-6">
-                                       <div className="flex justify-end gap-2">
-                                          {c.receipt_url && (
-                                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild>
-                                               <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
-                                            </Button>
-                                          )}
-                                          {isAdmin && c.status === 'pending' && (
-                                            <>
-                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => setReviewingClaim({id: c.id, status: 'approved'})}>
-                                                <CheckCircle2 className="size-4" />
-                                              </Button>
-                                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => setReviewingClaim({id: c.id, status: 'rejected'})}>
-                                                <XCircle className="size-4" />
-                                              </Button>
-                                            </>
-                                          )}
-                                       </div>
-                                    </TableCell>
-                                 </TableRow>
-                               ))}
-                            </TableBody>
-                         </Table>
-                      </div>
-                   </div>
+                <div className="space-y-4">
+                  <h3 className="font-black text-lg tracking-tight uppercase">Consolidated Claim History</h3>
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                    <Table>
+                      <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
+                        <TableRow>
+                          <TableHead className="pl-6 font-black uppercase text-[9px] tracking-widest">Entry Details</TableHead>
+                          <TableHead className="font-black uppercase text-[9px] tracking-widest">Category</TableHead>
+                          <TableHead className="font-black uppercase text-[9px] tracking-widest text-center">Status</TableHead>
+                          <TableHead className="font-black uppercase text-[9px] tracking-widest text-right">Value</TableHead>
+                          <TableHead className="font-black uppercase text-[9px] tracking-widest text-right pr-6">Proof / Contact</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {empDetailData.claims.map((c: any) => (
+                          <TableRow key={c.id} className="hover:bg-primary/5 transition-colors">
+                            <TableCell className="pl-6">
+                              <p className="font-bold text-sm">{c.title}</p>
+                              {c.notes && (
+                                <p className="text-xs text-muted-foreground bg-amber-50/50 dark:bg-amber-950/10 border border-amber-100/30 px-2.5 py-1 rounded-lg mt-1 w-fit max-w-[250px] font-medium leading-relaxed text-left">
+                                  <span className="font-black text-[9px] uppercase tracking-wider text-amber-600 block mb-0.5">Note:</span>
+                                  {c.notes}
+                                </p>
+                              )}
+                              <p className="text-[10px] text-muted-foreground/50 mt-1.5 font-bold">{new Date(c.created_at).toLocaleDateString()}</p>
+                            </TableCell>
+                            <TableCell>
+                              <span className="px-2 py-0.5 rounded-lg bg-muted text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                {c.category}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex flex-col items-center">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
+                                  c.status === 'approved' ? "bg-green-100 text-green-700" :
+                                    c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                                )}>
+                                  {c.status}
+                                </span>
+                                {c.admin_notes && (
+                                  <p className="text-[8px] font-bold text-muted-foreground italic mt-1 max-w-[100px] truncate" title={c.admin_notes}>
+                                    "{c.admin_notes}"
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-black">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right pr-6">
+                              <div className="flex justify-end items-center gap-1.5">
+                                {c.receipt_url && (
+                                  <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild title="View Bill Copy">
+                                    <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
+                                  </Button>
+                                )}
+                                {c.notes ? (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button size="icon" variant="ghost" className="size-8 rounded-lg text-amber-500 hover:bg-amber-50 hover:text-amber-600" title="View Employee Notes">
+                                        <FileText className="size-4" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 p-4 rounded-xl border-2 border-primary/5 shadow-md">
+                                      <div className="space-y-1">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-left">Employee Notes</p>
+                                        <p className="text-xs text-foreground leading-relaxed break-words font-medium text-left">{c.notes}</p>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                ) : (
+                                  <Button size="icon" variant="ghost" className="size-8 rounded-lg text-muted-foreground/30 cursor-not-allowed" disabled title="No notes provided">
+                                    <FileText className="size-4" />
+                                  </Button>
+                                )}
+                                {isAuthorized && (
+                                  c.employees?.phone || empDetailData.emp.phone ? (
+                                    <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-500 hover:bg-green-50 hover:text-green-600" asChild>
+                                      <a href={getWhatsAppUrl(c.employees?.phone || empDetailData.emp.phone, c.employees?.full_name || empDetailData.emp.full_name || "Employee", c.title, c.amount)} target="_blank" rel="noreferrer" title="Chat on WhatsApp">
+                                        <svg className="size-4 fill-current" viewBox="0 0 24 24">
+                                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.456h.008c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                        </svg>
+                                      </a>
+                                    </Button>
+                                  ) : (
+                                    <Button size="icon" variant="ghost" className="size-8 rounded-lg text-muted-foreground/30 cursor-not-allowed" disabled title="No phone number provided">
+                                      <svg className="size-4 fill-current" viewBox="0 0 24 24">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.456h.008c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                      </svg>
+                                    </Button>
+                                  )
+                                )}
+                                {(isAdmin || (role === "manager" && c.employee_id !== myEmployee?.id)) && c.status === 'pending' && (
+                                  <>
+                                    <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => setReviewingClaim({ id: c.id, status: 'approved' })} title="Approve">
+                                      <CheckCircle2 className="size-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => setReviewingClaim({ id: c.id, status: 'rejected' })} title="Reject">
+                                      <XCircle className="size-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
-             </div>
-           )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -466,8 +566,8 @@ function ExpensesPage() {
                     <TableHead className="font-black uppercase text-[10px] tracking-widest">Category</TableHead>
                     <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
                     <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Amount</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Receipt</TableHead>
-                    {isAdmin && <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Actions</TableHead>}
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Proof / Contact</TableHead>
+                    {isAuthorized && <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Actions</TableHead>}
                   </>
                 )}
               </TableRow>
@@ -486,26 +586,26 @@ function ExpensesPage() {
                   <TableRow key={g.id} className="group hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => setSelectedEmpId(g.id)}>
                     <TableCell className="pl-8">
                       <div className="flex items-center gap-3">
-                         <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-                            <UsersIcon className="size-5" />
-                         </div>
-                         <span className="font-black text-sm text-foreground">{g.name}</span>
+                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                          <UsersIcon className="size-5" />
+                        </div>
+                        <span className="font-black text-sm text-foreground">{g.name}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                       <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{g.dept}</span>
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{g.dept}</span>
                     </TableCell>
                     <TableCell className="text-center">
-                       <div className="flex flex-col items-center">
-                          <span className="font-black text-sm">{g.count} claims</span>
-                          {g.pending > 0 && <span className="text-[9px] font-black text-amber-500 uppercase tracking-tighter">{g.pending} Pending</span>}
-                       </div>
+                      <div className="flex flex-col items-center">
+                        <span className="font-black text-sm">{g.count} claims</span>
+                        {g.pending > 0 && <span className="text-[9px] font-black text-amber-500 uppercase tracking-tighter">{g.pending} Pending</span>}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
-                       <span className="text-[11px] font-bold text-muted-foreground">{new Date(g.latest).toLocaleDateString()}</span>
+                      <span className="text-[11px] font-bold text-muted-foreground">{new Date(g.latest).toLocaleDateString()}</span>
                     </TableCell>
                     <TableCell className="text-right pr-8">
-                       <span className="font-black text-base text-foreground">₹{g.total.toLocaleString('en-IN')}</span>
+                      <span className="font-black text-base text-foreground">₹{g.total.toLocaleString('en-IN')}</span>
                     </TableCell>
                   </TableRow>
                 ))
@@ -518,14 +618,20 @@ function ExpensesPage() {
                       <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
                         <Receipt className="size-5" />
                       </div>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col gap-0.5 text-left">
                         <span className="font-black text-sm text-foreground">{c.title}</span>
-                        <span className="text-[10px] font-bold text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</span>
+                        {c.notes && (
+                          <span className="text-xs text-muted-foreground bg-amber-50/50 dark:bg-amber-950/10 border border-amber-100/30 px-2 py-0.5 rounded-lg mt-0.5 w-fit max-w-[250px] font-medium leading-relaxed">
+                            <span className="font-black text-[9px] uppercase tracking-wider text-amber-600 mr-1">Note:</span>
+                            {c.notes}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-bold text-muted-foreground/50 mt-0.5">{new Date(c.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <button 
+                    <button
                       onClick={() => setSelectedEmpId(c.employee_id)}
                       className="flex flex-col text-left group/emp hover:translate-x-1 transition-transform"
                     >
@@ -543,10 +649,10 @@ function ExpensesPage() {
                       <span className={cn(
                         "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-tighter",
                         c.status === 'approved' ? "bg-green-100 text-green-700" :
-                        c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                          c.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
                       )}>
                         {c.status === 'approved' ? <CheckCircle2 className="size-3 mr-1.5" /> :
-                         c.status === 'rejected' ? <XCircle className="size-3 mr-1.5" /> : <Clock className="size-3 mr-1.5" />}
+                          c.status === 'rejected' ? <XCircle className="size-3 mr-1.5" /> : <Clock className="size-3 mr-1.5" />}
                         {c.status}
                       </span>
                       {c.admin_notes && (
@@ -560,28 +666,70 @@ function ExpensesPage() {
                     <span className="font-black text-foreground">₹{Number(c.amount).toLocaleString('en-IN')}</span>
                   </TableCell>
                   <TableCell className="text-right pr-8">
-                    {c.receipt_url ? (
-                      <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild>
-                        <a href={c.receipt_url} target="_blank" rel="noreferrer" title="View Bill Copy">
-                           <Eye className="size-4" />
-                        </a>
-                      </Button>
-                    ) : (
-                      <span className="text-[10px] font-black text-muted-foreground/30 uppercase">No Bill</span>
-                    )}
+                    <div className="flex justify-end items-center gap-1.5">
+                      {c.receipt_url ? (
+                        <Button size="icon" variant="ghost" className="size-8 rounded-lg text-primary hover:bg-primary/10" asChild title="View Bill Copy">
+                          <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
+                        </Button>
+                      ) : (
+                        <span className="text-[10px] font-black text-muted-foreground/30 uppercase mr-1">No Bill</span>
+                      )}
+
+                      {c.notes ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-amber-500 hover:bg-amber-50 hover:text-amber-600" title="View Employee Notes">
+                              <FileText className="size-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-4 rounded-xl border-2 border-primary/5 shadow-md">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-left">Employee Notes</p>
+                              <p className="text-xs text-foreground leading-relaxed break-words font-medium text-left">{c.notes}</p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <Button size="icon" variant="ghost" className="size-8 rounded-lg text-muted-foreground/30 cursor-not-allowed" disabled title="No notes provided">
+                          <FileText className="size-4" />
+                        </Button>
+                      )}
+
+                      {isAuthorized && (
+                        c.employees?.phone ? (
+                          <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-500 hover:bg-green-50 hover:text-green-600" asChild>
+                            <a href={getWhatsAppUrl(c.employees.phone, c.employees.full_name || "Employee", c.title, c.amount)} target="_blank" rel="noreferrer" title="Chat on WhatsApp">
+                              <svg className="size-4 fill-current" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.456h.008c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                              </svg>
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button size="icon" variant="ghost" className="size-8 rounded-lg text-muted-foreground/30 cursor-not-allowed" disabled title="No phone number provided">
+                            <svg className="size-4 fill-current" viewBox="0 0 24 24">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.456h.008c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                            </svg>
+                          </Button>
+                        )
+                      )}
+                    </div>
                   </TableCell>
-                  {isAdmin && (
+                  {isAuthorized && (
                     <TableCell className="text-right pr-8">
                       <div className="flex justify-end gap-2">
                         {c.status === 'pending' && (
-                          <>
-                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => setReviewingClaim({id: c.id, status: 'approved'})}>
-                              <CheckCircle2 className="size-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => setReviewingClaim({id: c.id, status: 'rejected'})}>
-                              <XCircle className="size-4" />
-                            </Button>
-                          </>
+                          role === "manager" && c.employee_id === myEmployee?.id ? (
+                            <span className="text-[10px] font-bold text-muted-foreground/50 uppercase">Self Claim</span>
+                          ) : (
+                            <>
+                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-green-600 hover:bg-green-100" onClick={() => setReviewingClaim({ id: c.id, status: 'approved' })} title="Approve">
+                                <CheckCircle2 className="size-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="size-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => setReviewingClaim({ id: c.id, status: 'rejected' })} title="Reject">
+                                <XCircle className="size-4" />
+                              </Button>
+                            </>
+                          )
                         )}
                       </div>
                     </TableCell>
@@ -594,42 +742,42 @@ function ExpensesPage() {
       </Card>
 
       <Dialog open={!!reviewingClaim} onOpenChange={(v) => !v && setReviewingClaim(null)}>
-         <DialogContent className="rounded-3xl p-8 border-2 border-primary/5 shadow-elegant max-w-md">
-            <DialogHeader>
-               <DialogTitle className="text-2xl font-black tracking-tight">
-                  {reviewingClaim?.status === 'approved' ? "Approve Expense" : "Reject Expense"}
-               </DialogTitle>
-               <CardDescription>
-                  Add an optional comment for the employee to see.
-               </CardDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-               <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Admin Comment / Clarification</Label>
-                  <Input 
-                     placeholder="e.g. Please provide GST bill copy..." 
-                     value={reviewNote}
-                     onChange={(e) => setReviewNote(e.target.value)}
-                     className="h-12 rounded-xl border-2"
-                  />
-               </div>
+        <DialogContent className="rounded-3xl p-8 border-2 border-primary/5 shadow-elegant max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black tracking-tight">
+              {reviewingClaim?.status === 'approved' ? "Approve Expense" : "Reject Expense"}
+            </DialogTitle>
+            <CardDescription>
+              Add an optional comment for the employee to see.
+            </CardDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Admin Comment / Clarification</Label>
+              <Input
+                placeholder="e.g. Please provide GST bill copy..."
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                className="h-12 rounded-xl border-2"
+              />
             </div>
-            <DialogFooter className="gap-3">
-               <Button variant="ghost" className="rounded-xl font-bold" onClick={() => setReviewingClaim(null)}>Cancel</Button>
-               <Button 
-                  className={cn("rounded-xl font-black px-8", reviewingClaim?.status === 'approved' ? "bg-green-600 hover:bg-green-700" : "bg-rose-600 hover:bg-rose-700")}
-                  onClick={() => {
-                     if (reviewingClaim) {
-                        updateStatus(reviewingClaim.id, reviewingClaim.status, reviewNote);
-                        setReviewingClaim(null);
-                        setReviewNote("");
-                     }
-                  }}
-               >
-                  Confirm {reviewingClaim?.status}
-               </Button>
-            </DialogFooter>
-         </DialogContent>
+          </div>
+          <DialogFooter className="gap-3">
+            <Button variant="ghost" className="rounded-xl font-bold" onClick={() => setReviewingClaim(null)}>Cancel</Button>
+            <Button
+              className={cn("rounded-xl font-black px-8", reviewingClaim?.status === 'approved' ? "bg-green-600 hover:bg-green-700" : "bg-rose-600 hover:bg-rose-700")}
+              onClick={() => {
+                if (reviewingClaim) {
+                  updateStatus(reviewingClaim.id, reviewingClaim.status, reviewNote);
+                  setReviewingClaim(null);
+                  setReviewNote("");
+                }
+              }}
+            >
+              Confirm {reviewingClaim?.status}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

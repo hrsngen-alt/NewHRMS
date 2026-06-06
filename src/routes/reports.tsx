@@ -5,10 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileDown, Printer, Calendar, Users, Wallet, TrendingUp, Filter } from "lucide-react";
+import { FileDown, Printer, Calendar, Users, Wallet, TrendingUp, Filter, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/reports")({ 
   component: () => (
@@ -19,6 +20,21 @@ export const Route = createFileRoute("/reports")({
 });
 
 function ReportsPage() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isAuthorized = isAdmin || isManager;
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <AlertTriangle className="size-12 text-destructive animate-pulse" />
+        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin or Manager users. If you believe this is an error, please contact support.</p>
+      </div>
+    );
+  }
+
   const [period, setPeriod] = useState("current-month");
 
   const { data: employees = [] } = useQuery({
