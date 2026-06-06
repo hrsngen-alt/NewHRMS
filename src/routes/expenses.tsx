@@ -309,10 +309,10 @@ function ExpensesPage() {
           <p className="text-muted-foreground font-medium">Consolidated financial operations and reimbursements.</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border-2 border-primary/5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-1.5 rounded-xl border-2 border-primary/5 w-full sm:w-auto">
             {isAuthorized && (
-              <div className="flex p-1 bg-white/50 rounded-lg border border-primary/5 mr-2">
+              <div className="flex p-1 bg-white/50 rounded-lg border border-primary/5 mr-1 sm:mr-2">
                 <button
                   onClick={() => setViewMode("employees")}
                   className={cn("p-1.5 rounded-md transition-all", viewMode === "employees" ? "bg-primary text-white shadow-md" : "text-muted-foreground hover:bg-primary/5")}
@@ -329,22 +329,22 @@ function ExpensesPage() {
                 </button>
               </div>
             )}
-            <div className="relative">
+            <div className="relative flex-1 min-w-[120px] sm:w-[180px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-10 pl-9 w-[180px] border-none bg-transparent focus-visible:ring-0 text-xs font-bold"
+                className="h-10 pl-9 w-full border-none bg-transparent focus-visible:ring-0 text-xs font-bold"
               />
             </div>
 
             {/* Month Filter */}
             {availableMonths.length > 0 && (
               <>
-                <div className="h-6 w-[1px] bg-primary/10" />
+                <div className="h-6 w-[1px] bg-primary/10 hidden sm:block" />
                 <Select value={monthFilter} onValueChange={setMonthFilter}>
-                  <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest w-[140px]">
+                  <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest flex-1 min-w-[100px] sm:w-[140px]">
                     <SelectValue placeholder="Month" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -361,9 +361,9 @@ function ExpensesPage() {
 
             {role === "admin" && (
               <>
-                <div className="h-6 w-[1px] bg-primary/10" />
+                <div className="h-6 w-[1px] bg-primary/10 hidden sm:block" />
                 <Select value={deptFilter} onValueChange={setDeptFilter}>
-                  <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest w-[140px]">
+                  <SelectTrigger className="h-10 border-none bg-transparent focus:ring-0 text-xs font-black uppercase tracking-widest flex-1 min-w-[100px] sm:w-[140px]">
                     <SelectValue placeholder="Dept" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -379,7 +379,7 @@ function ExpensesPage() {
           {myEmployee && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="h-12 px-8 rounded-xl font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+                <Button className="h-12 w-full sm:w-auto px-8 rounded-xl font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all shrink-0">
                   <Plus className="size-5" /> Submit Claim
                 </Button>
               </DialogTrigger>
