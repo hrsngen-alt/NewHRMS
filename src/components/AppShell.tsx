@@ -141,6 +141,59 @@ export function AppShell({ children }: { children?: ReactNode }) {
     },
   });
 
+  useEffect(() => {
+    if (!user) return;
+
+    // Request browser notification permission
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+
+    // Subscribe to new notifications in real-time
+    const channel = supabase
+      .channel(`realtime-notifications-${user.id}`)
+      .on(
+        "postgres_changes" as any,
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload: any) => {
+          console.log("[AppShell] Real-time notification received:", payload.new);
+          // Invalidate notifications query to refresh badge and dropdown list
+          qc.invalidateQueries({ queryKey: ["notifications", user.id] });
+
+          // Show browser notification
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            const title = payload.new.title || "New Notification";
+            const options = {
+              body: payload.new.message || "",
+              icon: "/icon-192.png",
+              badge: "/icon-192.png",
+              tag: payload.new.id,
+            };
+            const notif = new Notification(title, options);
+            notif.onclick = () => {
+              window.focus();
+              const link = payload.new.link || getNotificationFallbackLink(payload.new);
+              if (link) {
+                navigate({ to: link });
+              }
+            };
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, qc, navigate]);
+
   const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
   const markAllAsRead = async () => {

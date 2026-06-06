@@ -233,6 +233,25 @@ function ExpensesPage() {
 
       if (insertError) throw insertError;
 
+      // Notify HR/Admins
+      try {
+        const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+        if (admins && admins.length > 0) {
+          const titleText = fd.get("title");
+          const amountText = Number(fd.get("amount")).toLocaleString('en-IN');
+          const notifications = admins.map(admin => ({
+            user_id: admin.user_id,
+            title: "New Expense Claim",
+            message: `${myEmployee.full_name} submitted a claim: "${titleText}" for ₹${amountText}.`,
+            is_read: false,
+            link: "/expenses"
+          }));
+          await supabase.from("notifications" as any).insert(notifications);
+        }
+      } catch (notifErr) {
+        console.error("Failed to create submission notification:", notifErr);
+      }
+
       toast.success("Expense claim submitted successfully!");
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["expense-claims"] });
@@ -244,6 +263,22 @@ function ExpensesPage() {
   };
 
   const updateStatus = async (id: string, status: string, notes?: string) => {
+    let claimantUserId = null;
+    let claimTitle = "";
+    try {
+      const { data: claimData } = await supabase
+        .from("expense_claims" as any)
+        .select("title, employees(user_id)")
+        .eq("id", id)
+        .maybeSingle() as any;
+      if (claimData) {
+        claimTitle = claimData.title;
+        claimantUserId = claimData.employees?.user_id;
+      }
+    } catch (fetchErr) {
+      console.error("Failed to fetch claim details for notification:", fetchErr);
+    }
+
     const { error } = await supabase.from("expense_claims" as any).update({
       status,
       admin_notes: notes || null
@@ -253,6 +288,21 @@ function ExpensesPage() {
     else {
       toast.success(`Claim ${status} successfully.`);
       qc.invalidateQueries({ queryKey: ["expense-claims"] });
+
+      // Notify employee
+      if (claimantUserId) {
+        try {
+          await supabase.from("notifications" as any).insert({
+            user_id: claimantUserId,
+            title: `Expense Claim ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+            message: `Your claim "${claimTitle}" was ${status}${notes ? ` (${notes})` : ""}.`,
+            is_read: false,
+            link: "/expenses"
+          });
+        } catch (notifErr) {
+          console.error("Failed to create review notification:", notifErr);
+        }
+      }
     }
   };
 
