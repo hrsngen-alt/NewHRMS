@@ -114,6 +114,9 @@ function NavContent({ role, location, onNavClick }: { role: string | null, locat
 
 import { SNLogo } from "@/components/SNLogo";
 
+// Global lock state to persist across TanStack Router unmounts/remounts
+let isAppUnlockedGlobally = false;
+
 export function AppShell({ children }: { children?: ReactNode }) {
   const qc = useQueryClient();
   const { user, role, loading, signOut } = useAuth();
@@ -128,10 +131,18 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   const [isAppLocked, setIsAppLocked] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("pwa_passcode_enabled") === "true";
+      const passcodeEnabled = localStorage.getItem("pwa_passcode_enabled") === "true";
+      if (passcodeEnabled) {
+        return !isAppUnlockedGlobally;
+      }
     }
     return false;
   });
+
+  const handleSignOut = () => {
+    isAppUnlockedGlobally = false;
+    signOut();
+  };
   const [pinInput, setPinInput] = useState("");
   const [isAuthenticatingBiometrics, setIsAuthenticatingBiometrics] = useState(false);
 
@@ -158,6 +169,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
       const assertion = await navigator.credentials.get(options);
       if (assertion) {
+        isAppUnlockedGlobally = true;
         setIsAppLocked(false);
         setPinInput("");
         toast.success("Unlocked with biometrics");
@@ -191,6 +203,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
       if (document.visibilityState === "visible") {
         const passcodeEnabled = localStorage.getItem("pwa_passcode_enabled") === "true";
         if (passcodeEnabled && !isAuthenticatingBiometrics) {
+          isAppUnlockedGlobally = false;
           setIsAppLocked(true);
           setPinInput("");
         }
@@ -224,6 +237,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
       const storedHash = localStorage.getItem("pwa_passcode_hash");
       if (hash === storedHash) {
+        isAppUnlockedGlobally = true;
         setIsAppLocked(false);
         setPinInput("");
       } else {
@@ -448,92 +462,130 @@ export function AppShell({ children }: { children?: ReactNode }) {
           .animate-shake {
             animation: shake 0.3s ease-in-out;
           }
+          @media (max-height: 500px) {
+            .lock-container {
+              flex-direction: row !important;
+              max-width: 580px !important;
+              justify-content: space-between !important;
+              gap: 3rem !important;
+              text-align: left !important;
+              padding: 0 1.5rem !important;
+            }
+            .lock-info {
+              align-items: flex-start !important;
+              text-align: left !important;
+            }
+            .lock-dots {
+              margin-top: 1rem !important;
+              margin-bottom: 1rem !important;
+            }
+            .lock-signout-std {
+              display: none !important;
+            }
+            .lock-signout {
+              display: flex !important;
+            }
+          }
         `}</style>
 
-        <div className="flex flex-col items-center max-w-sm w-full px-8 text-center animate-in fade-in zoom-in-95 duration-500">
-          {/* Avatar/Branding */}
-          <div className="relative mb-6">
-            <div className="size-20 rounded-[28px] bg-gradient-to-tr from-primary via-indigo-500 to-purple-600 p-[3px] shadow-2xl shadow-primary/30">
-              <div className="size-full rounded-[25px] bg-slate-950 flex items-center justify-center">
-                <SNLogo className="size-12 text-white" />
+        <div className="lock-container flex flex-col items-center max-w-sm w-full px-8 text-center animate-in fade-in zoom-in-95 duration-500">
+          {/* Info Section */}
+          <div className="lock-info flex flex-col items-center">
+            {/* Avatar/Branding */}
+            <div className="relative mb-6">
+              <div className="size-16 rounded-[22px] bg-gradient-to-tr from-primary via-indigo-500 to-purple-600 p-[3px] shadow-2xl shadow-primary/30">
+                <div className="size-full rounded-[19px] bg-slate-950 flex items-center justify-center">
+                  <SNLogo className="size-10 text-white" />
+                </div>
+              </div>
+              <div className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-4 border-slate-950 flex items-center justify-center">
+                <span className="size-1.5 rounded-full bg-white animate-pulse" />
               </div>
             </div>
-            <div className="absolute -bottom-1 -right-1 size-6 rounded-full bg-emerald-500 border-4 border-slate-950 flex items-center justify-center">
-              <span className="size-2 rounded-full bg-white animate-pulse" />
+
+            <h2 className="font-display text-xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              SN Gene HR
+            </h2>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+              Workspace Lock
+            </p>
+
+            {/* Dots Indicator */}
+            <div className={cn(
+              "lock-dots flex gap-4 my-8 transition-transform duration-300",
+              pinInput.length === 4 && "scale-105"
+            )}>
+              {[0, 1, 2, 3].map((index) => {
+                const active = pinInput.length > index;
+                return (
+                  <div
+                    key={index}
+                    className={cn(
+                      "size-3.5 rounded-full border-2 border-primary/40 transition-all duration-300",
+                      active 
+                        ? "bg-primary scale-110 shadow-lg shadow-primary/50 border-primary" 
+                        : "bg-transparent"
+                    )}
+                  />
+                );
+              })}
+            </div>
+            
+            {/* Signout button for landscape */}
+            <button
+              onClick={handleSignOut}
+              className="lock-signout hidden mt-2 text-[10px] font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 transition-colors items-center gap-2"
+            >
+              Sign out
+            </button>
+          </div>
+
+          {/* Dialpad Section */}
+          <div className="flex flex-col items-center">
+            <div className="grid grid-cols-3 gap-x-4 gap-y-3 w-full max-w-[240px]">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
+                <button
+                  key={num}
+                  onClick={() => handleKeyPress(num)}
+                  className="size-14 rounded-full border border-white/5 bg-white/5 backdrop-blur-md text-lg font-bold transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center focus:outline-none"
+                >
+                  {num}
+                </button>
+              ))}
+              
+              {/* Biometric trigger */}
+              {isBiometricsEnabled ? (
+                <button
+                  onClick={handleBiometricUnlock}
+                  className="size-14 rounded-full border border-primary/10 bg-primary/10 text-primary transition-all hover:bg-primary/25 active:scale-95 flex items-center justify-center focus:outline-none"
+                >
+                  <Fingerprint className="size-6 animate-pulse" />
+                </button>
+              ) : (
+                <div className="size-14" />
+              )}
+
+              <button
+                onClick={() => handleKeyPress("0")}
+                className="size-14 rounded-full border border-white/5 bg-white/5 backdrop-blur-md text-lg font-bold transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center focus:outline-none"
+              >
+                0
+              </button>
+
+              <button
+                onClick={handleBackspace}
+                disabled={pinInput.length === 0}
+                className="size-14 rounded-full border border-white/5 bg-white/5 backdrop-blur-md transition-all hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none active:scale-95 flex items-center justify-center focus:outline-none"
+              >
+                <X className="size-4" />
+              </button>
             </div>
           </div>
 
-          <h2 className="font-display text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-            SN Gene HR
-          </h2>
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-            Secure Workspace Lock
-          </p>
-
-          {/* Dots Indicator */}
-          <div className={cn(
-            "flex gap-4 my-10 transition-transform duration-300",
-            pinInput.length === 4 && "scale-105"
-          )}>
-            {[0, 1, 2, 3].map((index) => {
-              const active = pinInput.length > index;
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    "size-4 rounded-full border-2 border-primary/40 transition-all duration-300",
-                    active 
-                      ? "bg-primary scale-110 shadow-lg shadow-primary/50 border-primary" 
-                      : "bg-transparent"
-                  )}
-                />
-              );
-            })}
-          </div>
-
-          {/* Dialpad */}
-          <div className="grid grid-cols-3 gap-x-6 gap-y-4 w-full max-w-[280px]">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-              <button
-                key={num}
-                onClick={() => handleKeyPress(num)}
-                className="size-16 rounded-full border border-white/5 bg-white/5 backdrop-blur-md text-xl font-bold transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center focus:outline-none"
-              >
-                {num}
-              </button>
-            ))}
-            
-            {/* Biometric trigger */}
-            {isBiometricsEnabled ? (
-              <button
-                onClick={handleBiometricUnlock}
-                className="size-16 rounded-full border border-primary/10 bg-primary/10 text-primary transition-all hover:bg-primary/25 active:scale-95 flex items-center justify-center focus:outline-none"
-              >
-                <Fingerprint className="size-7 animate-pulse" />
-              </button>
-            ) : (
-              <div className="size-16" />
-            )}
-
-            <button
-              onClick={() => handleKeyPress("0")}
-              className="size-16 rounded-full border border-white/5 bg-white/5 backdrop-blur-md text-xl font-bold transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center focus:outline-none"
-            >
-              0
-            </button>
-
-            <button
-              onClick={handleBackspace}
-              disabled={pinInput.length === 0}
-              className="size-16 rounded-full border border-white/5 bg-white/5 backdrop-blur-md transition-all hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none active:scale-95 flex items-center justify-center focus:outline-none"
-            >
-              <X className="size-5" />
-            </button>
-          </div>
-          
+          {/* Standard Signout for portrait */}
           <button
-            onClick={() => signOut()}
-            className="mt-12 text-xs font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-2"
+            onClick={handleSignOut}
+            className="lock-signout-std mt-10 text-xs font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-2"
           >
             Sign out of account
           </button>
@@ -567,7 +619,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
               <div className="text-[10px] text-primary uppercase tracking-wider font-black">{role ?? "EMPLOYEE"}</div>
             </div>
           </Link>
-          <button onClick={() => signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-400 hover:bg-rose-500/10 transition-all group">
+          <button onClick={handleSignOut} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-400 hover:bg-rose-500/10 transition-all group">
             <LogOut className="size-5 transition-transform group-hover:-translate-x-1" /> Sign out
           </button>
         </div>
@@ -593,7 +645,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                  </SheetHeader>
                  <NavContent role={role} location={location} onNavClick={() => {}} />
                  <div className="mt-auto pt-6 border-t">
-                    <button onClick={() => signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
+                    <button onClick={handleSignOut} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
                       <LogOut className="size-5" /> Sign out
                     </button>
                  </div>
