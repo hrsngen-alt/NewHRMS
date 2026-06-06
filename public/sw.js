@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sngene-hr-v1';
+const CACHE_NAME = 'sngene-hr-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -22,6 +22,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('[Service Worker] Deleting old cache:', key);
             return caches.delete(key);
           }
         })
@@ -32,8 +33,25 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests and bypass browser extensions/auth endpoints
+  // 1. Bypass caching on localhost (dev mode) to prevent caching Vite dynamic dev server modules
+  const isDev = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+  if (isDev) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // 2. Only cache GET requests and bypass browser extensions/external endpoints
   if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // 3. For navigation requests, try the network first and fallback to cached index.html if offline
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/index.html');
+      })
+    );
     return;
   }
   
@@ -51,11 +69,6 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return response;
-      }).catch(() => {
-        // Fallback for document navigation when offline
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
       });
     })
   );
