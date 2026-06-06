@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText, 
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,125 @@ export function AppShell({ children }: { children?: ReactNode }) {
     }
     return 'light';
   });
+
+  const [isAppLocked, setIsAppLocked] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("pwa_passcode_enabled") === "true";
+    }
+    return false;
+  });
+  const [pinInput, setPinInput] = useState("");
+  const [isAuthenticatingBiometrics, setIsAuthenticatingBiometrics] = useState(false);
+
+  // Helper to check if biometrics is enabled
+  const isBiometricsEnabled = typeof window !== "undefined" && 
+    localStorage.getItem("pwa_passcode_enabled") === "true" &&
+    localStorage.getItem("pwa_biometrics_enabled") === "true";
+
+  // Trigger WebAuthn Biometric unlock
+  const handleBiometricUnlock = async () => {
+    if (!isBiometricsEnabled || isAuthenticatingBiometrics) return;
+    setIsAuthenticatingBiometrics(true);
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const options: CredentialRequestOptions = {
+        publicKey: {
+          challenge,
+          rpId: window.location.hostname,
+          userVerification: "required",
+        },
+      };
+
+      const assertion = await navigator.credentials.get(options);
+      if (assertion) {
+        setIsAppLocked(false);
+        setPinInput("");
+        toast.success("Unlocked with biometrics");
+      }
+    } catch (err: any) {
+      console.error("Biometric unlock error:", err);
+      // Don't show error if they manually cancelled
+      if (err.name !== "NotAllowedError") {
+        toast.error("Biometric authentication failed");
+      }
+    } finally {
+      setIsAuthenticatingBiometrics(false);
+    }
+  };
+
+  // Run biometric unlock automatically when screen is locked on mount
+  useEffect(() => {
+    if (isAppLocked && isBiometricsEnabled) {
+      const timer = setTimeout(() => {
+        handleBiometricUnlock();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAppLocked]);
+
+  // Listener for visibility changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const passcodeEnabled = localStorage.getItem("pwa_passcode_enabled") === "true";
+        if (passcodeEnabled && !isAuthenticatingBiometrics) {
+          setIsAppLocked(true);
+          setPinInput("");
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isAuthenticatingBiometrics]);
+
+  // Handle dialpad press
+  const handleKeyPress = async (num: string) => {
+    if (pinInput.length >= 4) return;
+    
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(20);
+    }
+
+    const nextPin = pinInput + num;
+    setPinInput(nextPin);
+
+    if (nextPin.length === 4) {
+      // Verify PIN
+      const encoder = new TextEncoder();
+      const data = encoder.encode(nextPin);
+      const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+      const storedHash = localStorage.getItem("pwa_passcode_hash");
+      if (hash === storedHash) {
+        setIsAppLocked(false);
+        setPinInput("");
+      } else {
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate([50, 50]);
+        }
+        toast.error("Incorrect Passcode");
+        setTimeout(() => {
+          setPinInput("");
+        }, 200);
+      }
+    }
+  };
+
+  const handleBackspace = () => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(15);
+    }
+    setPinInput(prev => prev.slice(0, -1));
+  };
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications", user?.id],
@@ -312,6 +431,112 @@ export function AppShell({ children }: { children?: ReactNode }) {
             <SNLogo className="size-8" />
           </div>
           <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Initializing SN Gene HR...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAppLocked) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-2xl text-white select-none">
+        <style>{`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+          }
+          .animate-shake {
+            animation: shake 0.3s ease-in-out;
+          }
+        `}</style>
+
+        <div className="flex flex-col items-center max-w-sm w-full px-8 text-center animate-in fade-in zoom-in-95 duration-500">
+          {/* Avatar/Branding */}
+          <div className="relative mb-6">
+            <div className="size-20 rounded-[28px] bg-gradient-to-tr from-primary via-indigo-500 to-purple-600 p-[3px] shadow-2xl shadow-primary/30">
+              <div className="size-full rounded-[25px] bg-slate-950 flex items-center justify-center">
+                <SNLogo className="size-12 text-white" />
+              </div>
+            </div>
+            <div className="absolute -bottom-1 -right-1 size-6 rounded-full bg-emerald-500 border-4 border-slate-950 flex items-center justify-center">
+              <span className="size-2 rounded-full bg-white animate-pulse" />
+            </div>
+          </div>
+
+          <h2 className="font-display text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+            SN Gene HR
+          </h2>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
+            Secure Workspace Lock
+          </p>
+
+          {/* Dots Indicator */}
+          <div className={cn(
+            "flex gap-4 my-10 transition-transform duration-300",
+            pinInput.length === 4 && "scale-105"
+          )}>
+            {[0, 1, 2, 3].map((index) => {
+              const active = pinInput.length > index;
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    "size-4 rounded-full border-2 border-primary/40 transition-all duration-300",
+                    active 
+                      ? "bg-primary scale-110 shadow-lg shadow-primary/50 border-primary" 
+                      : "bg-transparent"
+                  )}
+                />
+              );
+            })}
+          </div>
+
+          {/* Dialpad */}
+          <div className="grid grid-cols-3 gap-x-6 gap-y-4 w-full max-w-[280px]">
+            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
+              <button
+                key={num}
+                onClick={() => handleKeyPress(num)}
+                className="size-16 rounded-full border border-white/5 bg-white/5 backdrop-blur-md text-xl font-bold transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center focus:outline-none"
+              >
+                {num}
+              </button>
+            ))}
+            
+            {/* Biometric trigger */}
+            {isBiometricsEnabled ? (
+              <button
+                onClick={handleBiometricUnlock}
+                className="size-16 rounded-full border border-primary/10 bg-primary/10 text-primary transition-all hover:bg-primary/25 active:scale-95 flex items-center justify-center focus:outline-none"
+              >
+                <Fingerprint className="size-7 animate-pulse" />
+              </button>
+            ) : (
+              <div className="size-16" />
+            )}
+
+            <button
+              onClick={() => handleKeyPress("0")}
+              className="size-16 rounded-full border border-white/5 bg-white/5 backdrop-blur-md text-xl font-bold transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center focus:outline-none"
+            >
+              0
+            </button>
+
+            <button
+              onClick={handleBackspace}
+              disabled={pinInput.length === 0}
+              className="size-16 rounded-full border border-white/5 bg-white/5 backdrop-blur-md transition-all hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none active:scale-95 flex items-center justify-center focus:outline-none"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+          
+          <button
+            onClick={() => signOut()}
+            className="mt-12 text-xs font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-2"
+          >
+            Sign out of account
+          </button>
         </div>
       </div>
     );

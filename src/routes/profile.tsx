@@ -4,14 +4,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Mail, Phone, Calendar, Fingerprint, ShieldCheck, Download, Share2, Scan, Camera } from "lucide-react";
+import { Building2, Mail, Phone, Calendar, Fingerprint, ShieldCheck, Download, Share2, Scan, Camera, Lock, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "../lib/utils";
 import { QRCodeSVG } from "qrcode.react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export const Route = createFileRoute("/profile")({ 
   component: () => (
@@ -21,11 +24,150 @@ export const Route = createFileRoute("/profile")({
   ) 
 });
 
+async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin);
+  const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 function ProfilePage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+
+  const [passcodeEnabled, setPasscodeEnabled] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("pwa_passcode_enabled") === "true";
+    }
+    return false;
+  });
+  const [biometricsEnabled, setBiometricsEnabled] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("pwa_biometrics_enabled") === "true";
+    }
+    return false;
+  });
+  const [isBiometricsSupported, setIsBiometricsSupported] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinStep, setPinStep] = useState<"set" | "confirm" | "disable">("set");
+  const [pinValue, setPinValue] = useState("");
+  const [confirmPinValue, setConfirmPinValue] = useState("");
+  const [verificationPinValue, setVerificationPinValue] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.PublicKeyCredential) {
+      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        .then(available => setIsBiometricsSupported(available))
+        .catch(() => setIsBiometricsSupported(false));
+    }
+  }, []);
+
+  const handlePasscodeToggle = (checked: boolean) => {
+    if (checked) {
+      setPinStep("set");
+      setPinValue("");
+      setConfirmPinValue("");
+      setIsPinModalOpen(true);
+    } else {
+      setPinStep("disable");
+      setVerificationPinValue("");
+      setIsPinModalOpen(true);
+    }
+  };
+
+  const handleBiometricsToggle = async (checked: boolean) => {
+    if (checked) {
+      if (!passcodeEnabled) {
+        toast.error("Please enable a Passcode lock first before configuring biometrics.");
+        return;
+      }
+      await registerBiometrics();
+    } else {
+      localStorage.setItem("pwa_biometrics_enabled", "false");
+      setBiometricsEnabled(false);
+      toast.success("Biometric lock disabled");
+    }
+  };
+
+  const registerBiometrics = async () => {
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const userId = new Uint8Array(16);
+      window.crypto.getRandomValues(userId);
+
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: {
+            name: "SN Gene HR",
+            id: window.location.hostname,
+          },
+          user: {
+            id: userId,
+            name: employee?.email || "user@sngene.com",
+            displayName: employee?.full_name || "User",
+          },
+          pubKeyCredParams: [
+            { alg: -7, type: "public-key" },
+            { alg: -257, type: "public-key" },
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required",
+          },
+          timeout: 60000,
+        },
+      });
+
+      if (credential) {
+        localStorage.setItem("pwa_biometrics_enabled", "true");
+        setBiometricsEnabled(true);
+        toast.success("Biometric authentication enabled successfully!");
+      }
+    } catch (err: any) {
+      console.error("Biometric registration error:", err);
+      toast.error(err.message || "Failed to register biometrics. Please ensure your device supports biometric credentials.");
+    }
+  };
+
+  const handlePinComplete = async (value: string) => {
+    if (pinStep === "set") {
+      setPinValue(value);
+      setPinStep("confirm");
+    } else if (pinStep === "confirm") {
+      if (value === pinValue) {
+        const hash = await hashPin(value);
+        localStorage.setItem("pwa_passcode_hash", hash);
+        localStorage.setItem("pwa_passcode_enabled", "true");
+        setPasscodeEnabled(true);
+        setIsPinModalOpen(false);
+        toast.success("Passcode lock enabled!");
+      } else {
+        toast.error("PINs do not match. Let's try again.");
+        setPinValue("");
+        setConfirmPinValue("");
+        setPinStep("set");
+      }
+    } else if (pinStep === "disable") {
+      const hash = await hashPin(value);
+      const storedHash = localStorage.getItem("pwa_passcode_hash");
+      if (hash === storedHash) {
+        localStorage.setItem("pwa_passcode_enabled", "false");
+        localStorage.setItem("pwa_biometrics_enabled", "false");
+        setPasscodeEnabled(false);
+        setBiometricsEnabled(false);
+        setIsPinModalOpen(false);
+        toast.success("Passcode lock disabled!");
+      } else {
+        toast.error("Incorrect passcode. Try again.");
+        setVerificationPinValue("");
+      }
+    }
+  };
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -226,16 +368,130 @@ function ProfilePage() {
               </div>
            </section>
 
-           <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-4">
-              <p className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
-                 <Scan className="size-4" /> Identity Verification
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                 This Digital ID card is valid for office entry, security clearance, and benefits verification. 
-                 Scan the QR code to verify real-time status with the SN Gene HR secure server.
-              </p>
-           </div>
-        </div>
+            <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 space-y-4">
+               <p className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
+                  <Scan className="size-4" /> Identity Verification
+               </p>
+               <p className="text-sm text-muted-foreground leading-relaxed">
+                  This Digital ID card is valid for office entry, security clearance, and benefits verification. 
+                  Scan the QR code to verify real-time status with the SN Gene HR secure server.
+               </p>
+            </div>
+
+            <section className="space-y-4 pt-4 border-t">
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-primary flex items-center gap-2">
+                 <ShieldCheck className="size-4" /> App Security
+              </h3>
+              <Card className="rounded-2xl border-2 border-primary/5 shadow-none overflow-hidden">
+                 <CardContent className="p-6 space-y-6">
+                    <div className="flex items-center justify-between gap-4">
+                       <div className="flex flex-col gap-1">
+                          <span className="text-sm font-bold text-foreground">Passcode Lock</span>
+                          <span className="text-xs text-muted-foreground">Require a 4-digit PIN passcode on app startup and refocus.</span>
+                       </div>
+                       <Switch 
+                          checked={passcodeEnabled} 
+                          onCheckedChange={handlePasscodeToggle}
+                       />
+                    </div>
+
+                    {passcodeEnabled && (
+                       <div className="flex items-center justify-between gap-4 border-t border-muted/50 pt-4">
+                          <div className="flex flex-col gap-1">
+                             <span className="text-sm font-bold text-foreground">Change Passcode PIN</span>
+                             <span className="text-xs text-muted-foreground">Reset your local device passcode lock PIN.</span>
+                          </div>
+                          <Button 
+                             variant="outline" 
+                             className="rounded-xl border-2 gap-2 text-xs font-black uppercase"
+                             onClick={() => {
+                                setPinStep("set");
+                                setPinValue("");
+                                setConfirmPinValue("");
+                                setIsPinModalOpen(true);
+                             }}
+                          >
+                             <KeyRound className="size-4" /> Change PIN
+                          </Button>
+                       </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-4 border-t border-muted/50 pt-4">
+                       <div className="flex flex-col gap-1">
+                          <span className="text-sm font-bold text-foreground">Biometric Lock</span>
+                          <span className="text-xs text-muted-foreground">Use Face ID, Touch ID, or fingerprint verification to unlock.</span>
+                       </div>
+                       <Switch 
+                          checked={biometricsEnabled} 
+                          onCheckedChange={handleBiometricsToggle}
+                          disabled={!passcodeEnabled || !isBiometricsSupported}
+                       />
+                    </div>
+                    
+                    {!isBiometricsSupported && passcodeEnabled && (
+                       <p className="text-[10px] text-muted-foreground/60 italic">
+                          * Biometrics is not supported or not configured on this browser/device.
+                       </p>
+                    )}
+                 </CardContent>
+              </Card>
+           </section>
+
+           <Dialog open={isPinModalOpen} onOpenChange={setIsPinModalOpen}>
+             <DialogContent className="max-w-md rounded-3xl p-6 border-2 border-primary/5">
+               <DialogHeader className="flex flex-col items-center text-center">
+                 <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
+                   <Lock className="size-6 animate-pulse" />
+                 </div>
+                 <DialogTitle className="font-display font-black text-xl">
+                   {pinStep === "set" && "Set 4-Digit Passcode"}
+                   {pinStep === "confirm" && "Confirm Passcode"}
+                   {pinStep === "disable" && "Enter Passcode to Disable"}
+                 </DialogTitle>
+                 <DialogDescription className="text-sm text-muted-foreground mt-1">
+                   {pinStep === "set" && "Create a secure PIN to lock SN Gene HR PWA on this device."}
+                   {pinStep === "confirm" && "Re-enter the 4-digit PIN to confirm accuracy."}
+                   {pinStep === "disable" && "Verify your current device PIN to disable security lock."}
+                 </DialogDescription>
+               </DialogHeader>
+
+               <div className="flex flex-col items-center justify-center py-6">
+                 <InputOTP
+                   maxLength={4}
+                   value={
+                     pinStep === "set" ? pinValue :
+                     pinStep === "confirm" ? confirmPinValue :
+                     verificationPinValue
+                   }
+                   onChange={(val) => {
+                     if (pinStep === "set") setPinValue(val);
+                     else if (pinStep === "confirm") setConfirmPinValue(val);
+                     else setVerificationPinValue(val);
+                   }}
+                   onComplete={handlePinComplete}
+                   autoFocus
+                 >
+                   <InputOTPGroup className="gap-2">
+                     <InputOTPSlot index={0} className="w-12 h-12 rounded-xl border-2 text-lg font-black" />
+                     <InputOTPSlot index={1} className="w-12 h-12 rounded-xl border-2 text-lg font-black" />
+                     <InputOTPSlot index={2} className="w-12 h-12 rounded-xl border-2 text-lg font-black" />
+                     <InputOTPSlot index={3} className="w-12 h-12 rounded-xl border-2 text-lg font-black" />
+                   </InputOTPGroup>
+                 </InputOTP>
+               </div>
+               
+               <DialogFooter className="sm:justify-center">
+                 <Button
+                   variant="ghost"
+                   className="rounded-xl font-bold hover:bg-muted"
+                   onClick={() => setIsPinModalOpen(false)}
+                 >
+                   Cancel
+                 </Button>
+               </DialogFooter>
+             </DialogContent>
+           </Dialog>
+         </div>
       </div>
     </div>
   );
