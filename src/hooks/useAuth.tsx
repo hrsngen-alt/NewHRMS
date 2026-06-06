@@ -243,6 +243,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp: AuthContextValue["signUp"] = async (email, password, fullName) => {
     setLoading(true);
+
+    try {
+      const { data: existingEmp } = await supabase
+        .from("employees")
+        .select("id, user_id")
+        .ilike("email", email.trim())
+        .maybeSingle();
+
+      if (existingEmp && existingEmp.user_id) {
+        setLoading(false);
+        return { error: "User already exists with this email. Please sign in instead." };
+      }
+    } catch (err) {
+      console.error("[Auth] Existing email check failed:", err);
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
