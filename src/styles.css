@@ -118,9 +118,6 @@
 
 @layer base {
   * { border-color: var(--color-border); }
-  html, body {
-    overscroll-behavior-y: none;
-  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
