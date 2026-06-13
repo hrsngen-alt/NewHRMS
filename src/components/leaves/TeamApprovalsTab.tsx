@@ -85,64 +85,125 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
       </div>
 
       <div className="rounded-xl border bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
-            <TableRow>
-              <TableHead className="pl-6">Employee</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Days</TableHead>
-              <TableHead>Manager Status</TableHead>
-              <TableHead>HR Status</TableHead>
-              <TableHead className="text-right pr-6">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLeaves.map((l: any) => (
-              <TableRow key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                <TableCell className="pl-6 font-bold">
-                  {l.employees?.full_name}
-                  <div className="text-xs text-muted-foreground font-normal">{l.employees?.department}</div>
-                </TableCell>
-                <TableCell className="font-medium">{l.leave_type}</TableCell>
-                <TableCell className="text-sm">
-                  {l.start_date} <br/><span className="text-muted-foreground">to</span> {l.end_date}
-                </TableCell>
-                <TableCell className="font-bold">{l.days}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize ${l.manager_status === 'approved' ? 'bg-green-100 text-green-700' : l.manager_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+        {/* Desktop View - Table */}
+        <div className="hidden md:block overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+              <TableRow>
+                <TableHead className="pl-6 whitespace-nowrap">Employee</TableHead>
+                <TableHead className="whitespace-nowrap">Type</TableHead>
+                <TableHead className="whitespace-nowrap">Dates</TableHead>
+                <TableHead className="whitespace-nowrap">Days</TableHead>
+                <TableHead className="whitespace-nowrap">Manager Status</TableHead>
+                <TableHead className="whitespace-nowrap">HR Status</TableHead>
+                <TableHead className="text-right pr-6 whitespace-nowrap">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLeaves.map((l: any) => (
+                <TableRow key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                  <TableCell className="pl-6 font-bold whitespace-nowrap">
+                    {l.employees?.full_name}
+                    <div className="text-xs text-muted-foreground font-normal">{l.employees?.department}</div>
+                  </TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{l.leave_type}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {l.start_date} <br/><span className="text-muted-foreground">to</span> {l.end_date}
+                  </TableCell>
+                  <TableCell className="font-bold whitespace-nowrap">{l.days}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize whitespace-nowrap ${l.manager_status === 'approved' ? 'bg-green-100 text-green-700' : l.manager_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {l.manager_status || 'pending'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize whitespace-nowrap ${l.hr_status === 'approved' ? 'bg-green-100 text-green-700' : l.hr_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {l.hr_status || 'pending'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right pr-6 whitespace-nowrap">
+                    {(l.status === "pending" || l.status === "approved" || role === "admin") && (
+                      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                        <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50" onClick={() => decide(l.id, "approve")}>
+                          <Check className="size-4 mr-1" /> Approve
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => setRejectionDialog({ open: true, leaveId: l.id })}>
+                          <X className="size-4 mr-1" /> Reject
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile View - Stacked Cards List */}
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {filteredLeaves.map((l: any) => (
+            <div key={l.id} className="p-4 space-y-3">
+              {/* Header: Employee & Leave Type */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white">{l.employees?.full_name}</h4>
+                  <p className="text-xs text-muted-foreground">{l.employees?.department}</p>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 capitalize">
+                  {l.leave_type}
+                </span>
+              </div>
+
+              {/* Date & Days */}
+              <div className="grid grid-cols-2 gap-2 text-sm pt-1">
+                <div>
+                  <span className="text-xs text-muted-foreground block">Duration</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                    {l.start_date} <span className="text-muted-foreground text-xs">to</span> {l.end_date}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Total Days</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{l.days} {l.days === 1 ? 'day' : 'days'}</span>
+                </div>
+              </div>
+
+              {/* Status Indicators */}
+              <div className="grid grid-cols-2 gap-2 text-sm pt-2">
+                <div>
+                  <span className="text-xs text-muted-foreground block">Manager Status</span>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold capitalize mt-0.5 ${l.manager_status === 'approved' ? 'bg-green-100 text-green-700' : l.manager_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                     {l.manager_status || 'pending'}
                   </span>
-                </TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize ${l.hr_status === 'approved' ? 'bg-green-100 text-green-700' : l.hr_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">HR Status</span>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold capitalize mt-0.5 ${l.hr_status === 'approved' ? 'bg-green-100 text-green-700' : l.hr_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                     {l.hr_status || 'pending'}
                   </span>
-                </TableCell>
-                <TableCell className="text-right pr-6">
-                  {(l.status === "pending" || l.status === "approved" || role === "admin") && (
-                    <div className="flex items-center justify-end gap-2">
-                      <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50" onClick={() => decide(l.id, "approve")}>
-                        <Check className="size-4 mr-1" /> Approve
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => setRejectionDialog({ open: true, leaveId: l.id })}>
-                        <X className="size-4 mr-1" /> Reject
-                      </Button>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredLeaves.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  <FileText className="size-12 mx-auto mb-3 opacity-20" />
-                  No leave requests found pending your approval.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                </div>
+              </div>
+
+              {/* Actions */}
+              {(l.status === "pending" || l.status === "approved" || role === "admin") && (
+                <div className="flex items-center gap-2 pt-3">
+                  <Button size="sm" variant="outline" className="flex-1 border-green-200 text-green-700 hover:bg-green-50" onClick={() => decide(l.id, "approve")}>
+                    <Check className="size-4 mr-1" /> Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 border-red-200 text-red-700 hover:bg-red-50" onClick={() => setRejectionDialog({ open: true, leaveId: l.id })}>
+                    <X className="size-4 mr-1" /> Reject
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {filteredLeaves.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <FileText className="size-12 mx-auto mb-3 opacity-20" />
+            No leave requests found pending your approval.
+          </div>
+        )}
       </div>
 
       <Dialog open={rejectionDialog.open} onOpenChange={(open) => !open && setRejectionDialog({ open: false, leaveId: null })}>

@@ -181,18 +181,18 @@ function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 h-14 bg-muted/50 p-1.5 rounded-2xl">
-          <TabsTrigger value="general" className="rounded-xl font-bold gap-2 data-[state=active]:shadow-md">
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl h-auto w-full flex flex-wrap justify-start gap-2 mb-8">
+          <TabsTrigger value="general" className="rounded-xl font-bold gap-2 py-2.5 w-[calc(50%-4px)] md:w-auto md:flex-1 data-[state=active]:shadow-md">
             <Building2 className="size-4" /> General
           </TabsTrigger>
-          <TabsTrigger value="payroll" className="rounded-xl font-bold gap-2 data-[state=active]:shadow-md">
+          <TabsTrigger value="payroll" className="rounded-xl font-bold gap-2 py-2.5 w-[calc(50%-4px)] md:w-auto md:flex-1 data-[state=active]:shadow-md">
             <Calculator className="size-4" /> Payroll Rules
           </TabsTrigger>
-          <TabsTrigger value="location" className="rounded-xl font-bold gap-2 data-[state=active]:shadow-md">
+          <TabsTrigger value="location" className="rounded-xl font-bold gap-2 py-2.5 w-[calc(50%-4px)] md:w-auto md:flex-1 data-[state=active]:shadow-md">
             <MapPin className="size-4" /> Office Locations
           </TabsTrigger>
-          <TabsTrigger value="roles" className="rounded-xl font-bold gap-2 data-[state=active]:shadow-md">
-            <ShieldCheck className="size-4" /> User Access Controls
+          <TabsTrigger value="roles" className="rounded-xl font-bold gap-2 py-2.5 w-[calc(50%-4px)] md:w-auto md:flex-1 data-[state=active]:shadow-md">
+            <ShieldCheck className="size-4" /> Access Controls
           </TabsTrigger>
         </TabsList>
 
@@ -341,71 +341,131 @@ function SettingsPage() {
                   Loading employees and access records...
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-primary/5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                        <th className="pb-4 text-left font-bold pl-4">Employee</th>
-                        <th className="pb-4 text-left font-bold">Email</th>
-                        <th className="pb-4 text-left font-bold">Department</th>
-                        <th className="pb-4 text-left font-bold">Designation</th>
-                        <th className="pb-4 text-right font-bold pr-4">Access Role</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-primary/5">
-                      {allEmployees.map((emp: any) => {
-                        const matchingRole = userRoles.find((r: any) => r.user_id === emp.user_id)?.role || "employee";
-                        return (
-                          <tr key={emp.id} className="group hover:bg-muted/10 transition-colors">
-                            <td className="py-4 pl-4">
-                              <div className="flex items-center gap-3">
-                                <div className="size-10 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center font-bold text-primary text-sm shadow-sm group-hover:scale-105 transition-transform">
-                                  {emp.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                <>
+                  {/* Desktop View - Table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-primary/5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                          <th className="pb-4 text-left font-bold pl-4">Employee</th>
+                          <th className="pb-4 text-left font-bold">Email</th>
+                          <th className="pb-4 text-left font-bold">Department</th>
+                          <th className="pb-4 text-left font-bold">Designation</th>
+                          <th className="pb-4 text-right font-bold pr-4">Access Role</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-primary/5">
+                        {allEmployees.map((emp: any) => {
+                          const matchingRole = userRoles.find((r: any) => r.user_id === emp.user_id)?.role || "employee";
+                          return (
+                            <tr key={emp.id} className="group hover:bg-muted/10 transition-colors">
+                              <td className="py-4 pl-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="size-10 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center font-bold text-primary text-sm shadow-sm group-hover:scale-105 transition-transform">
+                                    {emp.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-sm tracking-tight text-foreground">{emp.full_name}</p>
+                                    <p className="text-[10px] text-muted-foreground font-medium">ID: {emp.id.slice(0, 8)}...</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="font-bold text-sm tracking-tight text-foreground">{emp.full_name}</p>
-                                  <p className="text-[10px] text-muted-foreground font-medium">ID: {emp.id.slice(0, 8)}...</p>
+                              </td>
+                              <td className="py-4 text-sm font-medium text-muted-foreground">{emp.email}</td>
+                              <td className="py-4">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/5 text-primary border border-primary/10">
+                                  {emp.department || "N/A"}
+                                </span>
+                              </td>
+                              <td className="py-4 text-sm font-medium text-muted-foreground">{emp.designation || "N/A"}</td>
+                              <td className="py-4 text-right pr-4">
+                                <div className="inline-block w-40 text-left">
+                                  <Select
+                                    value={matchingRole}
+                                    disabled={busy}
+                                    onValueChange={(val) => handleRoleChange(emp.user_id, val)}
+                                  >
+                                    <SelectTrigger className="h-10 rounded-xl border border-muted-foreground/20 bg-background/50 backdrop-blur-sm focus:ring-primary shadow-sm">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border shadow-elegant">
+                                      <SelectItem value="employee" className="rounded-lg font-medium">Employee</SelectItem>
+                                      <SelectItem value="manager" className="rounded-lg font-medium">Manager</SelectItem>
+                                      <SelectItem value="admin" className="rounded-lg font-medium">Admin</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="py-4 text-sm font-medium text-muted-foreground">{emp.email}</td>
-                            <td className="py-4">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/5 text-primary border border-primary/10">
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View - Access Control Card List */}
+                  <div className="md:hidden divide-y divide-primary/5">
+                    {allEmployees.map((emp: any) => {
+                      const matchingRole = userRoles.find((r: any) => r.user_id === emp.user_id)?.role || "employee";
+                      return (
+                        <div key={emp.id} className="py-4 space-y-3">
+                          {/* Header: Avatar, Name & ID */}
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center font-bold text-primary text-sm shadow-sm">
+                              {emp.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-sm text-foreground">{emp.full_name}</h4>
+                              <p className="text-[10px] text-muted-foreground font-medium">ID: {emp.id.slice(0, 8)}...</p>
+                            </div>
+                          </div>
+
+                          {/* Email, Department & Designation */}
+                          <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                            <div className="col-span-2">
+                              <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Email</span>
+                              <span className="font-medium text-foreground">{emp.email}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Department</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/5 text-primary border border-primary/10 mt-0.5">
                                 {emp.department || "N/A"}
                               </span>
-                            </td>
-                            <td className="py-4 text-sm font-medium text-muted-foreground">{emp.designation || "N/A"}</td>
-                            <td className="py-4 text-right pr-4">
-                              <div className="inline-block w-40 text-left">
-                                <Select
-                                  value={matchingRole}
-                                  disabled={busy}
-                                  onValueChange={(val) => handleRoleChange(emp.user_id, val)}
-                                >
-                                  <SelectTrigger className="h-10 rounded-xl border border-muted-foreground/20 bg-background/50 backdrop-blur-sm focus:ring-primary shadow-sm">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl border shadow-elegant">
-                                    <SelectItem value="employee" className="rounded-lg font-medium">Employee</SelectItem>
-                                    <SelectItem value="manager" className="rounded-lg font-medium">Manager</SelectItem>
-                                    <SelectItem value="admin" className="rounded-lg font-medium">Admin</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {allEmployees.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="text-center py-10 text-muted-foreground italic">
-                            No registered employees with active accounts found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Designation</span>
+                              <span className="font-medium text-foreground block mt-0.5">{emp.designation || "N/A"}</span>
+                            </div>
+                          </div>
+
+                          {/* Access Role Selection */}
+                          <div className="pt-2">
+                            <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider mb-1">Access Role</span>
+                            <Select
+                              value={matchingRole}
+                              disabled={busy}
+                              onValueChange={(val) => handleRoleChange(emp.user_id, val)}
+                            >
+                              <SelectTrigger className="h-10 w-full rounded-xl border border-muted-foreground/20 bg-background/50 backdrop-blur-sm focus:ring-primary shadow-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border shadow-elegant">
+                                <SelectItem value="employee" className="rounded-lg font-medium">Employee</SelectItem>
+                                <SelectItem value="manager" className="rounded-lg font-medium">Manager</SelectItem>
+                                <SelectItem value="admin" className="rounded-lg font-medium">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {allEmployees.length === 0 && (
+                    <div className="text-center py-10 text-muted-foreground italic">
+                      No registered employees with active accounts found.
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

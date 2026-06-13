@@ -68,11 +68,11 @@ function DirectoryPage() {
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
               <TableRow>
-                <TableHead className="pl-6 h-12">Employee</TableHead>
-                <TableHead>Contact Info</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Designation</TableHead>
-                <TableHead className="text-right pr-6">Employee ID</TableHead>
+                <TableHead className="pl-6 h-12 whitespace-nowrap">Employee</TableHead>
+                <TableHead className="whitespace-nowrap">Contact Info</TableHead>
+                <TableHead className="whitespace-nowrap">Department</TableHead>
+                <TableHead className="whitespace-nowrap">Designation</TableHead>
+                <TableHead className="text-right pr-6 whitespace-nowrap">Employee ID</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -97,7 +97,7 @@ function DirectoryPage() {
               ) : (
                 paginatedEmployees.map((e: any) => (
                   <TableRow key={e.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                    <TableCell className="pl-6">
+                    <TableCell className="pl-6 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shadow-sm shrink-0">
                           {e.full_name?.charAt(0)}
@@ -122,16 +122,16 @@ function DirectoryPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {e.department || "N/A"}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                      <span className="font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                         {e.designation || "N/A"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-muted-foreground font-bold">
+                    <TableCell className="text-right pr-6 font-mono text-sm text-muted-foreground font-bold whitespace-nowrap">
                       {e.employee_code || "—"}
                     </TableCell>
                   </TableRow>

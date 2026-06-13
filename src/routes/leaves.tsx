@@ -166,13 +166,13 @@ function LeavesPage() {
       </div>
 
       <Tabs defaultValue="my-leaves" className="w-full space-y-6">
-        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-12 w-full md:w-auto inline-flex overflow-x-auto justify-start">
-          <TabsTrigger value="my-leaves" className="rounded-lg h-full px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">My Leaves</TabsTrigger>
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-auto w-full md:w-auto flex flex-wrap md:inline-flex justify-start gap-1">
+          <TabsTrigger value="my-leaves" className="rounded-lg h-10 px-4 md:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm flex-1 md:flex-none">My Leaves</TabsTrigger>
           {(isManager || isAdmin) && (
-            <TabsTrigger value="team-approvals" className="rounded-lg h-full px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Team Approvals</TabsTrigger>
+            <TabsTrigger value="team-approvals" className="rounded-lg h-10 px-4 md:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm flex-1 md:flex-none">Team Approvals</TabsTrigger>
           )}
           {isAdmin && (
-            <TabsTrigger value="admin-config" className="rounded-lg h-full px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Admin Config</TabsTrigger>
+            <TabsTrigger value="admin-config" className="rounded-lg h-10 px-4 md:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm flex-1 md:flex-none">Admin Config</TabsTrigger>
           )}
         </TabsList>
 
