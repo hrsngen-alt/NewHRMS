@@ -275,15 +275,15 @@ function AttendancePage() {
 
       {/* Punch Controls */}
       {selMonth === String(new Date().getMonth() + 1) && (
-        <div className="p-8 rounded-3xl bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-50" />
+        <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-transparent flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm dark:shadow-2xl dark:shadow-indigo-500/20 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 dark:from-indigo-500/10 to-transparent opacity-50" />
           <div className="relative z-10 flex items-center gap-6">
-            <div className={cn("size-20 rounded-2xl flex items-center justify-center border-2 border-white/10", isCheckedIn ? "bg-green-500" : "bg-indigo-500 shadow-lg shadow-indigo-500/40")}>
-              <Clock className={cn("size-10", isCheckedIn && "animate-pulse")} />
+            <div className={cn("size-20 rounded-2xl flex items-center justify-center border-2 border-slate-100 dark:border-white/10", isCheckedIn ? "bg-green-500" : "bg-indigo-500 shadow-lg shadow-indigo-500/40")}>
+              <Clock className={cn("size-10 text-white", isCheckedIn && "animate-pulse")} />
             </div>
             <div>
-              <h3 className="text-2xl font-black tracking-tight">{isCheckedIn ? "You are currently Clocked In" : "Ready to start your day?"}</h3>
-              <p className="text-indigo-200/70 font-medium">Capture your location and start your work timer.</p>
+              <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">{isCheckedIn ? "You are currently Clocked In" : "Ready to start your day?"}</h3>
+              <p className="text-slate-500 dark:text-indigo-200/70 font-medium">Capture your location and start your work timer.</p>
             </div>
           </div>
           <div className="relative z-10 flex items-center gap-4 w-full md:w-auto">

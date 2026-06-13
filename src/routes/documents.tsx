@@ -153,27 +153,27 @@ function DocumentsPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Policy Hub</h1>
           <p className="text-muted-foreground mt-1">Company policies, handbooks and documents.</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-[250px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search documents..."
-              className="pl-9 w-[250px]"
+              className="pl-9 w-full"
             />
           </div>
           {isAdmin && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2">
+                <Button className="gap-2 w-full sm:w-auto shrink-0">
                   <Plus className="size-4" /> Add Policy
                 </Button>
               </DialogTrigger>
@@ -289,47 +289,48 @@ function DocumentsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="space-y-12">
+      <div className="space-y-6 md:space-y-10">
         {categories.map((cat) => {
           const catDocs = filteredDocs.filter((d: any) => d.category === cat);
-          if (catDocs.length === 0 && !isAdmin) return null;
+          // Hide empty sections for everyone (admins see 'Add Policy' in header)
+          if (catDocs.length === 0) return null;
 
           return (
-            <div key={cat} className="space-y-4">
+            <div key={cat} className="space-y-3">
               <div className="flex items-center gap-2 border-b pb-2">
-                <span className="text-primary">{getIcon(cat)}</span>
-                <h3 className="font-bold text-lg">{cat}</h3>
+                <span className="text-primary shrink-0">{getIcon(cat)}</span>
+                <h3 className="font-bold text-base md:text-lg leading-snug">{cat}</h3>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {catDocs.map((d: any) => (
                   <Card key={d.id} className="group overflow-hidden transition-all hover:shadow-md">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                            {d.file_url ? <FileText className="size-5" /> : <Info className="size-5" />}
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="size-9 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            {d.file_url ? <FileText className="size-4" /> : <Info className="size-4" />}
                           </div>
-                          <div>
-                            <h4 className="font-bold text-sm line-clamp-1">{d.title}</h4>
-                            <p className="text-[10px] text-muted-foreground uppercase font-medium">{cat}</p>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-sm line-clamp-2 leading-snug">{d.title}</h4>
+                            <p className="text-[9px] text-muted-foreground uppercase font-medium tracking-wider mt-0.5">{cat}</p>
                           </div>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           {d.file_url && (
-                            <Button size="icon" variant="ghost" className="size-8" onClick={() => setPreviewDoc(d)}>
+                            <Button size="icon" variant="ghost" className="size-8" onClick={() => setPreviewDoc(d)} title="Preview">
                               <Eye className="size-4" />
                             </Button>
                           )}
                           {isAdmin && (
                             <>
                               {d.file_url && (
-                                <Button size="icon" variant="ghost" className="size-8" asChild>
+                                <Button size="icon" variant="ghost" className="size-8" asChild title="Download">
                                   <a href={d.file_url} target="_blank" rel="noreferrer" download>
                                     <Download className="size-4" />
                                   </a>
                                 </Button>
                               )}
-                              <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => deleteDoc(d)}>
+                              <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => deleteDoc(d)} title="Delete">
                                 <Trash2 className="size-4" />
                               </Button>
                             </>
@@ -337,7 +338,7 @@ function DocumentsPage() {
                         </div>
                       </div>
                       {d.description && (
-                        <p className="mt-4 text-xs text-muted-foreground line-clamp-3 italic">
+                        <p className="mt-3 text-xs text-muted-foreground line-clamp-3 italic border-t pt-2.5">
                           {d.description}
                         </p>
                       )}

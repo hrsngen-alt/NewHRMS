@@ -403,7 +403,7 @@ function SalaryStructurePage() {
               </div>
 
               {/* CTC Breakdown */}
-              <div className="rounded-2xl border bg-gradient-to-br from-slate-900 to-slate-800 shadow-xl overflow-hidden text-white">
+              <div className="rounded-2xl border bg-slate-800 dark:bg-gradient-to-br dark:from-slate-900 dark:to-slate-800 shadow-xl overflow-hidden text-white">
                 <div className="px-6 py-5 border-b border-white/10">
                   <p className="text-[10px] font-black uppercase tracking-widest text-white/50">CTC Calculation</p>
                   <p className="text-xl font-black mt-0.5">How Monthly CTC of {fmt(CTC)} is built</p>

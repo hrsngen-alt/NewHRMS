@@ -16,273 +16,341 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "../lib/utils";
 
-export const Route = createFileRoute("/performance")({ 
-  component: () => (
-    <AppShell>
-      <PerformancePage />
-    </AppShell>
-  ) 
+export const Route = createFileRoute("/performance")({
+   component: () => (
+      <AppShell>
+         <PerformancePage />
+      </AppShell>
+   )
 });
 
 function PerformancePage() {
-  const qc = useQueryClient();
-  const { user, role } = useAuth();
-  const isAdmin = role === "admin";
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+   const qc = useQueryClient();
+   const { user, role } = useAuth();
+   const isAdmin = role === "admin";
+   const [open, setOpen] = useState(false);
+   const [busy, setBusy] = useState(false);
 
-  const { data: myEmployee } = useQuery({
-    queryKey: ["my-employee-perf"],
-    enabled: !!user && !isAdmin,
-    queryFn: async () => (await supabase.from("employees" as any).select("id").eq("user_id", user!.id).maybeSingle()).data as any,
-  });
+   const { data: myEmployee } = useQuery({
+      queryKey: ["my-employee-perf"],
+      enabled: !!user && !isAdmin,
+      queryFn: async () => (await supabase.from("employees" as any).select("id").eq("user_id", user!.id).maybeSingle()).data as any,
+   });
 
-  const { data: reviews = [], isLoading } = useQuery({
-    queryKey: ["performance-reviews", role, myEmployee?.id],
-    queryFn: async () => {
-      let q = supabase.from("performance_reviews" as any).select("*, employees(full_name, employee_code, department)").order("created_at", { ascending: false });
-      if (!isAdmin && myEmployee) q = q.eq("employee_id", myEmployee.id);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data as any) || [];
-    },
-    enabled: !!user && (isAdmin || !!myEmployee),
-  });
+   const { data: reviews = [], isLoading } = useQuery({
+      queryKey: ["performance-reviews", role, myEmployee?.id],
+      queryFn: async () => {
+         let q = supabase.from("performance_reviews" as any).select("*, employees(full_name, employee_code, department)").order("created_at", { ascending: false });
+         if (!isAdmin && myEmployee) q = q.eq("employee_id", myEmployee.id);
+         const { data, error } = await q;
+         if (error) throw error;
+         return (data as any) || [];
+      },
+      enabled: !!user && (isAdmin || !!myEmployee),
+   });
 
-  const { data: allEmployees = [] } = useQuery({
-    queryKey: ["all-employees-perf"],
-    enabled: isAdmin,
-    queryFn: async () => (await supabase.from("employees" as any).select("id, full_name").eq("status", "active").order("full_name")).data as any[] || [],
-  });
+   const { data: allEmployees = [] } = useQuery({
+      queryKey: ["all-employees-perf"],
+      enabled: isAdmin,
+      queryFn: async () => (await supabase.from("employees" as any).select("id, full_name").eq("status", "active").order("full_name")).data as any[] || [],
+   });
 
-  const submitReview = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setBusy(true);
-    const fd = new FormData(e.currentTarget);
-    const empId = fd.get("employee_id");
-    const empName = allEmployees.find(e => e.id === empId)?.full_name || "Employee";
+   const submitReview = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setBusy(true);
+      const fd = new FormData(e.currentTarget);
+      const empId = fd.get("employee_id");
+      const empName = allEmployees.find(e => e.id === empId)?.full_name || "Employee";
 
-    const { error } = await supabase.from("performance_reviews" as any).insert({
-      employee_id: empId,
-      reviewer_id: user!.id,
-      review_period: fd.get("review_period"),
-      rating: Number(fd.get("rating")),
-      feedback: fd.get("feedback"),
-      goals: fd.get("goals"),
-      status: "submitted"
-    });
+      const { error } = await supabase.from("performance_reviews" as any).insert({
+         employee_id: empId,
+         reviewer_id: user!.id,
+         review_period: fd.get("review_period"),
+         rating: Number(fd.get("rating")),
+         feedback: fd.get("feedback"),
+         goals: fd.get("goals"),
+         status: "submitted"
+      });
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      // Create notification for HR/Admin
-      const { data: admins, error: admErr } = await supabase.from("profiles" as any).select("id").eq("role", "admin");
-      if (!admErr && admins) {
-        const notifications = (admins as any[]).map(adm => ({
-          user_id: adm.id,
-          title: "New Performance Appraisal",
-          message: `A new appraisal has been submitted for ${empName} (${fd.get("review_period")}).`,
-          type: "success",
-          is_read: false
-        }));
-        await supabase.from("notifications" as any).insert(notifications);
+      if (error) {
+         toast.error(error.message);
+      } else {
+         // Create notification for HR/Admin
+         const { data: admins, error: admErr } = await supabase.from("profiles" as any).select("id").eq("role", "admin");
+         if (!admErr && admins) {
+            const notifications = (admins as any[]).map(adm => ({
+               user_id: adm.id,
+               title: "New Performance Appraisal",
+               message: `A new appraisal has been submitted for ${empName} (${fd.get("review_period")}).`,
+               type: "success",
+               is_read: false
+            }));
+            await supabase.from("notifications" as any).insert(notifications);
+         }
+
+         toast.success("Performance review submitted and HR notified!");
+         setOpen(false);
+         qc.invalidateQueries({ queryKey: ["performance-reviews"] });
       }
+      setBusy(false);
+   };
 
-      toast.success("Performance review submitted and HR notified!");
-      setOpen(false);
-      qc.invalidateQueries({ queryKey: ["performance-reviews"] });
-    }
-    setBusy(false);
-  };
+   const [selectedReview, setSelectedReview] = useState<any>(null);
 
-  const [selectedReview, setSelectedReview] = useState<any>(null);
+   if (isLoading) return <div className="p-8 text-center animate-pulse font-black text-primary">Loading reviews...</div>;
 
-  if (isLoading) return <div className="p-8 text-center animate-pulse font-black text-primary">Loading reviews...</div>;
-
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Performance Reviews</h1>
-          <p className="text-muted-foreground font-medium mt-1">Track employee growth, set goals, and provide constructive feedback.</p>
-        </div>
-        {isAdmin && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 rounded-xl h-12 shadow-lg shadow-primary/20">
-                <Plus className="size-4" /> New Review
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl rounded-3xl p-8 border-2 border-primary/5 shadow-elegant overflow-y-auto max-h-[90vh]">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black tracking-tight">Create Performance Review</DialogTitle>
-                <CardDescription>Evaluate performance and set future objectives.</CardDescription>
-              </DialogHeader>
-              <form onSubmit={submitReview} className="space-y-6 mt-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Employee</Label>
-                      <Select name="employee_id" required>
-                         <SelectTrigger className="h-11 rounded-xl border-2"><SelectValue placeholder="Choose employee" /></SelectTrigger>
-                         <SelectContent>
-                            {allEmployees.map(emp => (
-                               <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
-                            ))}
-                         </SelectContent>
-                      </Select>
-                   </div>
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Review Period</Label>
-                      <Input name="review_period" placeholder="e.g. Q1 2024" required className="h-11 rounded-xl border-2" />
-                   </div>
-                </div>
-
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rating (1-5)</Label>
-                   <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((num) => (
-                         <label key={num} className="cursor-pointer group">
-                            <input type="radio" name="rating" value={num} required className="hidden peer" />
-                            <div className="size-12 rounded-xl border-2 flex items-center justify-center font-black peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary transition-all group-hover:border-primary/50">
-                               {num}
-                            </div>
-                         </label>
-                      ))}
-                   </div>
-                </div>
-
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Detailed Feedback</Label>
-                   <Textarea name="feedback" placeholder="Describe achievements, strengths, and areas for improvement..." className="min-h-[120px] rounded-2xl border-2" required />
-                </div>
-
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Future Goals & Objectives</Label>
-                   <Textarea name="goals" placeholder="What should the employee achieve in the next period?" className="min-h-[100px] rounded-2xl border-2" required />
-                </div>
-
-                <DialogFooter className="pt-6 border-t gap-2">
-                  <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="rounded-xl">Cancel</Button>
-                  <Button type="submit" disabled={busy} className="px-10 rounded-xl h-11">{busy ? "Submitting..." : "Submit Review"}</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-12">
-         {/* Summary Widget */}
-         <div className="lg:col-span-4 space-y-6">
-            <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
-               <CardHeader className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white pb-8">
-                  <Award className="size-10 mb-4 opacity-80" />
-                  <CardTitle className="text-2xl font-black tracking-tight text-white">Excellence Score</CardTitle>
-                  <CardDescription className="text-indigo-100 font-medium">Average performance across all reviews.</CardDescription>
-               </CardHeader>
-               <CardContent className="p-8 -mt-6">
-                  <div className="bg-card rounded-2xl p-6 shadow-elegant border border-primary/5 flex flex-col items-center text-center">
-                     <span className="text-6xl font-black text-primary tracking-tighter">
-                        {reviews.length > 0 
-                           ? (reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1)
-                           : "0.0"}
-                     </span>
-                     <div className="flex gap-1 mt-2 text-amber-400">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                           <Star key={i} className={cn("size-5", i < Math.round(reviews.length > 0 ? (reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / reviews.length) : 0) ? "fill-current" : "text-muted-foreground/30")} />
-                        ))}
-                     </div>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-4">
-                        {reviews.length > 0 ? "Actual Score" : "No Data Yet"}
-                     </p>
-                  </div>
-               </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border-2 border-primary/5 shadow-card p-6 space-y-4">
-               <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                  <Target className="size-4" /> Recent Goals
-               </h3>
-               <div className="space-y-3">
-                  {reviews.filter((r: any) => r.goals).slice(0, 3).map((r: any) => (
-                     <div key={r.id} className="flex items-center gap-3">
-                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                           <Target className="size-4 text-primary" />
+   return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+               <h1 className="font-display text-4xl font-black tracking-tight text-foreground">Performance Reviews</h1>
+               <p className="text-muted-foreground font-medium mt-1">Track employee growth, set goals, and provide constructive feedback.</p>
+            </div>
+            {isAdmin && (
+               <Dialog open={open} onOpenChange={setOpen}>
+                  <DialogTrigger asChild>
+                     <Button className="gap-2 rounded-xl h-12 shadow-lg shadow-primary/20">
+                        <Plus className="size-4" /> New Review
+                     </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl rounded-3xl p-8 border-2 border-primary/5 shadow-elegant overflow-y-auto max-h-[90vh]">
+                     <DialogHeader>
+                        <DialogTitle className="text-2xl font-black tracking-tight">Create Performance Review</DialogTitle>
+                        <CardDescription>Evaluate performance and set future objectives.</CardDescription>
+                     </DialogHeader>
+                     <form onSubmit={submitReview} className="space-y-6 mt-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Employee</Label>
+                              <Select name="employee_id" required>
+                                 <SelectTrigger className="h-11 rounded-xl border-2"><SelectValue placeholder="Choose employee" /></SelectTrigger>
+                                 <SelectContent>
+                                    {allEmployees.map(emp => (
+                                       <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
+                                    ))}
+                                 </SelectContent>
+                              </Select>
+                           </div>
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Review Period</Label>
+                              <Input name="review_period" placeholder="e.g. Q1 2024" required className="h-11 rounded-xl border-2" />
+                           </div>
                         </div>
-                        <div className="flex flex-col">
-                           <span className="text-sm font-semibold">{r.goals.length > 40 ? r.goals.substring(0, 40) + "..." : r.goals}</span>
-                           <span className="text-xs text-muted-foreground">Period: {r.review_period}</span>
+
+                        <div className="space-y-2">
+                           <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rating (1-5)</Label>
+                           <div className="flex gap-2">
+                              {[1, 2, 3, 4, 5].map((num) => (
+                                 <label key={num} className="cursor-pointer group">
+                                    <input type="radio" name="rating" value={num} required className="hidden peer" />
+                                    <div className="size-12 rounded-xl border-2 flex items-center justify-center font-black peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary transition-all group-hover:border-primary/50">
+                                       {num}
+                                    </div>
+                                 </label>
+                              ))}
+                           </div>
                         </div>
-                     </div>
-                  ))}
-                  {reviews.filter((r: any) => r.goals).length === 0 && (
-                     <p className="text-sm text-muted-foreground italic">No recent goals set.</p>
-                  )}
-               </div>
-            </Card>
+
+                        <div className="space-y-2">
+                           <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Detailed Feedback</Label>
+                           <Textarea name="feedback" placeholder="Describe achievements, strengths, and areas for improvement..." className="min-h-[120px] rounded-2xl border-2" required />
+                        </div>
+
+                        <div className="space-y-2">
+                           <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Future Goals & Objectives</Label>
+                           <Textarea name="goals" placeholder="What should the employee achieve in the next period?" className="min-h-[100px] rounded-2xl border-2" required />
+                        </div>
+
+                        <DialogFooter className="pt-6 border-t gap-2">
+                           <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="rounded-xl">Cancel</Button>
+                           <Button type="submit" disabled={busy} className="px-10 rounded-xl h-11">{busy ? "Submitting..." : "Submit Review"}</Button>
+                        </DialogFooter>
+                     </form>
+                  </DialogContent>
+               </Dialog>
+            )}
          </div>
 
-         {/* Reviews List */}
-         <div className="lg:col-span-8">
-            <Card className="hidden md:block rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
-               <div className="overflow-x-auto">
-                  <Table>
-                     <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-800">
-                        <TableRow>
-                           <TableHead className="pl-8 font-black uppercase text-[10px] tracking-widest">Review Period</TableHead>
-                           <TableHead className="font-black uppercase text-[10px] tracking-widest">{isAdmin ? "Employee" : "Rating"}</TableHead>
-                           <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
-                           <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Action</TableHead>
-                        </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                        {reviews.map((r: any) => (
-                           <TableRow key={r.id} className="hover:bg-primary/5 transition-colors group">
-                              <TableCell className="pl-8 font-black text-foreground">
-                                 <div className="flex items-center gap-3">
-                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                       <MessageSquare className="size-4" />
-                                    </div>
-                                    {r.review_period}
-                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                 {isAdmin ? (
-                                    <div className="flex flex-col">
-                                       <span className="font-bold text-sm">{r.employees?.full_name}</span>
-                                       <span className="text-[10px] font-black text-muted-foreground uppercase">{r.employees?.department}</span>
-                                    </div>
-                                 ) : (
-                                    <div className="flex gap-1 text-amber-400">
-                                       {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3 fill-current" />)}
-                                    </div>
-                                 )}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                 <span className={cn(
-                                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tighter",
-                                    r.status === 'submitted' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                                 )}>
-                                    {r.status === 'submitted' ? <CheckCircle2 className="size-3 mr-1" /> : <FileEdit className="size-3 mr-1" />}
-                                    {r.status}
-                                 </span>
-                              </TableCell>
-                              <TableCell className="text-right pr-8">
-                                 <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    onClick={() => setSelectedReview(r)}
-                                    className="font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl"
-                                 >
-                                    View Details
-                                 </Button>
-                              </TableCell>
+         <div className="grid gap-8 lg:grid-cols-12">
+            {/* Summary Widget */}
+            <div className="lg:col-span-4 space-y-6">
+               <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
+                  <CardHeader className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white pb-8">
+                     <Award className="size-10 mb-4 opacity-80" />
+                     <CardTitle className="text-2xl font-black tracking-tight text-white">Excellence Score</CardTitle>
+                     <CardDescription className="text-indigo-100 font-medium">Average performance across all reviews.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-8 -mt-6">
+                     <div className="bg-card rounded-2xl p-6 shadow-elegant border border-primary/5 flex flex-col items-center text-center">
+                        <span className="text-6xl font-black text-primary tracking-tighter">
+                           {reviews.length > 0
+                              ? (reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1)
+                              : "0.0"}
+                        </span>
+                        <div className="flex gap-1 mt-2 text-amber-400">
+                           {Array.from({ length: 5 }).map((_, i) => (
+                              <Star key={i} className={cn("size-5", i < Math.round(reviews.length > 0 ? (reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / reviews.length) : 0) ? "fill-current" : "text-muted-foreground/30")} />
+                           ))}
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-4">
+                           {reviews.length > 0 ? "Actual Score" : "No Data Yet"}
+                        </p>
+                     </div>
+                  </CardContent>
+               </Card>
+
+               <Card className="rounded-2xl border-2 border-primary/5 shadow-card p-6 space-y-4">
+                  <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                     <Target className="size-4" /> Recent Goals
+                  </h3>
+                  <div className="space-y-3">
+                     {reviews.filter((r: any) => r.goals).slice(0, 3).map((r: any) => (
+                        <div key={r.id} className="flex items-center gap-3">
+                           <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <Target className="size-4 text-primary" />
+                           </div>
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold">{r.goals.length > 40 ? r.goals.substring(0, 40) + "..." : r.goals}</span>
+                              <span className="text-xs text-muted-foreground">Period: {r.review_period}</span>
+                           </div>
+                        </div>
+                     ))}
+                     {reviews.filter((r: any) => r.goals).length === 0 && (
+                        <p className="text-sm text-muted-foreground italic">No recent goals set.</p>
+                     )}
+                  </div>
+               </Card>
+            </div>
+
+            {/* Reviews List */}
+            <div className="lg:col-span-8">
+               <Card className="hidden md:block rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                     <Table>
+                        <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-800">
+                           <TableRow>
+                              <TableHead className="pl-8 font-black uppercase text-[10px] tracking-widest">Review Period</TableHead>
+                              <TableHead className="font-black uppercase text-[10px] tracking-widest">{isAdmin ? "Employee" : "Rating"}</TableHead>
+                              <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
+                              <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-8">Action</TableHead>
                            </TableRow>
-                        ))}
-                     </TableBody>
-                  </Table>
+                        </TableHeader>
+                        <TableBody>
+                           {reviews.map((r: any) => (
+                              <TableRow key={r.id} className="hover:bg-primary/5 transition-colors group">
+                                 <TableCell className="pl-8 font-black text-foreground">
+                                    <div className="flex items-center gap-3">
+                                       <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                          <MessageSquare className="size-4" />
+                                       </div>
+                                       {r.review_period}
+                                    </div>
+                                 </TableCell>
+                                 <TableCell>
+                                    {isAdmin ? (
+                                       <div className="flex flex-col">
+                                          <span className="font-bold text-sm">{r.employees?.full_name}</span>
+                                          <span className="text-[10px] font-black text-muted-foreground uppercase">{r.employees?.department}</span>
+                                       </div>
+                                    ) : (
+                                       <div className="flex gap-1 text-amber-400">
+                                          {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3 fill-current" />)}
+                                       </div>
+                                    )}
+                                 </TableCell>
+                                 <TableCell className="text-center">
+                                    <span className={cn(
+                                       "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tighter",
+                                       r.status === 'submitted' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                                    )}>
+                                       {r.status === 'submitted' ? <CheckCircle2 className="size-3 mr-1" /> : <FileEdit className="size-3 mr-1" />}
+                                       {r.status}
+                                    </span>
+                                 </TableCell>
+                                 <TableCell className="text-right pr-8">
+                                    <Button
+                                       variant="ghost"
+                                       size="sm"
+                                       onClick={() => setSelectedReview(r)}
+                                       className="font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl"
+                                    >
+                                       View Details
+                                    </Button>
+                                 </TableCell>
+                              </TableRow>
+                           ))}
+                        </TableBody>
+                     </Table>
+                     {reviews.length === 0 && (
+                        <div className="py-24 text-center flex flex-col items-center gap-4">
+                           <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/20">
+                              <Award className="size-10" />
+                           </div>
+                           <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No reviews documented yet.</p>
+                        </div>
+                     )}
+                  </div>
+               </Card>
+
+               {/* Mobile Reviews List */}
+               <div className="block md:hidden space-y-4">
+                  {reviews.map((r: any) => (
+                     <div
+                        key={r.id}
+                        className="bg-white dark:bg-slate-900 border-2 border-primary/5 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-shadow"
+                     >
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-2.5">
+                              <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                 <MessageSquare className="size-4" />
+                              </div>
+                              <span className="font-black text-sm text-foreground">{r.review_period}</span>
+                           </div>
+                           <span className={cn(
+                              "inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-tighter shrink-0",
+                              r.status === 'submitted' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                           )}>
+                              {r.status === 'submitted' ? <CheckCircle2 className="size-3 mr-1" /> : <FileEdit className="size-3 mr-1" />}
+                              {r.status}
+                           </span>
+                        </div>
+
+                        <div className="pt-2 border-t dark:border-slate-800 space-y-2">
+                           {isAdmin ? (
+                              <div className="flex flex-col gap-1">
+                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Employee</span>
+                                 <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{r.employees?.full_name}</span>
+                                 <span className="text-[10px] font-black text-muted-foreground uppercase">{r.employees?.department}</span>
+                                 <div className="flex items-center gap-1.5 mt-1.5">
+                                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-1">Rating:</span>
+                                    <div className="flex gap-0.5 text-amber-400">
+                                       {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-current" />)}
+                                       {Array.from({ length: 5 - r.rating }).map((_, i) => <Star key={i} className="size-3.5 text-muted-foreground/20" />)}
+                                    </div>
+                                 </div>
+                              </div>
+                           ) : (
+                              <div className="flex items-center justify-between">
+                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Rating</span>
+                                 <div className="flex gap-0.5 text-amber-400">
+                                    {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-4.5 fill-current" />)}
+                                    {Array.from({ length: 5 - r.rating }).map((_, i) => <Star key={i} className="size-4.5 text-muted-foreground/20" />)}
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+
+                        <Button
+                           variant="ghost"
+                           onClick={() => setSelectedReview(r)}
+                           className="w-full font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 bg-primary/5 rounded-xl h-10 flex items-center justify-center mt-2 border border-primary/10"
+                        >
+                           View Details
+                        </Button>
+                     </div>
+                  ))}
                   {reviews.length === 0 && (
-                     <div className="py-24 text-center flex flex-col items-center gap-4">
+                     <div className="bg-white dark:bg-slate-900 border-2 border-primary/5 rounded-2xl p-12 text-center flex flex-col items-center gap-4 shadow-sm">
                         <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/20">
                            <Award className="size-10" />
                         </div>
@@ -290,128 +358,60 @@ function PerformancePage() {
                      </div>
                   )}
                </div>
-            </Card>
-
-            {/* Mobile Reviews List */}
-            <div className="block md:hidden space-y-4">
-               {reviews.map((r: any) => (
-                  <div 
-                     key={r.id}
-                     className="bg-white dark:bg-slate-900 border-2 border-primary/5 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-shadow"
-                  >
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                           <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                              <MessageSquare className="size-4" />
-                           </div>
-                           <span className="font-black text-sm text-foreground">{r.review_period}</span>
-                        </div>
-                        <span className={cn(
-                           "inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-tighter shrink-0",
-                           r.status === 'submitted' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                        )}>
-                           {r.status === 'submitted' ? <CheckCircle2 className="size-3 mr-1" /> : <FileEdit className="size-3 mr-1" />}
-                           {r.status}
-                        </span>
-                     </div>
-
-                     <div className="pt-2 border-t dark:border-slate-800 space-y-2">
-                        {isAdmin ? (
-                           <div className="flex flex-col gap-1">
-                              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Employee</span>
-                              <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{r.employees?.full_name}</span>
-                              <span className="text-[10px] font-black text-muted-foreground uppercase">{r.employees?.department}</span>
-                              <div className="flex items-center gap-1.5 mt-1.5">
-                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-1">Rating:</span>
-                                 <div className="flex gap-0.5 text-amber-400">
-                                    {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-current" />)}
-                                    {Array.from({ length: 5 - r.rating }).map((_, i) => <Star key={i} className="size-3.5 text-muted-foreground/20" />)}
-                                 </div>
-                              </div>
-                           </div>
-                        ) : (
-                           <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Rating</span>
-                              <div className="flex gap-0.5 text-amber-400">
-                                 {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-4.5 fill-current" />)}
-                                 {Array.from({ length: 5 - r.rating }).map((_, i) => <Star key={i} className="size-4.5 text-muted-foreground/20" />)}
-                              </div>
-                           </div>
-                        )}
-                     </div>
-
-                     <Button 
-                        variant="ghost" 
-                        onClick={() => setSelectedReview(r)}
-                        className="w-full font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 bg-primary/5 rounded-xl h-10 flex items-center justify-center mt-2 border border-primary/10"
-                     >
-                        View Details
-                     </Button>
-                  </div>
-               ))}
-               {reviews.length === 0 && (
-                  <div className="bg-white dark:bg-slate-900 border-2 border-primary/5 rounded-2xl p-12 text-center flex flex-col items-center gap-4 shadow-sm">
-                     <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/20">
-                        <Award className="size-10" />
-                     </div>
-                     <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No reviews documented yet.</p>
-                  </div>
-               )}
             </div>
          </div>
-      </div>
 
-      <Dialog open={!!selectedReview} onOpenChange={(open) => !open && setSelectedReview(null)}>
-         <DialogContent className="max-w-2xl rounded-3xl p-8 border-2 border-primary/5 shadow-elegant">
-            <DialogHeader>
-               <div className="flex items-center justify-between">
-                  <div>
-                     <DialogTitle className="text-2xl font-black tracking-tight">Performance Appraisal</DialogTitle>
-                     <CardDescription className="font-bold">{selectedReview?.review_period}</CardDescription>
-                  </div>
-                  <div className="text-right">
-                     <div className="flex gap-1 text-amber-400 justify-end">
-                        {Array.from({ length: selectedReview?.rating || 0 }).map((_, i) => <Star key={i} className="size-5 fill-current" />)}
+         <Dialog open={!!selectedReview} onOpenChange={(open) => !open && setSelectedReview(null)}>
+            <DialogContent className="max-w-2xl rounded-3xl p-8 border-2 border-primary/5 shadow-elegant">
+               <DialogHeader>
+                  <div className="flex items-center justify-between">
+                     <div>
+                        <DialogTitle className="text-2xl font-black tracking-tight">Performance Appraisal</DialogTitle>
+                        <CardDescription className="font-bold">{selectedReview?.review_period}</CardDescription>
                      </div>
-                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Final Rating</span>
+                     <div className="text-right">
+                        <div className="flex gap-1 text-amber-400 justify-end">
+                           {Array.from({ length: selectedReview?.rating || 0 }).map((_, i) => <Star key={i} className="size-5 fill-current" />)}
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Final Rating</span>
+                     </div>
+                  </div>
+               </DialogHeader>
+
+               <div className="mt-8 space-y-8">
+                  <div className="grid md:grid-cols-2 gap-8">
+                     <div className="space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Employee Name</p>
+                        <p className="font-bold text-lg">{selectedReview?.employees?.full_name}</p>
+                     </div>
+                     <div className="space-y-1">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Department</p>
+                        <p className="font-bold text-lg">{selectedReview?.employees?.department}</p>
+                     </div>
+                  </div>
+
+                  <div className="space-y-3 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Reviewer Feedback</p>
+                     <p className="text-sm leading-relaxed italic text-slate-600 dark:text-indigo-200/70">"{selectedReview?.feedback}"</p>
+                  </div>
+
+                  <div className="space-y-3">
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Development Goals</p>
+                     <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40">
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{selectedReview?.goals}</p>
+                     </div>
                   </div>
                </div>
-            </DialogHeader>
 
-            <div className="mt-8 space-y-8">
-               <div className="grid md:grid-cols-2 gap-8">
-                  <div className="space-y-1">
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Employee Name</p>
-                     <p className="font-bold text-lg">{selectedReview?.employees?.full_name}</p>
-                  </div>
-                  <div className="space-y-1">
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Department</p>
-                     <p className="font-bold text-lg">{selectedReview?.employees?.department}</p>
-                  </div>
-               </div>
-
-               <div className="space-y-3 p-6 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Reviewer Feedback</p>
-                  <p className="text-sm leading-relaxed italic text-slate-700 dark:text-slate-300">"{selectedReview?.feedback}"</p>
-               </div>
-
-               <div className="space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Development Goals</p>
-                  <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 dark:bg-primary/10">
-                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{selectedReview?.goals}</p>
-                  </div>
-               </div>
-            </div>
-
-            <DialogFooter className="mt-8 pt-6 border-t">
-               <Button onClick={() => setSelectedReview(null)} className="rounded-xl px-8 h-12 shadow-lg shadow-primary/20 font-black uppercase tracking-widest text-xs">
-                  Close Review
-               </Button>
-            </DialogFooter>
-         </DialogContent>
-      </Dialog>
-    </div>
-  );
+               <DialogFooter className="mt-8 pt-6 border-t">
+                  <Button onClick={() => setSelectedReview(null)} className="rounded-xl px-8 h-12 shadow-lg shadow-primary/20 font-black uppercase tracking-widest text-xs">
+                     Close Review
+                  </Button>
+               </DialogFooter>
+            </DialogContent>
+         </Dialog>
+      </div>
+   );
 }
 
 function TargetItem({ label, date }: { label: string; date: string }) {

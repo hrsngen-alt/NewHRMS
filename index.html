@@ -10,6 +10,13 @@
     <title>SN Gene HR</title>
   </head>
   <body>
+    <script>
+      // Apply saved theme immediately before React loads to prevent flash
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark') document.documentElement.classList.add('dark');
+      } catch(e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
