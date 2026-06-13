@@ -362,7 +362,7 @@ function EmployeesPage() {
           <p className="text-sm font-medium text-muted-foreground/60 mt-1">{isLoading ? "Fetching records..." : `Managing ${employees.length} active workforce members`}</p>
         </div>
         {isAdmin && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileRef} onChange={handleImport} />
             <Button variant="outline" className="gap-2 border-primary/20 text-primary hover:bg-primary/5" onClick={downloadTemplate} disabled={busy}>
               <Download className="size-4" /> Template

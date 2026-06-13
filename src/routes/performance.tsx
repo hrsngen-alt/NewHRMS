@@ -208,7 +208,7 @@ function PerformancePage() {
 
          {/* Reviews List */}
          <div className="lg:col-span-8">
-            <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
+            <Card className="hidden md:block rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
                <div className="overflow-x-auto">
                   <Table>
                      <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-800">
@@ -275,6 +275,73 @@ function PerformancePage() {
                   )}
                </div>
             </Card>
+
+            {/* Mobile Reviews List */}
+            <div className="block md:hidden space-y-4">
+               {reviews.map((r: any) => (
+                  <div 
+                     key={r.id}
+                     className="bg-white dark:bg-slate-900 border-2 border-primary/5 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-shadow"
+                  >
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                           <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                              <MessageSquare className="size-4" />
+                           </div>
+                           <span className="font-black text-sm text-foreground">{r.review_period}</span>
+                        </div>
+                        <span className={cn(
+                           "inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-tighter shrink-0",
+                           r.status === 'submitted' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                        )}>
+                           {r.status === 'submitted' ? <CheckCircle2 className="size-3 mr-1" /> : <FileEdit className="size-3 mr-1" />}
+                           {r.status}
+                        </span>
+                     </div>
+
+                     <div className="pt-2 border-t dark:border-slate-800 space-y-2">
+                        {isAdmin ? (
+                           <div className="flex flex-col gap-1">
+                              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Employee</span>
+                              <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{r.employees?.full_name}</span>
+                              <span className="text-[10px] font-black text-muted-foreground uppercase">{r.employees?.department}</span>
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-1">Rating:</span>
+                                 <div className="flex gap-0.5 text-amber-400">
+                                    {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-current" />)}
+                                    {Array.from({ length: 5 - r.rating }).map((_, i) => <Star key={i} className="size-3.5 text-muted-foreground/20" />)}
+                                 </div>
+                              </div>
+                           </div>
+                        ) : (
+                           <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Rating</span>
+                              <div className="flex gap-0.5 text-amber-400">
+                                 {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-4.5 fill-current" />)}
+                                 {Array.from({ length: 5 - r.rating }).map((_, i) => <Star key={i} className="size-4.5 text-muted-foreground/20" />)}
+                              </div>
+                           </div>
+                        )}
+                     </div>
+
+                     <Button 
+                        variant="ghost" 
+                        onClick={() => setSelectedReview(r)}
+                        className="w-full font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 bg-primary/5 rounded-xl h-10 flex items-center justify-center mt-2 border border-primary/10"
+                     >
+                        View Details
+                     </Button>
+                  </div>
+               ))}
+               {reviews.length === 0 && (
+                  <div className="bg-white dark:bg-slate-900 border-2 border-primary/5 rounded-2xl p-12 text-center flex flex-col items-center gap-4 shadow-sm">
+                     <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/20">
+                        <Award className="size-10" />
+                     </div>
+                     <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No reviews documented yet.</p>
+                  </div>
+               )}
+            </div>
          </div>
       </div>
 
