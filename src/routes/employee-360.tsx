@@ -152,7 +152,7 @@ function Employee360Page() {
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0">
+              <PopoverContent className="w-[300px] p-0" side="bottom" align="end" avoidCollisions={true}>
                 <Command>
                   <CommandInput placeholder="Search by name or emp code..." />
                   <CommandList>
