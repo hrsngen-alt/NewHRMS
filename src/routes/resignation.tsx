@@ -228,23 +228,23 @@ function ResignationPage() {
         )}
 
         <div className={cn("space-y-6", isAdmin ? "lg:col-span-12" : "lg:col-span-8")}>
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
              <h2 className="text-xl font-black tracking-tight">{isAdmin ? "Pending Applications" : "Application History"}</h2>
              {isAdmin && (
-               <div className="flex flex-wrap items-center gap-3">
-                 <div className="relative w-64">
+               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                 <div className="relative w-full sm:w-64">
                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                    <Input 
                      placeholder="Search applicants..." 
                      value={search}
                      onChange={e => setSearch(e.target.value)}
-                     className="pl-9 rounded-xl h-10 border-slate-200"
+                     className="pl-9 rounded-xl h-10 border-slate-200 w-full"
                    />
                  </div>
                  <select 
                    value={deptFilter} 
                    onChange={e => setDeptFilter(e.target.value)}
-                   className="h-10 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:border-primary"
+                   className="h-10 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:border-primary w-full sm:w-auto"
                  >
                    <option value="all">All Departments</option>
                    {departments.map((d: any) => (
@@ -256,105 +256,214 @@ function ResignationPage() {
           </div>
 
           <div className="rounded-[32px] border-2 bg-white dark:bg-slate-900 shadow-xl shadow-slate-100 dark:shadow-none overflow-hidden">
-            <Table>
-              <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
-                <TableRow className="border-none">
-                  {isAdmin && <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>}
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Applied Date</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Last Day</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Reason</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={isAdmin ? 6 : 4} className="h-40 text-center animate-pulse font-black text-primary">Loading records...</TableCell></TableRow>
-                ) : (filtered as any[]).length === 0 ? (
-                  <TableRow><TableCell colSpan={isAdmin ? 6 : 4} className="h-40 text-center text-muted-foreground italic">No resignation records found.</TableCell></TableRow>
-                ) : (filtered as any[]).map((r) => (
-                  <TableRow key={r.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                    {isAdmin && (
-                      <TableCell>
-                        <div 
-                          className="flex flex-col cursor-pointer hover:text-primary group/name"
-                          onClick={() => setViewingEmployee(r.employees)}
-                        >
-                           <span className="font-bold text-slate-900 dark:text-white group-hover/name:underline">{r.employees?.full_name}</span>
-                           <span className="text-[10px] font-mono text-muted-foreground">{r.employees?.employee_code}</span>
-                        </div>
-                      </TableCell>
-                    )}
-                    <TableCell className="font-medium">{new Date(r.resignation_date).toLocaleDateString('en-GB')}</TableCell>
-                    <TableCell className="font-bold text-slate-700 dark:text-slate-300">
-                      {r.status === 'approved' ? new Date(r.last_working_day).toLocaleDateString('en-GB') : (
-                        <span className="text-[10px] font-black uppercase text-muted-foreground/40 italic">TBD</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-[200px]">
-                       <p className="text-xs text-muted-foreground truncate" title={r.reason}>{r.reason}</p>
-                    </TableCell>
-                    <TableCell className="text-center">
-                       <Badge className={cn(
-                         "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
-                         r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
-                         r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
-                         r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
-                       )}>
-                         {r.status}
-                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isAdmin ? (
-                        r.status === 'pending' ? (
-                          <div className="flex items-center justify-end gap-2">
-                             <Button 
-                               size="icon" 
-                               variant="ghost" 
-                               onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); }} 
-                               className="text-green-600 hover:bg-green-50 rounded-lg"
-                             >
-                               <CheckCircle2 className="size-5" />
-                             </Button>
-                             <Button 
-                               size="icon" 
-                               variant="ghost" 
-                               onClick={() => { setSelectedRequest(r); handleAction("rejected"); }} 
-                               className="text-red-600 hover:bg-red-50 rounded-lg"
-                             >
-                               <XCircle className="size-5" />
-                             </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-end gap-2">
-                             <Button 
-                               size="sm" 
-                               variant="ghost" 
-                               onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); setIsEditing(true); }} 
-                               className="text-primary hover:bg-primary/5 font-bold text-xs rounded-lg"
-                             >
-                               <Pencil className="size-4 mr-1" /> Edit Date
-                             </Button>
-                          </div>
-                        )
-                      ) : (
-                        r.status === 'pending' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleWithdraw(r.id)} 
-                            disabled={busy}
-                            className="text-red-600 hover:bg-red-50 font-bold text-xs gap-2 rounded-xl"
-                          >
-                            Withdraw
-                          </Button>
-                        )
-                      )}
-                    </TableCell>
+            {/* Desktop View - Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
+                  <TableRow className="border-none">
+                    {isAdmin && <TableHead className="font-black uppercase text-[10px] tracking-widest pl-6">Employee</TableHead>}
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Applied Date</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Last Day</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Reason</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={isAdmin ? 6 : 4} className="h-40 text-center animate-pulse font-black text-primary">Loading records...</TableCell></TableRow>
+                  ) : (filtered as any[]).length === 0 ? (
+                    <TableRow><TableCell colSpan={isAdmin ? 6 : 4} className="h-40 text-center text-muted-foreground italic">No resignation records found.</TableCell></TableRow>
+                  ) : (filtered as any[]).map((r) => (
+                    <TableRow key={r.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                      {isAdmin && (
+                        <TableCell className="pl-6">
+                          <div 
+                            className="flex flex-col cursor-pointer hover:text-primary group/name"
+                            onClick={() => setViewingEmployee(r.employees)}
+                          >
+                             <span className="font-bold text-slate-900 dark:text-white group-hover/name:underline">{r.employees?.full_name}</span>
+                             <span className="text-[10px] font-mono text-muted-foreground">{r.employees?.employee_code}</span>
+                          </div>
+                        </TableCell>
+                      )}
+                      <TableCell className="font-medium">{new Date(r.resignation_date).toLocaleDateString('en-GB')}</TableCell>
+                      <TableCell className="font-bold text-slate-700 dark:text-slate-300">
+                        {r.status === 'approved' ? new Date(r.last_working_day).toLocaleDateString('en-GB') : (
+                          <span className="text-[10px] font-black uppercase text-muted-foreground/40 italic">TBD</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[200px]">
+                         <p className="text-xs text-muted-foreground truncate" title={r.reason}>{r.reason}</p>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <Badge className={cn(
+                           "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
+                           r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
+                           r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
+                           r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
+                         )}>
+                           {r.status}
+                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        {isAdmin ? (
+                          r.status === 'pending' ? (
+                            <div className="flex items-center justify-end gap-2">
+                               <Button 
+                                 size="icon" 
+                                 variant="ghost" 
+                                 onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); }} 
+                                 className="text-green-600 hover:bg-green-50 rounded-lg"
+                               >
+                                 <CheckCircle2 className="size-5" />
+                               </Button>
+                               <Button 
+                                 size="icon" 
+                                 variant="ghost" 
+                                 onClick={() => { setSelectedRequest(r); handleAction("rejected"); }} 
+                                 className="text-red-600 hover:bg-red-50 rounded-lg"
+                               >
+                                 <XCircle className="size-5" />
+                               </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                               <Button 
+                                 size="sm" 
+                                 variant="ghost" 
+                                 onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); setIsEditing(true); }} 
+                                 className="text-primary hover:bg-primary/5 font-bold text-xs rounded-lg"
+                               >
+                                 <Pencil className="size-4 mr-1" /> Edit Date
+                               </Button>
+                            </div>
+                          )
+                        ) : (
+                          r.status === 'pending' && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleWithdraw(r.id)} 
+                              disabled={busy}
+                              className="text-red-600 hover:bg-red-50 font-bold text-xs gap-2 rounded-xl"
+                            >
+                              Withdraw
+                            </Button>
+                          )
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile View - Stacked Cards List */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {isLoading ? (
+                <div className="p-10 text-center animate-pulse font-black text-primary">Loading records...</div>
+              ) : (filtered as any[]).length === 0 ? (
+                <div className="p-10 text-center text-muted-foreground italic">No resignation records found.</div>
+              ) : (filtered as any[]).map((r) => (
+                <div key={r.id} className="p-4 space-y-3">
+                  {/* Header: Employee / ID and Status Badge */}
+                  <div className="flex justify-between items-start">
+                    {isAdmin ? (
+                      <div 
+                        className="flex flex-col cursor-pointer hover:text-primary group/name"
+                        onClick={() => setViewingEmployee(r.employees)}
+                      >
+                         <span className="font-bold text-slate-900 dark:text-white group-hover/name:underline">{r.employees?.full_name}</span>
+                         <span className="text-[10px] font-mono text-muted-foreground">{r.employees?.employee_code}</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white">Resignation Application</span>
+                        <p className="text-[10px] font-mono text-muted-foreground">ID: {r.id.slice(0, 8)}...</p>
+                      </div>
+                    )}
+                    <Badge className={cn(
+                      "rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider",
+                      r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
+                      r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
+                      r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
+                    )}>
+                      {r.status}
+                    </Badge>
+                  </div>
+
+                  {/* Date details */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Applied Date</span>
+                      <span className="font-medium text-foreground">{new Date(r.resignation_date).toLocaleDateString('en-GB')}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Last Day</span>
+                      <span className="font-bold text-foreground">
+                        {r.status === 'approved' ? new Date(r.last_working_day).toLocaleDateString('en-GB') : "TBD"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Reason */}
+                  {r.reason && (
+                    <div className="text-xs pt-1">
+                      <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Reason</span>
+                      <p className="text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">{r.reason}</p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                    {isAdmin ? (
+                      r.status === 'pending' ? (
+                        <div className="flex items-center gap-2 w-full">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); }} 
+                            className="flex-1 border-green-200 text-green-700 hover:bg-green-50 rounded-xl h-9 text-xs"
+                          >
+                            <CheckCircle2 className="size-4 mr-1 text-green-600" /> Approve
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => { setSelectedRequest(r); handleAction("rejected"); }} 
+                            className="flex-1 border-red-200 text-red-700 hover:bg-red-50 rounded-xl h-9 text-xs"
+                          >
+                            <XCircle className="size-4 mr-1 text-red-600" /> Reject
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => { setSelectedRequest(r); setFinalDate(r.last_working_day); setIsEditing(true); }} 
+                          className="w-full text-primary hover:bg-primary/5 font-bold text-xs rounded-xl h-9"
+                        >
+                          <Pencil className="size-4 mr-1" /> Edit exit date
+                        </Button>
+                      )
+                    ) : (
+                      r.status === 'pending' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleWithdraw(r.id)} 
+                          disabled={busy}
+                          className="w-full text-red-600 hover:bg-red-50 border-red-200 font-bold text-xs gap-2 rounded-xl h-9"
+                        >
+                          Withdraw Request
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
