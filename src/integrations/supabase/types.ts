@@ -207,6 +207,140 @@ export type Database = {
           }
         ]
       }
+      holidays: {
+        Row: {
+          id: string
+          date: string
+          name: string
+          is_mandatory: boolean | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          name: string
+          is_mandatory?: boolean | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          name?: string
+          is_mandatory?: boolean | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      leave_audit_logs: {
+        Row: {
+          id: string
+          leave_id: string | null
+          action_by: string | null
+          action_type: string
+          comments: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          leave_id?: string | null
+          action_by?: string | null
+          action_type: string
+          comments?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          leave_id?: string | null
+          action_by?: string | null
+          action_type?: string
+          comments?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_audit_logs_leave_id_fkey"
+            columns: ["leave_id"]
+            isOneToOne: false
+            referencedRelation: "leaves"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      leave_balances: {
+        Row: {
+          id: string
+          employee_id: string | null
+          leave_type_code: string | null
+          year: number
+          total_allocated: number | null
+          used: number | null
+          balance: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id?: string | null
+          leave_type_code?: string | null
+          year: number
+          total_allocated?: number | null
+          used?: number | null
+          balance?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string | null
+          leave_type_code?: string | null
+          year?: number
+          total_allocated?: number | null
+          used?: number | null
+          balance?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_leave_type_code_fkey"
+            columns: ["leave_type_code"]
+            isOneToOne: false
+            referencedRelation: "leave_types"
+            referencedColumns: ["code"]
+          }
+        ]
+      }
+      leave_types: {
+        Row: {
+          id: string
+          code: string
+          name: string
+          is_paid: boolean | null
+          default_annual_allowance: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          name: string
+          is_paid?: boolean | null
+          default_annual_allowance?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          name?: string
+          is_paid?: boolean | null
+          default_annual_allowance?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       leaves: {
         Row: {
           approved_by: string | null
@@ -219,6 +353,10 @@ export type Database = {
           reason: string | null
           start_date: string
           status: string
+          manager_id: string | null
+          manager_status: string | null
+          hr_status: string | null
+          rejection_reason: string | null
         }
         Insert: {
           approved_by?: string | null
@@ -231,6 +369,10 @@ export type Database = {
           reason?: string | null
           start_date: string
           status?: string
+          manager_id?: string | null
+          manager_status?: string | null
+          hr_status?: string | null
+          rejection_reason?: string | null
         }
         Update: {
           approved_by?: string | null
@@ -243,6 +385,10 @@ export type Database = {
           reason?: string | null
           start_date?: string
           status?: string
+          manager_id?: string | null
+          manager_status?: string | null
+          hr_status?: string | null
+          rejection_reason?: string | null
         }
         Relationships: [
           {

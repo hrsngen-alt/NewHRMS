@@ -8,13 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useState, useMemo } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
-import { Plus, Check, X, CalendarDays, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, Umbrella } from "lucide-react";
+
+import { MyLeavesTab } from "@/components/leaves/MyLeavesTab";
+import { TeamApprovalsTab } from "@/components/leaves/TeamApprovalsTab";
+import { LeaveConfigTab } from "@/components/leaves/LeaveConfigTab";
 
 export const Route = createFileRoute("/leaves")({ component: () => <AppShell><LeavesPage /></AppShell> });
 
@@ -23,10 +26,7 @@ function LeavesPage() {
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
   const isManager = role === "manager";
-  const isAuthorized = isAdmin || isManager;
   const [open, setOpen] = useState(false);
-  const [deptFilter, setDeptFilter] = useState("all");
-  const [q, setQ] = useState("");
   const { myEmployee } = useMyEmployee();
 
   const { data: allEmployees = [] } = useQuery({
@@ -35,340 +35,163 @@ function LeavesPage() {
     queryFn: async () => (await supabase.from("employees").select("id, full_name").eq("status", "active").order("full_name")).data || [],
   });
 
-  const { data: departmentEmployees = [] } = useQuery({
-    queryKey: ["department-employees-leaves", myEmployee?.department],
-    enabled: role === "manager" && !!myEmployee?.department,
+  const { data: leaveTypes = [] } = useQuery({
+    queryKey: ["leave-types-active"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("department", myEmployee!.department);
-      if (error) throw error;
-      return data.map(e => e.id) || [];
-    }
-  });
-
-  const { data: leaves = [] } = useQuery({
-    queryKey: ["leaves", role, myEmployee?.id, departmentEmployees],
-    queryFn: async () => {
-      let query = supabase.from("leaves").select("*, employees(full_name, employee_code, department)").order("created_at", { ascending: false });
-      
-      if (role === "manager" && myEmployee) {
-        if (departmentEmployees.length > 0) {
-          query = query.in("employee_id", departmentEmployees);
-        } else {
-          query = query.eq("employee_id", myEmployee.id);
-        }
-      } else if (role !== "admin" && myEmployee) {
-        query = query.eq("employee_id", myEmployee.id);
+      const { data, error } = await supabase.from("leave_types" as any).select("*").order("name");
+      if (error) {
+        if (error.code === '42P01') return [];
+        throw error;
       }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user && (role === "admin" || !!myEmployee),
-  });
-
-  const departments = useMemo(() => {
-    const set = new Set(leaves.map(l => (l as any).employees?.department).filter(Boolean));
-    return Array.from(set).sort();
-  }, [leaves]);
-
-  const filteredLeaves = leaves.filter((l: any) => {
-    const matchesDept = deptFilter === "all" || l.employees?.department === deptFilter;
-    const matchesQ = !q || [l.employees?.full_name, l.reason, l.leave_type].some(v => v?.toLowerCase().includes(q.toLowerCase()));
-    return matchesDept && matchesQ;
+      return data || [];
+    }
   });
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const targetEmployeeId = role === "admin" ? String(fd.get("employee_id")) : myEmployee?.id;
+    const targetEmployeeId = role === "admin" ? String(fd.get("employee_id") || myEmployee?.id) : myEmployee?.id;
     if (!targetEmployeeId || targetEmployeeId === "undefined" || targetEmployeeId === "null") return toast.error("No employee profile linked/selected.");
 
     const start = String(fd.get("start_date"));
     const end = String(fd.get("end_date"));
     const days = Math.max(1, Math.round((+new Date(end) - +new Date(start)) / 86_400_000) + 1);
+    
+    // Determine manager logic
+    let manager_id = null;
+    if (targetEmployeeId === myEmployee?.id) {
+      if (myEmployee?.reporting_manager) {
+        // We'd ideally lookup the ID of the reporting manager here, but for simplicity we rely on the name
+        // Wait, the DB expects UUID for manager_id. Since we only have name, we might leave it null and 
+        // rely on `employees.reporting_manager` for TeamApprovals Tab logic (which we do!).
+      }
+    }
+
     const { error } = await supabase.from("leaves").insert({
-      employee_id: targetEmployeeId, leave_type: String(fd.get("leave_type")),
-      start_date: start, end_date: end, days, reason: String(fd.get("reason") || ""),
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Leave requested");
+      employee_id: targetEmployeeId, 
+      leave_type: String(fd.get("leave_type")),
+      start_date: start, 
+      end_date: end, 
+      days, 
+      reason: String(fd.get("reason") || ""),
+      status: "pending",
+      manager_status: "pending",
+      hr_status: "pending"
+    } as any);
+
+    if (error) {
+      if (error.code === '42P01') return toast.error("Please run the Leave Module SQL script first!");
+      return toast.error(error.message);
+    }
+    
+    toast.success("Leave requested successfully");
     setOpen(false);
-    qc.invalidateQueries({ queryKey: ["leaves"] });
-  };
-
-  const decide = async (id: string, status: "approved" | "rejected") => {
-    const { error } = await supabase.from("leaves").update({ status, approved_by: user!.id }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(`Leave ${status}`);
-    qc.invalidateQueries({ queryKey: ["leaves"] });
-  };
-
-  const statusColor: Record<string, string> = {
-    pending: "bg-warning/10 text-warning",
-    approved: "bg-success/10 text-success",
-    rejected: "bg-destructive/10 text-destructive",
+    qc.invalidateQueries({ queryKey: ["my-leaves"] });
+    qc.invalidateQueries({ queryKey: ["team-leaves"] });
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Leave Management</h1>
-          <p className="text-sm font-medium text-muted-foreground/60 mt-1">Track and manage employee time-off requests, approvals, and balances.</p>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+            <Umbrella className="size-8 text-indigo-600" /> Leave Management
+          </h1>
+          <p className="text-sm font-medium text-muted-foreground mt-1">Manage balances, approvals, and configurations.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 shadow-sm bg-primary hover:bg-primary-glow transition-all">
-              <Plus className="size-4" /> Request Leave
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle className="text-xl">Request Time Off</DialogTitle></DialogHeader>
-            <form onSubmit={submit} className="space-y-5 mt-4">
-              {role === "admin" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Employee</Label>
-                  <Select name="employee_id" required>
-                    <SelectTrigger className="bg-muted/30"><SelectValue placeholder="Select Employee" /></SelectTrigger>
+        
+        {myEmployee && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-12 rounded-xl gap-2 font-bold px-6 shadow-lg shadow-indigo-200 dark:shadow-none bg-indigo-600 hover:bg-indigo-700">
+                <Plus className="size-5" /> Request Leave
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader><DialogTitle className="text-xl font-black">Request Time Off</DialogTitle></DialogHeader>
+              <form onSubmit={submit} className="space-y-5 mt-4">
+                {role === "admin" && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Apply On Behalf Of</Label>
+                    <Select name="employee_id" defaultValue={myEmployee.id}>
+                      <SelectTrigger className="bg-muted/30"><SelectValue placeholder="Select Employee" /></SelectTrigger>
+                      <SelectContent>
+                        {allEmployees.map(emp => (
+                          <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Leave Type</Label>
+                  <Select name="leave_type" required>
+                    <SelectTrigger className="bg-muted/30"><SelectValue placeholder="Select type..." /></SelectTrigger>
                     <SelectContent>
-                      {allEmployees.map(emp => (
-                        <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
+                      {leaveTypes.map((lt: any) => (
+                        <SelectItem key={lt.id} value={lt.code}>{lt.name} ({lt.code})</SelectItem>
                       ))}
+                      {leaveTypes.length === 0 && (
+                        <SelectItem value="CL">Casual Leave (Default)</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Leave Type</Label>
-                <Select name="leave_type" defaultValue="casual">
-                  <SelectTrigger className="bg-muted/30"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="casual">Casual Leave</SelectItem>
-                    <SelectItem value="sick">Sick Leave</SelectItem>
-                    <SelectItem value="paid">Earned / Paid Leave</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="start_date" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date</Label>
-                  <Input id="start_date" name="start_date" type="date" required className="bg-muted/30" />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="start_date" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date</Label>
+                    <Input id="start_date" name="start_date" type="date" required className="bg-muted/30" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end_date" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</Label>
+                    <Input id="end_date" name="end_date" type="date" required className="bg-muted/30" />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="end_date" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</Label>
-                  <Input id="end_date" name="end_date" type="date" required className="bg-muted/30" />
+                
+                <div className="space-y-2">
+                  <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reason for Leave</Label>
+                  <Textarea id="reason" name="reason" required placeholder="Briefly describe the reason for your time-off request..." className="bg-muted/30 min-h-[100px]" />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reason for Leave</Label>
-                <Textarea id="reason" name="reason" placeholder="Briefly describe the reason for your time-off request..." className="bg-muted/30 min-h-[100px]" />
-              </div>
-              <DialogFooter className="pt-4 border-t">
-                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit" className="px-8">Submit Request</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                
+                <DialogFooter className="pt-4 border-t">
+                  <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                  <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">Submit Request</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <div className="bg-muted/20 px-6 py-2 border-b flex flex-wrap items-center gap-4">
-          <h3 className="font-semibold shrink-0">Leave Requests</h3>
-          {isAuthorized && (
-            <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or reason..." className="pl-9 h-9 bg-background" />
-              </div>
-              {role === "admin" && (
-                <Select value={deptFilter} onValueChange={setDeptFilter}>
-                  <SelectTrigger className="w-full sm:w-48 h-9 bg-background">
-                    <SelectValue placeholder="All Departments" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+      <Tabs defaultValue="my-leaves" className="w-full space-y-6">
+        <TabsList className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-12 w-full md:w-auto inline-flex overflow-x-auto justify-start">
+          <TabsTrigger value="my-leaves" className="rounded-lg h-full px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">My Leaves</TabsTrigger>
+          {(isManager || isAdmin) && (
+            <TabsTrigger value="team-approvals" className="rounded-lg h-full px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Team Approvals</TabsTrigger>
           )}
-        </div>
-        {/* Desktop View */}
-        <div className="hidden md:block overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                {isAuthorized && <TableHead className="font-bold text-foreground pl-6">Employee</TableHead>}
-                <TableHead className={cn("font-bold text-foreground", !isAuthorized && "pl-6")}>Type</TableHead>
-                <TableHead className="font-bold text-foreground">Duration</TableHead>
-                <TableHead className="font-bold text-foreground">Days</TableHead>
-                <TableHead className="font-bold text-foreground">Reason</TableHead>
-                <TableHead className="font-bold text-foreground">Status</TableHead>
-                {isAuthorized && <TableHead className="text-right pr-6">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLeaves.map((l: any) => (
-                <TableRow key={l.id} className="hover:bg-muted/5 transition-colors">
-                  {isAuthorized && <TableCell className="font-semibold pl-6">{l.employees?.full_name}</TableCell>}
-                  <TableCell className={cn("capitalize font-medium", !isAuthorized && "pl-6")}>{l.leave_type} Leave</TableCell>
-                  <TableCell className="text-sm">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">{l.start_date}</span>
-                      <span className="text-xs text-muted-foreground">to {l.end_date}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-bold text-foreground">{l.days}</TableCell>
-                  <TableCell className="max-w-xs truncate text-muted-foreground text-sm">{l.reason}</TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold capitalize",
-                      statusColor[l.status]
-                    )}>
-                      {l.status}
-                    </span>
-                  </TableCell>
-                  {isAuthorized && (
-                    <TableCell className="text-right pr-6">
-                      {l.status === "pending" && (
-                        role === "manager" && l.employee_id === myEmployee?.id ? (
-                          <span className="text-[10px] font-bold text-muted-foreground/50 uppercase">Self Request</span>
-                        ) : (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => decide(l.id, "approved")} className="hover:bg-green-50" title="Approve">
-                              <Check className="size-4 text-success" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => decide(l.id, "rejected")} className="hover:bg-red-50" title="Reject">
-                              <X className="size-4 text-destructive" />
-                            </Button>
-                          </div>
-                        )
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-              {filteredLeaves.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={role === "admin" ? 8 : 6} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <CalendarDays className="size-10 text-muted-foreground/30" />
-                      <p className="text-muted-foreground font-medium">No leave requests found.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Mobile View */}
-        <div className="block md:hidden space-y-4 p-4 bg-slate-50/50 dark:bg-slate-900/50 border-t dark:border-slate-800 animate-in fade-in duration-500">
-          {filteredLeaves.map((l: any) => (
-            <div
-              key={l.id}
-              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4"
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  {isAuthorized ? (
-                    <>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">
-                        {l.employees?.full_name}
-                      </h4>
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                        {l.employees?.department}
-                      </p>
-                    </>
-                  ) : (
-                    <h4 className="font-bold text-slate-900 dark:text-white text-sm capitalize">
-                      {l.leave_type} Leave
-                    </h4>
-                  )}
-                </div>
-                <span className={cn(
-                  "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-black capitalize tracking-tighter shrink-0",
-                  statusColor[l.status]
-                )}>
-                  {l.status}
-                </span>
-              </div>
-
-              <div className="space-y-2 pt-2 border-t dark:border-slate-800 text-xs">
-                {isAuthorized && (
-                  <div className="flex justify-between">
-                    <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px]">Type</span>
-                    <span className="font-medium text-slate-900 dark:text-white capitalize">{l.leave_type} Leave</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px]">Duration</span>
-                  <span className="font-medium text-slate-900 dark:text-white">
-                    {l.start_date} to {l.end_date}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px]">Total Days</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{l.days} day(s)</span>
-                </div>
-                {l.reason && (
-                  <div className="pt-2 border-t dark:border-slate-800 space-y-1">
-                    <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px] block">Reason</span>
-                    <p className="text-slate-600 dark:text-slate-400 text-xs italic leading-relaxed">
-                      {l.reason}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {isAuthorized && l.status === "pending" && (
-                <div className="pt-2 border-t dark:border-slate-800">
-                  {role === "manager" && l.employee_id === myEmployee?.id ? (
-                    <div className="text-center text-[10px] font-bold text-muted-foreground/50 uppercase py-1">
-                      Self Request
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => decide(l.id, "approved")}
-                        className="w-full h-9 border-green-200 hover:bg-green-50 hover:text-green-700 text-green-600 font-bold text-xs gap-1.5 rounded-xl shadow-none"
-                      >
-                        <Check className="size-3.5" /> Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => decide(l.id, "rejected")}
-                        className="w-full h-9 border-red-200 hover:bg-red-50 hover:text-red-700 text-red-600 font-bold text-xs gap-1.5 rounded-xl shadow-none"
-                      >
-                        <X className="size-3.5" /> Reject
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-          {filteredLeaves.length === 0 && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-12 text-center">
-              <div className="flex flex-col items-center gap-2">
-                <CalendarDays className="size-10 text-muted-foreground/30" />
-                <p className="text-muted-foreground font-medium">No leave requests found.</p>
-              </div>
-            </div>
+          {isAdmin && (
+            <TabsTrigger value="admin-config" className="rounded-lg h-full px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Admin Config</TabsTrigger>
           )}
-        </div>
-      </div>
+        </TabsList>
+
+        <TabsContent value="my-leaves" className="m-0 focus-visible:outline-none">
+          <MyLeavesTab employeeId={myEmployee?.id} />
+        </TabsContent>
+
+        {(isManager || isAdmin) && (
+          <TabsContent value="team-approvals" className="m-0 focus-visible:outline-none">
+            <TeamApprovalsTab role={role!} myEmployeeId={myEmployee?.id} myName={myEmployee?.full_name} />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="admin-config" className="m-0 focus-visible:outline-none">
+            <LeaveConfigTab />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }
