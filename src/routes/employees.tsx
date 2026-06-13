@@ -1028,7 +1028,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
         </div>
       ))}
       
-      <div className="col-span-2 border-t pt-4 mt-2">
+      <div className="col-span-1 sm:col-span-2 border-t pt-4 mt-2">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Salary Structure</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

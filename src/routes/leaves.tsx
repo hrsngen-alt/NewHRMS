@@ -180,14 +180,14 @@ function LeavesPage() {
         <div className="bg-muted/20 px-6 py-2 border-b flex flex-wrap items-center gap-4">
           <h3 className="font-semibold shrink-0">Leave Requests</h3>
           {isAuthorized && (
-            <div className="flex flex-1 items-center gap-3 min-w-[300px]">
+            <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or reason..." className="pl-9 h-9 bg-background" />
               </div>
               {role === "admin" && (
                 <Select value={deptFilter} onValueChange={setDeptFilter}>
-                  <SelectTrigger className="w-48 h-9 bg-background">
+                  <SelectTrigger className="w-full sm:w-48 h-9 bg-background">
                     <SelectValue placeholder="All Departments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -201,7 +201,8 @@ function LeavesPage() {
             </div>
           )}
         </div>
-        <div className="overflow-x-auto">
+        {/* Desktop View */}
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
@@ -267,6 +268,105 @@ function LeavesPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="block md:hidden space-y-4 p-4 bg-slate-50/50 dark:bg-slate-900/50 border-t dark:border-slate-800 animate-in fade-in duration-500">
+          {filteredLeaves.map((l: any) => (
+            <div
+              key={l.id}
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  {isAuthorized ? (
+                    <>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                        {l.employees?.full_name}
+                      </h4>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                        {l.employees?.department}
+                      </p>
+                    </>
+                  ) : (
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm capitalize">
+                      {l.leave_type} Leave
+                    </h4>
+                  )}
+                </div>
+                <span className={cn(
+                  "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-black capitalize tracking-tighter shrink-0",
+                  statusColor[l.status]
+                )}>
+                  {l.status}
+                </span>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t dark:border-slate-800 text-xs">
+                {isAuthorized && (
+                  <div className="flex justify-between">
+                    <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px]">Type</span>
+                    <span className="font-medium text-slate-900 dark:text-white capitalize">{l.leave_type} Leave</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px]">Duration</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {l.start_date} to {l.end_date}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px]">Total Days</span>
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{l.days} day(s)</span>
+                </div>
+                {l.reason && (
+                  <div className="pt-2 border-t dark:border-slate-800 space-y-1">
+                    <span className="font-bold text-muted-foreground uppercase tracking-wider text-[9px] block">Reason</span>
+                    <p className="text-slate-600 dark:text-slate-400 text-xs italic leading-relaxed">
+                      {l.reason}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {isAuthorized && l.status === "pending" && (
+                <div className="pt-2 border-t dark:border-slate-800">
+                  {role === "manager" && l.employee_id === myEmployee?.id ? (
+                    <div className="text-center text-[10px] font-bold text-muted-foreground/50 uppercase py-1">
+                      Self Request
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => decide(l.id, "approved")}
+                        className="w-full h-9 border-green-200 hover:bg-green-50 hover:text-green-700 text-green-600 font-bold text-xs gap-1.5 rounded-xl shadow-none"
+                      >
+                        <Check className="size-3.5" /> Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => decide(l.id, "rejected")}
+                        className="w-full h-9 border-red-200 hover:bg-red-50 hover:text-red-700 text-red-600 font-bold text-xs gap-1.5 rounded-xl shadow-none"
+                      >
+                        <X className="size-3.5" /> Reject
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+          {filteredLeaves.length === 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-12 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <CalendarDays className="size-10 text-muted-foreground/30" />
+                <p className="text-muted-foreground font-medium">No leave requests found.</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
