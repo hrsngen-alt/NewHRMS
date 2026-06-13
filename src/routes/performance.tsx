@@ -182,26 +182,42 @@ function PerformancePage() {
                </CardHeader>
                <CardContent className="p-8 -mt-6">
                   <div className="bg-card rounded-2xl p-6 shadow-elegant border border-primary/5 flex flex-col items-center text-center">
-                     <span className="text-6xl font-black text-primary tracking-tighter">4.2</span>
+                     <span className="text-6xl font-black text-primary tracking-tighter">
+                        {reviews.length > 0 
+                           ? (reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1)
+                           : "0.0"}
+                     </span>
                      <div className="flex gap-1 mt-2 text-amber-400">
-                        <Star className="size-5 fill-current" />
-                        <Star className="size-5 fill-current" />
-                        <Star className="size-5 fill-current" />
-                        <Star className="size-5 fill-current" />
-                        <Star className="size-5 text-muted-foreground/30" />
+                        {Array.from({ length: 5 }).map((_, i) => (
+                           <Star key={i} className={cn("size-5", i < Math.round(reviews.length > 0 ? (reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / reviews.length) : 0) ? "fill-current" : "text-muted-foreground/30")} />
+                        ))}
                      </div>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-4">Above Benchmark</p>
+                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-4">
+                        {reviews.length > 0 ? "Actual Score" : "No Data Yet"}
+                     </p>
                   </div>
                </CardContent>
             </Card>
 
             <Card className="rounded-2xl border-2 border-primary/5 shadow-card p-6 space-y-4">
                <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                  <Target className="size-4" /> Upcoming Targets
+                  <Target className="size-4" /> Recent Goals
                </h3>
                <div className="space-y-3">
-                  <TargetItem label="Annual Appraisal Cycle" date="Dec 2024" />
-                  <TargetItem label="Q3 Strategy Review" date="Sep 2024" />
+                  {reviews.filter((r: any) => r.goals).slice(0, 3).map((r: any) => (
+                     <div key={r.id} className="flex items-center gap-3">
+                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                           <Target className="size-4 text-primary" />
+                        </div>
+                        <div className="flex flex-col">
+                           <span className="text-sm font-semibold">{r.goals.length > 40 ? r.goals.substring(0, 40) + "..." : r.goals}</span>
+                           <span className="text-xs text-muted-foreground">Period: {r.review_period}</span>
+                        </div>
+                     </div>
+                  ))}
+                  {reviews.filter((r: any) => r.goals).length === 0 && (
+                     <p className="text-sm text-muted-foreground italic">No recent goals set.</p>
+                  )}
                </div>
             </Card>
          </div>

@@ -25,6 +25,7 @@ import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as HolidaysRouteImport } from './routes/holidays'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as EmployeesRouteImport } from './routes/employees'
+import { Route as Employee360RouteImport } from './routes/employee-360'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as DevResetRouteImport } from './routes/dev-reset'
@@ -113,6 +114,11 @@ const EmployeesRoute = EmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Employee360Route = Employee360RouteImport.update({
+  id: '/employee-360',
+  path: '/employee-360',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocumentsRoute = DocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
   '/documents': typeof DocumentsRoute
+  '/employee-360': typeof Employee360Route
   '/employees': typeof EmployeesRoute
   '/expenses': typeof ExpensesRoute
   '/holidays': typeof HolidaysRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
   '/documents': typeof DocumentsRoute
+  '/employee-360': typeof Employee360Route
   '/employees': typeof EmployeesRoute
   '/expenses': typeof ExpensesRoute
   '/holidays': typeof HolidaysRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
   '/documents': typeof DocumentsRoute
+  '/employee-360': typeof Employee360Route
   '/employees': typeof EmployeesRoute
   '/expenses': typeof ExpensesRoute
   '/holidays': typeof HolidaysRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/dev-reset'
     | '/directory'
     | '/documents'
+    | '/employee-360'
     | '/employees'
     | '/expenses'
     | '/holidays'
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/dev-reset'
     | '/directory'
     | '/documents'
+    | '/employee-360'
     | '/employees'
     | '/expenses'
     | '/holidays'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/dev-reset'
     | '/directory'
     | '/documents'
+    | '/employee-360'
     | '/employees'
     | '/expenses'
     | '/holidays'
@@ -311,6 +323,7 @@ export interface RootRouteChildren {
   DevResetRoute: typeof DevResetRoute
   DirectoryRoute: typeof DirectoryRoute
   DocumentsRoute: typeof DocumentsRoute
+  Employee360Route: typeof Employee360Route
   EmployeesRoute: typeof EmployeesRoute
   ExpensesRoute: typeof ExpensesRoute
   HolidaysRoute: typeof HolidaysRoute
@@ -443,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployeesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employee-360': {
+      id: '/employee-360'
+      path: '/employee-360'
+      fullPath: '/employee-360'
+      preLoaderRoute: typeof Employee360RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/documents': {
       id: '/documents'
       path: '/documents'
@@ -503,6 +523,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevResetRoute: DevResetRoute,
   DirectoryRoute: DirectoryRoute,
   DocumentsRoute: DocumentsRoute,
+  Employee360Route: Employee360Route,
   EmployeesRoute: EmployeesRoute,
   ExpensesRoute: ExpensesRoute,
   HolidaysRoute: HolidaysRoute,

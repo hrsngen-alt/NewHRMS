@@ -31,6 +31,7 @@ type NavItem = { to: string; label: string; icon: any; allowedRoles?: ("admin" |
 const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/employees", label: "Employees", icon: Users, allowedRoles: ["admin"] },
+  { to: "/employee-360", label: "Employee 360", icon: Sparkles, allowedRoles: ["admin", "manager"] },
   { to: "/attendance", label: "Attendance", icon: Clock },
   { to: "/monthly-attendance", label: "Monthly Attendance", icon: CalendarIcon, allowedRoles: ["admin", "manager"] },
   { to: "/leaves", label: "Leaves", icon: CalendarDays },

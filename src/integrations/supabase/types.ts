@@ -92,6 +92,7 @@ export type Database = {
           esic_amount: number | null
           gratuity_amount: number | null
           bonus: number | null
+          total_experience: number | null
         }
         Insert: {
           aadhaar_number?: string | null
@@ -126,6 +127,7 @@ export type Database = {
           esic_amount?: number | null
           gratuity_amount?: number | null
           bonus?: number | null
+          total_experience?: number | null
         }
         Update: {
           aadhaar_number?: string | null
@@ -160,8 +162,50 @@ export type Database = {
           esic_amount?: number | null
           gratuity_amount?: number | null
           bonus?: number | null
+          total_experience?: number | null
         }
         Relationships: []
+      }
+      employee_assets: {
+        Row: {
+          id: string
+          employee_id: string
+          asset_name: string
+          asset_id: string | null
+          asset_type: string | null
+          assigned_date: string | null
+          status: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          asset_name: string
+          asset_id?: string | null
+          asset_type?: string | null
+          assigned_date?: string | null
+          status?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          asset_name?: string
+          asset_id?: string | null
+          asset_type?: string | null
+          assigned_date?: string | null
+          status?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_assets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       leaves: {
         Row: {

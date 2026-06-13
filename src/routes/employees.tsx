@@ -86,6 +86,22 @@ function EmployeesPage() {
     setPage(1);
   }, [q, deptFilter]);
 
+  useEffect(() => {
+    if (employees.length > 0 && !open) {
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get("edit");
+      if (editId) {
+        const empToEdit = employees.find((e: any) => e.id === editId);
+        if (empToEdit) {
+          setEditingEmployee(empToEdit);
+          setOpen(true);
+          // Remove the query param so it doesn't reopen if the user closes it
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    }
+  }, [employees, open]);
+
   const filtered = employees.filter((e) => {
     const matchesQ = `${e.full_name} ${e.email} ${e.employee_code} ${e.department ?? ""}`.toLowerCase().includes(q.toLowerCase());
     const matchesDept = deptFilter === "all" || e.department === deptFilter;
@@ -104,7 +120,7 @@ function EmployeesPage() {
     const fd = new FormData(e.currentTarget);
     const obj: any = {};
     fd.forEach((v, k) => { obj[k] = v === "" ? null : v; });
-    ["basic_salary", "hra", "bonus", "pf_amount", "esic_amount", "gratuity_amount"].forEach((k) => { obj[k] = Number(obj[k] ?? 0); });
+    ["basic_salary", "hra", "bonus", "pf_amount", "esic_amount", "gratuity_amount", "total_experience"].forEach((k) => { obj[k] = Number(obj[k] ?? 0); });
     obj.conveyance = 0;
     obj.medical = 0;
     obj.special_allowance = 0;
@@ -1012,7 +1028,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
     ["pan_number", "PAN Card"], ["aadhaar_number", "Aadhaar Number"],
     ["uan_number", "UAN Number"], ["reporting_manager", "Reporting Manager"],
     ["bank_name", "Bank Name"], ["bank_account", "Account Number"],
-    ["bank_ifsc", "IFSC Code"],
+    ["bank_ifsc", "IFSC Code"], ["total_experience", "Total Exp (Yrs)", false, "number"]
   ];
 
   return (
