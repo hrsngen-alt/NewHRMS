@@ -310,7 +310,7 @@ function AttendancePage() {
 
         <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-3xl border-2 border-slate-50 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             {isAuthorized && (
-              <div className="relative min-w-[280px]">
+              <div className="relative w-full md:w-auto md:min-w-[280px]">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input 
                   placeholder="Search employee name/code..." 
@@ -351,10 +351,10 @@ function AttendancePage() {
             )}
 
             {isAuthorized && (
-              <div className="relative min-w-[240px]">
+              <div className="relative w-full md:w-auto md:min-w-[240px]">
                 <Users className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
-                  <SelectTrigger className="pl-12 h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold">
+                  <SelectTrigger className="pl-12 h-12 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold">
                     <SelectValue placeholder="Select Employee" />
                   </SelectTrigger>
                   <SelectContent>
@@ -369,9 +369,9 @@ function AttendancePage() {
             )}
 
             {isAuthorized && (
-              <div className="relative min-w-[180px]">
+              <div className="relative w-full md:w-auto md:min-w-[180px]">
                 <Select value={selectedDept} onValueChange={setSelectedDept}>
-                  <SelectTrigger className="h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold">
+                  <SelectTrigger className="h-12 w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl font-bold">
                     <SelectValue placeholder="Select Department" />
                   </SelectTrigger>
                   <SelectContent>
@@ -382,16 +382,18 @@ function AttendancePage() {
               </div>
             )}
 
-           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-2 h-12">
-             <Calendar className="size-4 text-muted-foreground ml-2" />
-             <Select value={selMonth} onValueChange={setSelMonth}>
-               <SelectTrigger className="w-[120px] border-none bg-transparent font-bold shadow-none">
-                 <SelectValue />
-               </SelectTrigger>
-               <SelectContent>
-                 {months.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
-               </SelectContent>
-             </Select>
+           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-2 h-12 w-full md:w-auto justify-between md:justify-start">
+             <div className="flex items-center">
+               <Calendar className="size-4 text-muted-foreground mr-2" />
+               <Select value={selMonth} onValueChange={setSelMonth}>
+                 <SelectTrigger className="w-[120px] border-none bg-transparent font-bold shadow-none">
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {months.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+                 </SelectContent>
+               </Select>
+             </div>
              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
              <Select value={selYear} onValueChange={setSelYear}>
                <SelectTrigger className="w-[100px] border-none bg-transparent font-bold shadow-none">
@@ -412,12 +414,12 @@ function AttendancePage() {
               setQ(""); 
               setShowSuggestions(false); 
             }}
-            className="h-12 px-6 rounded-xl font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+            className="h-12 w-full md:w-auto px-6 rounded-xl font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
            >
              Clear Filters
            </Button>
 
-            <div className="flex flex-wrap items-center gap-4 ml-auto text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-4 w-full md:w-auto md:ml-auto justify-center md:justify-end text-[10px] font-black uppercase tracking-widest text-muted-foreground pt-2 md:pt-0">
                <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-green-500" /> Working Day</span>
                <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-amber-500" /> Holiday</span>
                <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-slate-400" /> Weekend</span>
@@ -522,7 +524,8 @@ function AttendancePage() {
            </h2>
         </div>
 
-        <div className="rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+        {/* Desktop View */}
+        <div className="hidden md:block rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
               <TableRow className="hover:bg-transparent border-b-2">
@@ -657,6 +660,125 @@ function AttendancePage() {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="block md:hidden space-y-4">
+          {dayStatuses.map((day) => {
+            const { dateStr, type, details, sessions } = day;
+
+            if (type === "present" && sessions) {
+              const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+              const firstIn = new Date(sorted[0].check_in);
+              const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
+              
+              const availHours = lastOut ? (lastOut.getTime() - firstIn.getTime()) / 3600000 : 0;
+              const prodHours = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
+              const breakHours = Math.max(0, availHours - prodHours);
+              const isShiftComplete = prodHours >= 8;
+
+              return (
+                <div
+                  key={dateStr}
+                  onClick={() => {
+                    setSelectedTimelineDate(dateStr);
+                    setIsTimelineOpen(true);
+                  }}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-3xl p-6 shadow-md hover:shadow-lg transition-all cursor-pointer active:scale-[0.98] space-y-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        {new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <span className="size-2 rounded-full bg-green-500 shrink-0" />
+                      </h4>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                        {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "ACTIVE"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-[9px] uppercase tracking-widest">
+                        Shift Complete: {isShiftComplete ? "YES" : "NO"}
+                      </div>
+                      <span className={cn("text-[9px] font-black uppercase tracking-tighter px-2.5 py-0.5 rounded-full", isShiftComplete ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400")}>
+                        {isShiftComplete ? "Goal Reached" : `${(8 - prodHours).toFixed(1)}H REMAINING`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t dark:border-slate-800 text-center">
+                    <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                      <Coffee className="size-3.5 text-amber-500 mb-1" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(breakHours)}</span>
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter mt-0.5">Breaks</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20">
+                      <Clock className="size-3.5 text-indigo-500 mb-1" />
+                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatDuration(availHours)}</span>
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter mt-0.5">Total Log</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                      <Timer className="size-3.5 text-emerald-500 mb-1" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(prodHours)}</span>
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter mt-0.5">Production</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            } else {
+              let statusBg = "";
+              let statusTextClass = "";
+              let statusDot = "";
+              
+              if (type === "holiday") {
+                statusBg = "bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10";
+                statusTextClass = "text-amber-600 dark:text-amber-400";
+                statusDot = "bg-amber-500";
+              } else if (type === "weekend") {
+                statusBg = "bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800/50";
+                statusTextClass = "text-slate-500 dark:text-slate-400";
+                statusDot = "bg-slate-400";
+              } else if (type === "leave") {
+                statusBg = "bg-rose-50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/10";
+                statusTextClass = "text-rose-600 dark:text-rose-400";
+                statusDot = "bg-rose-500";
+              } else {
+                statusBg = "bg-red-50 dark:bg-red-500/5 border-red-100 dark:border-red-500/10";
+                statusTextClass = "text-red-600 dark:text-red-400";
+                statusDot = "bg-red-500 animate-pulse";
+              }
+
+              return (
+                <div
+                  key={dateStr}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      {new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      <span className={cn("size-2 rounded-full shrink-0", statusDot)} />
+                    </h4>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                      No Clock In
+                    </p>
+                  </div>
+                  <div className={cn("inline-flex items-center px-3 py-1.5 rounded-2xl border text-[10px] font-black uppercase tracking-wider", statusBg, statusTextClass)}>
+                    {details}
+                  </div>
+                </div>
+              );
+            }
+          })}
+          {dayStatuses.length === 0 && (
+            <div className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-3xl p-12 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="size-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-300">
+                  <AlertCircle className="size-8" />
+                </div>
+                <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No records for this period</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
