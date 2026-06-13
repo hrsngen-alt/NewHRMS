@@ -9,12 +9,14 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { 
   Briefcase, Mail, Phone, CalendarDays, Wallet, Clock, 
-  User, Award, Activity, FileText, Share2, Printer, Pencil, Plus, Trash2,
+  User, Award, Activity, FileText, Share2, Printer, Pencil, Plus, Trash2, Check, ChevronsUpDown,
   Laptop, FileCheck, Network, Cpu, TrendingUp, AlertTriangle, ChevronRight, XCircle, CheckCircle2, Sparkles
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -28,6 +30,7 @@ function Employee360Page() {
   const { role, user } = useAuth();
   const isAdmin = role === "admin" || role === "manager";
   const [selectedEmpId, setSelectedEmpId] = useState<string>("");
+  const [isEmpComboboxOpen, setIsEmpComboboxOpen] = useState(false);
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
 
   const { data: employees = [] } = useQuery({
@@ -135,18 +138,49 @@ function Employee360Page() {
 
         <div className="flex items-center gap-3 w-full md:w-auto">
           {isAdmin && (
-            <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
-              <SelectTrigger className="w-full md:w-[300px] h-12 rounded-xl border-2 bg-white dark:bg-slate-900 shadow-sm">
-                <SelectValue placeholder="Select an Employee" />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((emp: any) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.full_name} <span className="text-muted-foreground text-xs ml-2">({emp.employee_code})</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={isEmpComboboxOpen} onOpenChange={setIsEmpComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isEmpComboboxOpen}
+                  className="w-full md:w-[300px] h-12 rounded-xl justify-between border-2 bg-white dark:bg-slate-900 shadow-sm"
+                >
+                  {selectedEmpId
+                    ? employees.find((emp: any) => emp.id === selectedEmpId)?.full_name
+                    : "Search employee..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search by name or emp code..." />
+                  <CommandList>
+                    <CommandEmpty>No employee found.</CommandEmpty>
+                    <CommandGroup>
+                      {employees.map((emp: any) => (
+                        <CommandItem
+                          key={emp.id}
+                          value={`${emp.full_name} ${emp.employee_code}`}
+                          onSelect={() => {
+                            setSelectedEmpId(emp.id === selectedEmpId ? "" : emp.id)
+                            setIsEmpComboboxOpen(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedEmpId === emp.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {emp.full_name} <span className="text-muted-foreground text-xs ml-2">({emp.employee_code})</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           )}
 
           {isAdmin && selectedEmpId && (
