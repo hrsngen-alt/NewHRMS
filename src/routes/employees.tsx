@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Trash2, Upload, Download, Users, Pencil, FileIcon, Eye, Clock, Calendar, FileText, AlertTriangle } from "lucide-react";
+import { Plus, Search, Trash2, Upload, Download, Users, Pencil, FileIcon, Eye, Clock, Calendar, FileText, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
@@ -79,11 +79,24 @@ function EmployeesPage() {
     return Array.from(set).sort();
   }, [employees]);
 
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, deptFilter]);
+
   const filtered = employees.filter((e) => {
     const matchesQ = `${e.full_name} ${e.email} ${e.employee_code} ${e.department ?? ""}`.toLowerCase().includes(q.toLowerCase());
     const matchesDept = deptFilter === "all" || e.department === deptFilter;
     return matchesQ && matchesDept;
   });
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedEmployees = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, page]);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -185,7 +198,28 @@ function EmployeesPage() {
   };
 
   const downloadTemplate = () => {
-    const ws = XLSX.utils.json_to_sheet([{ full_name: "John Doe", email: "john@example.com" }]);
+    const ws = XLSX.utils.json_to_sheet([
+      {
+        "Full Name": "John Doe",
+        "Email": "john.doe@pulsehr.com",
+        "Phone": "9876543210",
+        "Department": "Engineering",
+        "Designation": "Software Engineer",
+        "Joining Date": "2026-06-01",
+        "PAN Number": "ABCDE1234F",
+        "Aadhaar Number": "123456789012",
+        "UAN Number": "100987654321",
+        "Reporting Manager": "Jane Smith",
+        "Bank Name": "HDFC Bank",
+        "Bank Account": "50100123456789",
+        "Bank IFSC": "HDFC0000123",
+        "Basic Salary": 50000,
+        "Bonus": 5000,
+        "PF Amount": 1800,
+        "ESIC Amount": 0,
+        "Gratuity Amount": 0
+      }
+    ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
     XLSX.writeFile(wb, "employees_template.xlsx");
@@ -330,6 +364,9 @@ function EmployeesPage() {
         {isAdmin && (
           <div className="flex items-center gap-3">
             <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileRef} onChange={handleImport} />
+            <Button variant="outline" className="gap-2 border-primary/20 text-primary hover:bg-primary/5" onClick={downloadTemplate} disabled={busy}>
+              <Download className="size-4" /> Template
+            </Button>
             <Button variant="outline" className="gap-2 border-primary/20 text-primary hover:bg-primary/5" onClick={() => fileRef.current?.click()} disabled={busy}>
               <Upload className="size-4" /> Import
             </Button>
@@ -631,7 +668,8 @@ function EmployeesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
@@ -640,10 +678,15 @@ function EmployeesPage() {
                     <input 
                       type="checkbox" 
                       className="size-4 rounded border-gray-300"
-                      checked={selectedIds.size === filtered.length && filtered.length > 0}
+                      checked={paginatedEmployees.length > 0 && paginatedEmployees.every(e => selectedIds.has(e.id))}
                       onChange={(e) => {
-                        if (e.target.checked) setSelectedIds(new Set(filtered.map(e => e.id)));
-                        else setSelectedIds(new Set());
+                        const next = new Set(selectedIds);
+                        if (e.target.checked) {
+                          paginatedEmployees.forEach(e => next.add(e.id));
+                        } else {
+                          paginatedEmployees.forEach(e => next.delete(e.id));
+                        }
+                        setSelectedIds(next);
                       }}
                     />
                   </TableHead>
@@ -657,7 +700,7 @@ function EmployeesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((e) => (
+              {paginatedEmployees.map((e) => (
                 <TableRow key={e.id} className={cn("group hover:bg-primary/5", selectedIds.has(e.id) && "bg-primary/5")}>
                   {isAdmin && (
                     <TableCell>
@@ -735,6 +778,163 @@ function EmployeesPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile Cards View */}
+        <div className="block md:hidden divide-y divide-border">
+          {paginatedEmployees.map((e) => (
+            <div key={e.id} className={cn("p-4 space-y-3 transition-colors hover:bg-muted/10", selectedIds.has(e.id) && "bg-primary/5")}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  {isAdmin && (
+                    <input 
+                      type="checkbox" 
+                      className="size-4 rounded border-gray-300 mt-1.5 shrink-0"
+                      checked={selectedIds.has(e.id)}
+                      onChange={() => {
+                        const next = new Set(selectedIds);
+                        if (next.has(e.id)) next.delete(e.id);
+                        else next.add(e.id);
+                        setSelectedIds(next);
+                      }}
+                    />
+                  )}
+                  <div className="size-10 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center font-bold text-primary text-sm shrink-0">
+                    {e.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm tracking-tight text-foreground cursor-pointer hover:text-primary hover:underline" onClick={() => setViewingEmployee(e)}>
+                      {e.full_name}
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground font-mono">{e.employee_code}</p>
+                  </div>
+                </div>
+                
+                {/* Actions */}
+                {isAdmin && (
+                  <div className="flex gap-1 shrink-0">
+                    {!e.user_id && (
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                        title="Invite to Portal" 
+                        disabled={busy}
+                        onClick={async () => {
+                          setBusy(true);
+                          try {
+                            const { data: userId, error: rpcError } = await supabase.rpc('create_invited_user', {
+                              p_email: e.email,
+                              p_full_name: e.full_name
+                            });
+                            if (rpcError) throw rpcError;
+
+                            const { error } = await supabase.auth.resetPasswordForEmail(e.email, {
+                              redirectTo: `${window.location.origin}/reset-password`,
+                            });
+                            if (error) throw error;
+                            toast.success("Invite sent!");
+                          } catch (err: any) {
+                            toast.error(err.message || "Failed to send invite");
+                          }
+                          setBusy(false);
+                        }}
+                      >
+                        <Plus className="size-4" />
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" title="View Profile" onClick={() => setViewingEmployee(e)}>
+                      <Eye className="size-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" title="Edit Record" onClick={() => { setEditingEmployee(e); setOpen(true); }}>
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete" onClick={() => remove(e.id)}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                <div className="col-span-2">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 block">Email</span>
+                  <span className="text-muted-foreground truncate block max-w-full font-medium">{e.email}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 block">Department</span>
+                  <span className="font-semibold text-foreground">{e.department || "N/A"}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 block">Monthly Basic</span>
+                  <span className="font-bold text-foreground">₹{Number(e.basic_salary).toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="p-8 text-center text-sm text-muted-foreground italic">
+              No employees found matching filter.
+            </div>
+          )}
+        </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t bg-muted/10 px-6 py-4">
+            <div className="text-xs text-muted-foreground font-medium">
+              Showing <span className="font-bold text-foreground">{(page - 1) * ITEMS_PER_PAGE + 1}</span> to{" "}
+              <span className="font-bold text-foreground">
+                {Math.min(page * ITEMS_PER_PAGE, filtered.length)}
+              </span>{" "}
+              of <span className="font-bold text-foreground">{filtered.length}</span> employees
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-lg"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .map((p, idx, arr) => {
+                  const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                  return (
+                    <div key={p} className="flex items-center gap-2">
+                      {showEllipsis && (
+                        <span className="text-xs text-muted-foreground px-1">...</span>
+                      )}
+                      <Button
+                        variant={page === p ? "default" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "h-8 w-8 p-0 rounded-lg text-xs font-bold transition-all",
+                          page === p ? "shadow-md text-white" : ""
+                        )}
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    </div>
+                  );
+                })}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-lg"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -816,9 +1016,9 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
   ];
 
   return (
-    <form onSubmit={onSubmit} className="grid grid-cols-2 gap-5 mt-4">
+    <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
       {personalFields.map(([name, label, req, type]) => (
-        <div key={name as string} className={name === "full_name" || name === "email" ? "col-span-2" : ""}>
+        <div key={name as string} className={name === "full_name" || name === "email" ? "col-span-1 sm:col-span-2" : ""}>
           <Label htmlFor={name as string} className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">{label as string}</Label>
           <Input 
             id={name as string} name={name as string} type={(type as string) || "text"} 
@@ -831,7 +1031,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
       <div className="col-span-2 border-t pt-4 mt-2">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Salary Structure</h3>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="basic_salary" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Basic Pay</Label>
             <Input 
@@ -862,7 +1062,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
         </div>
       </div>
       
-      <div className="col-span-2 bg-slate-50/50 border border-slate-100 rounded-xl p-4 mt-2 flex justify-between items-center">
+      <div className="col-span-1 sm:col-span-2 bg-slate-50/50 border border-slate-100 rounded-xl p-4 mt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 block">Calculated Gross Salary</span>
           <span className="text-xl font-black text-slate-900 mt-1 block">₹{grossSalary.toLocaleString("en-IN")}</span>
@@ -872,9 +1072,9 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
         </div>
       </div>
 
-      <div className="col-span-2 border-t pt-4 mt-2">
+      <div className="col-span-1 sm:col-span-2 border-t pt-4 mt-2">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Deduction Details (Monthly Amounts)</h3>
-        <div className="grid grid-cols-3 gap-4 animate-in fade-in duration-300">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in duration-300">
           <div>
             <Label htmlFor="pf_amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">PF Deduction</Label>
             <Input 
@@ -905,7 +1105,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
         </div>
       </div>
 
-      <DialogFooter className="col-span-2 pt-4 border-t mt-2">
+      <DialogFooter className="col-span-1 sm:col-span-2 pt-4 border-t mt-2">
         <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
         <Button type="submit" disabled={busy} className="px-8">{busy ? "Processing..." : "Save Details"}</Button>
       </DialogFooter>

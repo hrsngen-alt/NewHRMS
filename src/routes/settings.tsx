@@ -145,7 +145,7 @@ function SettingsPage() {
       // 2. Insert the new role
       const { error: insErr } = await supabase
         .from("user_roles")
-        .insert({ user_id: userId, role: newRole });
+        .insert({ user_id: userId, role: newRole as any });
       if (insErr) throw insErr;
       
       toast.success("User role updated successfully!");
