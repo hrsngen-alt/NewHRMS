@@ -21,6 +21,7 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
       // Base query
       let query = supabase.from("leaves" as any)
         .select("*, employees:employees!leaves_employee_id_fkey!inner(full_name, employee_code, reporting_manager, department)")
+        .eq("status", "pending")
         .order("created_at", { ascending: false });
 
       if (role === "manager" && myName) {
