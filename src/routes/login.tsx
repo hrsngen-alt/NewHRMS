@@ -41,22 +41,21 @@ function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden gradient-hero p-12 lg:flex lg:flex-col lg:justify-between">
-        <div className="flex items-center gap-3 text-primary-foreground">
-          <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
-            <SNLogo className="size-8" />
+        <div className="flex items-center text-primary-foreground">
+          <div className="h-16 w-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shrink-0">
+            <SNLogo className="h-10 w-auto" />
           </div>
-          <span className="font-display text-xl font-bold">SN Gene HR</span>
         </div>
         <div className="text-primary-foreground">
           <h2 className="font-display text-4xl font-bold leading-tight">People ops, refined.</h2>
           <p className="mt-3 max-w-sm text-white/80">Onboard, track, pay — all in one beautifully simple workspace.</p>
         </div>
-        <div className="text-xs text-white/60">© SN Gene HR · Modern HRMS</div>
+        <div className="text-xs text-white/60">© SN Gene Lab · Modern HRMS</div>
       </div>
 
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <h1 className="font-display text-2xl font-bold">Welcome to SN Gene HR</h1>
+          <h1 className="font-display text-2xl font-bold">Welcome to SN Gene Lab</h1>
           <p className="mt-1 text-sm text-muted-foreground">Sign in to your portal or create a new account if this is your first time.</p>
           <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
             💡 Note: If you were added by HR, please use the "Create account" tab to register your email first.

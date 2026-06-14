@@ -18,11 +18,10 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <header className="container mx-auto flex items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
-            <SNLogo className="size-8" />
+        <div className="flex items-center">
+          <div className="h-12 w-32 bg-white rounded-xl p-2 flex items-center justify-center shadow-lg shrink-0">
+            <SNLogo className="h-8 w-auto" />
           </div>
-          <span className="font-display text-xl font-bold">SN Gene HR</span>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/login"><Button variant="ghost">Sign in</Button></Link>
