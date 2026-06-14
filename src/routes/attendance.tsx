@@ -203,7 +203,7 @@ function AttendancePage() {
       
       const dObj = new Date(dateStr);
       const dayOfWeek = dObj.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+      const isWeekend = dayOfWeek === 0; // Only Sunday
       
       const leave = dbLeaves.find((l: any) => {
         const start = l.start_date;
@@ -221,7 +221,7 @@ function AttendancePage() {
         details = holiday.name || "Public Holiday";
       } else if (isWeekend) {
         type = "weekend";
-        details = dayOfWeek === 0 ? "Sunday" : "Saturday";
+        details = "Sunday";
       } else if (leave) {
         type = "leave";
         details = `Approved Leave (${leave.leave_type || "General"})`;
