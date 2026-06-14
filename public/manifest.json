@@ -1,7 +1,7 @@
 {
-  "name": "SN Gene HR",
-  "short_name": "SNGeneHR",
-  "description": "SN Gene HR Enterprise Management System",
+  "name": "SN Gene Lab",
+  "short_name": "SNGeneLab",
+  "description": "SN Gene Lab Enterprise Management System",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
