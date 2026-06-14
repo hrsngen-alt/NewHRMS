@@ -685,9 +685,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
       )}
 
       <aside className="hidden w-72 shrink-0 flex-col bg-sidebar border-r border-sidebar-border p-6 text-sidebar-foreground md:flex shadow-2xl relative z-10">
-        <Link to="/dashboard" className="mb-10 flex items-center px-2 shrink-0">
-          <div className="h-14 w-full bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-            <SNLogo className="h-9 w-auto" />
+        <Link to="/dashboard" className="mb-10 flex items-center justify-center px-2 shrink-0">
+          <div className="h-16 w-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+            <SNLogo className="h-10 w-auto" />
           </div>
         </Link>
         
@@ -721,7 +721,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                <SheetContent side="left" className="w-[300px] p-6 flex flex-col">
                  <SheetHeader className="text-left mb-6">
                    <SheetTitle className="flex items-center">
-                     <div className="h-10 w-28 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-sm shrink-0">
+                     <div className="h-10 w-24 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-sm shrink-0">
                        <SNLogo className="h-7 w-auto" />
                      </div>
                    </SheetTitle>
@@ -736,7 +736,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
              </Sheet>
 
              <div className="md:hidden flex items-center">
-                <div className="h-10 w-28 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-sm shrink-0">
+                <div className="h-10 w-24 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-sm shrink-0">
                    <SNLogo className="h-7 w-auto" />
                 </div>
              </div>
