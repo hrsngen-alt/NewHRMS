@@ -47,6 +47,30 @@ function AttendancePage() {
     enabled: !!user && (isAdmin || !!myEmployee),
   });
 
+  const { data: dbHolidays = [] } = useQuery({
+    queryKey: ["holidays-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("holidays" as any)
+        .select("*");
+      if (error) return [];
+      return data || [];
+    }
+  });
+
+  const { data: dbLeaves = [] } = useQuery({
+    queryKey: ["leaves-all", myEmployee?.id],
+    enabled: !!myEmployee?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leaves")
+        .select("*")
+        .eq("employee_id", myEmployee.id);
+      if (error) return [];
+      return (data || []).filter((l: any) => l.status?.toLowerCase() === "approved");
+    }
+  });
+
   useEffect(() => {
     const channel = supabase
       .channel('attendance_changes')
@@ -131,6 +155,118 @@ function AttendancePage() {
 
     return { totalProdHours, workingDays, punctuality, totalBreakHours, breakPercentage, totalAvailHours, dailyGroups };
   }, [records, myEmployee, selMonth, selYear]);
+
+  // Generate all days for the selected month/year and determine status
+  const dayStatuses = useMemo(() => {
+    if (!myEmployee?.id) return [];
+    
+    const isAllMonths = selMonth === "all";
+    const isAllYears = selYear === "all";
+    
+    if (isAllMonths || isAllYears) {
+      // Fallback: only list dates that actually have records
+      const dailyGroups = monthlyMetrics?.dailyGroups || {};
+      const dates = Object.keys(dailyGroups).sort((a, b) => b.localeCompare(a));
+      return dates.map((dateStr) => {
+        const sessions = dailyGroups[dateStr];
+        return {
+          dateStr,
+          type: "present" as const,
+          details: "",
+          sessions
+        };
+      });
+    }
+    
+    const currentMonth = Number(selMonth);
+    const currentYear = Number(selYear);
+    
+    const today = new Date();
+    const isCurrentMonthYear = today.getMonth() + 1 === currentMonth && today.getFullYear() === currentYear;
+    
+    const totalDaysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const maxDay = isCurrentMonthYear ? today.getDate() : totalDaysInMonth;
+    
+    const daysList = [];
+    for (let d = 1; d <= maxDay; d++) {
+      const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      daysList.push(dateStr);
+    }
+    
+    daysList.sort((a, b) => b.localeCompare(a));
+    
+    return daysList.map((dateStr) => {
+      const sessions = monthlyMetrics?.dailyGroups[dateStr];
+      const hasPunch = !!sessions;
+      
+      const holiday = dbHolidays.find((h: any) => h.date === dateStr) as any;
+      
+      const dObj = new Date(dateStr);
+      const dayOfWeek = dObj.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+      
+      const leave = dbLeaves.find((l: any) => {
+        const start = l.start_date;
+        const end = l.end_date;
+        return dateStr >= start && dateStr <= end;
+      });
+      
+      let type: "present" | "holiday" | "weekend" | "leave" | "absent" = "absent";
+      let details = "";
+      
+      if (hasPunch) {
+        type = "present";
+      } else if (holiday) {
+        type = "holiday";
+        details = holiday.name || "Public Holiday";
+      } else if (isWeekend) {
+        type = "weekend";
+        details = dayOfWeek === 0 ? "Sunday" : "Saturday";
+      } else if (leave) {
+        type = "leave";
+        details = `Approved Leave (${leave.leave_type || "General"})`;
+      } else {
+        type = "absent";
+        details = "Leave to be Considered";
+      }
+      
+      return {
+        dateStr,
+        type,
+        details,
+        sessions
+      };
+    });
+  }, [myEmployee?.id, selMonth, selYear, monthlyMetrics, dbHolidays, dbLeaves]);
+
+  const summaryStats = useMemo(() => {
+    let workingDays = 0;
+    let leaveDays = 0;
+    let leaveToConsider = 0;
+    let totalHolidays = 0;
+    
+    dayStatuses.forEach((day) => {
+      if (day.type === "present") {
+        workingDays++;
+      } else if (day.type === "leave") {
+        leaveDays++;
+      } else if (day.type === "absent") {
+        leaveToConsider++;
+      } else if (day.type === "holiday") {
+        totalHolidays++;
+      }
+    });
+    
+    const expectedWorkingDays = workingDays + leaveDays + leaveToConsider;
+    
+    return {
+      workingDays,
+      leaveDays,
+      leaveToConsider,
+      totalHolidays,
+      expectedWorkingDays
+    };
+  }, [dayStatuses]);
 
   const availableYears = Array.from(new Set(records.map((r: any) => new Date(r.date).getFullYear()))).sort((a: any, b: any) => b - a);
   const isMarketing = myEmployee?.department?.toLowerCase() === "marketing";
@@ -296,24 +432,56 @@ function AttendancePage() {
                 <Play className="size-5 fill-current" /> Start Session
               </Button>
             )}
+          </div>        </div>
+      )}
+
+      {/* Summary Table */}
+      {!(selMonth === "all" || selYear === "all") && (
+        <div className="rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+          <div className="bg-slate-50/50 dark:bg-slate-800/50 px-8 py-4 border-b dark:border-slate-800">
+             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">SUMMARY OF {months[Number(selMonth)-1]?.toUpperCase()} {selYear}</h3>
+           </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 divide-x divide-y dark:divide-slate-800">
+             <SummaryItem 
+               label="Employee Working Days / Total Working Days" 
+               value={`${summaryStats.workingDays}/${summaryStats.expectedWorkingDays - summaryStats.leaveDays}`} 
+             />
+             <SummaryItem label="Leave Days" value={String(summaryStats.leaveDays)} />
+             <SummaryItem label="Leave to be Considered" value={String(summaryStats.leaveToConsider)} color="text-red-500" />
+             <SummaryItem 
+               label="Actual Hours / Expected Hours" 
+               value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0} / ${((summaryStats.expectedWorkingDays - summaryStats.leaveDays) * 9).toFixed(1)}`} 
+             />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 divide-x divide-y dark:divide-slate-800 border-t dark:border-slate-800">
+             <SummaryItem label="Total Holidays" value={String(summaryStats.totalHolidays)} />
+             <SummaryItem label="Total Timesheet Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-indigo-600 dark:text-indigo-400" />
+             <SummaryItem label="Project Timesheet Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-blue-600 dark:text-blue-400" />
+             <SummaryItem label="Free Timesheet Hours" value="0h 0m" color="text-rose-600 dark:text-rose-400" />
           </div>
         </div>
       )}
 
-      {/* Time Log Table */}
+      {/* Time Log */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between px-2">
-           <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-             <Timer className="size-6 text-indigo-500" /> Time Log
-           </h2>
-           <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-green-500" /> Working Day</span>
-              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-amber-500" /> Holiday</span>
-              <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-rose-500" /> Weekend</span>
-           </div>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+          <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+            <Timer className="size-6 text-indigo-500" />
+            <span>Time</span>
+            <span className="text-indigo-600 dark:text-indigo-400">Log</span>
+          </h2>
+          <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-green-500" /> Working Day</span>
+            <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-amber-500" /> Holiday</span>
+            <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-slate-400" /> Weekend</span>
+            <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-rose-500" /> Leave</span>
+            <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-red-500 animate-pulse" /> Leave to be Considered</span>
+          </div>
         </div>
 
-        <div className="rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+        {/* Desktop View */}
+        <div className="hidden md:block rounded-3xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50/50 dark:bg-slate-800/50">
               <TableRow className="hover:bg-transparent border-b-2">
@@ -325,65 +493,116 @@ function AttendancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(monthlyMetrics?.dailyGroups || {}).sort(([a], [b]) => b.localeCompare(a)).map(([date, sessions]: [string, any]) => {
-                const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-                const firstIn = new Date(sorted[0].check_in);
-                const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
+              {dayStatuses.map((day) => {
+                const { dateStr, type, details, sessions } = day;
                 
-                const availHours = lastOut ? (lastOut.getTime() - firstIn.getTime()) / 3600000 : 0;
-                const prodHours = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
-                const breakHours = Math.max(0, availHours - prodHours);
-                
-                const isShiftComplete = prodHours >= 8;
+                if (type === "present" && sessions) {
+                  const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+                  const firstIn = new Date(sorted[0].check_in);
+                  const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
+                  
+                  const availHours = lastOut ? (lastOut.getTime() - firstIn.getTime()) / 3600000 : 0;
+                  const prodHours = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
+                  const breakHours = Math.max(0, availHours - prodHours);
+                  
+                  const isShiftComplete = prodHours >= 8;
 
-                return (
-                  <TableRow 
-                    key={date} 
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all border-b dark:border-slate-800 last:border-0 group cursor-pointer"
-                    onClick={() => {
-                      setSelectedTimelineDate(date);
-                      setIsTimelineOpen(true);
-                    }}
-                  >
-                    <TableCell className="pl-8 py-6">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-black text-slate-900 dark:text-white">
-                          {new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
-                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                          {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "ACTIVE"}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                       <div className="flex items-center justify-center gap-2">
-                          <Coffee className="size-3 text-amber-500" />
-                          <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(breakHours)}</span>
-                       </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                       <div className="flex flex-col gap-0.5">
-                         <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatDuration(availHours)}</span>
-                         <span className="text-[9px] font-black text-muted-foreground uppercase tracking-tighter">TOTAL LOG</span>
-                       </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                       <div className="flex flex-col gap-0.5">
-                         <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(prodHours)}</span>
-                         <span className={cn("text-[9px] font-black uppercase tracking-tighter", prodHours >= 8 ? "text-green-500" : "text-rose-500")}>
-                           {prodHours >= 8 ? "Goal Reached" : `${(8 - prodHours).toFixed(1)}H REMAINING`}
-                         </span>
-                       </div>
-                    </TableCell>
-                    <TableCell className="pr-8 text-right">
-                       <div className="inline-flex items-center justify-center px-4 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-[10px] uppercase tracking-widest">
-                          {isShiftComplete ? "YES" : "NO"}
-                       </div>
-                    </TableCell>
-                  </TableRow>
-                );
+                  return (
+                    <TableRow 
+                      key={dateStr} 
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-all border-b dark:border-slate-800 last:border-0 group cursor-pointer"
+                      onClick={() => {
+                        setSelectedTimelineDate(dateStr);
+                        setIsTimelineOpen(true);
+                      }}
+                    >
+                      <TableCell className="pl-8 py-6">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            <span className="size-2 rounded-full bg-green-500 shrink-0" />
+                          </span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                            {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "ACTIVE"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <div className="flex items-center justify-center gap-2">
+                            <Coffee className="size-3 text-amber-500" />
+                            <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(breakHours)}</span>
+                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <div className="flex flex-col gap-0.5">
+                           <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatDuration(availHours)}</span>
+                           <span className="text-[9px] font-black text-muted-foreground uppercase tracking-tighter">TOTAL LOG</span>
+                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <div className="flex flex-col gap-0.5">
+                           <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(prodHours)}</span>
+                           <span className={cn("text-[9px] font-black uppercase tracking-tighter", prodHours >= 8 ? "text-green-500" : "text-rose-500")}>
+                             {prodHours >= 8 ? "Goal Reached" : `${(8 - prodHours).toFixed(1)}H REMAINING`}
+                           </span>
+                         </div>
+                      </TableCell>
+                      <TableCell className="pr-8 text-right">
+                         <div className="inline-flex items-center justify-center px-4 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-[10px] uppercase tracking-widest">
+                            {isShiftComplete ? "YES" : "NO"}
+                         </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                } else {
+                  let statusBg = "";
+                  let statusTextClass = "";
+                  let statusDot = "";
+                  
+                  if (type === "holiday") {
+                    statusBg = "bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10";
+                    statusTextClass = "text-amber-600 dark:text-amber-400";
+                    statusDot = "bg-amber-500";
+                  } else if (type === "weekend") {
+                    statusBg = "bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800/50";
+                    statusTextClass = "text-slate-500 dark:text-slate-400";
+                    statusDot = "bg-slate-400";
+                  } else if (type === "leave") {
+                    statusBg = "bg-rose-50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/10";
+                    statusTextClass = "text-rose-600 dark:text-rose-400";
+                    statusDot = "bg-rose-500";
+                  } else {
+                    statusBg = "bg-red-50 dark:bg-red-500/5 border-red-100 dark:border-red-500/10";
+                    statusTextClass = "text-red-600 dark:text-red-400";
+                    statusDot = "bg-red-500 animate-pulse";
+                  }
+
+                  return (
+                    <TableRow 
+                      key={dateStr} 
+                      className="border-b dark:border-slate-800 last:border-0 hover:bg-transparent"
+                    >
+                      <TableCell className="pl-8 py-6">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            <span className={cn("size-2 rounded-full shrink-0", statusDot)} />
+                          </span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                            No Clock In
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell colSpan={4} className="pr-8 text-right">
+                        <div className={cn("inline-flex items-center px-4 py-2 rounded-2xl border text-xs font-black uppercase tracking-wider", statusBg, statusTextClass)}>
+                          {details}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
               })}
-              {(!monthlyMetrics || Object.keys(monthlyMetrics.dailyGroups).length === 0) && (
+              {dayStatuses.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
@@ -397,6 +616,128 @@ function AttendancePage() {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="block md:hidden space-y-4">
+          {dayStatuses.map((day) => {
+            const { dateStr, type, details, sessions } = day;
+
+            if (type === "present" && sessions) {
+              const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
+              const firstIn = new Date(sorted[0].check_in);
+              const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
+
+              const availHours = lastOut ? (lastOut.getTime() - firstIn.getTime()) / 3600000 : 0;
+              const prodHours = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
+              const breakHours = Math.max(0, availHours - prodHours);
+              const remaining = Math.max(0, 8 - prodHours);
+              const isShiftComplete = prodHours >= 8;
+
+              return (
+                <div
+                  key={dateStr}
+                  onClick={() => {
+                    setSelectedTimelineDate(dateStr);
+                    setIsTimelineOpen(true);
+                  }}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-3xl p-6 shadow-md hover:shadow-lg transition-all cursor-pointer active:scale-[0.98] space-y-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <span className="size-2 rounded-full bg-green-500 shrink-0" />
+                      </h4>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                        {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "ACTIVE"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-[9px] uppercase tracking-widest">
+                        Shift Complete: {isShiftComplete ? "YES" : "NO"}
+                      </div>
+                      <span className={cn("text-[9px] font-black uppercase tracking-tighter px-2.5 py-0.5 rounded-full", isShiftComplete ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400")}>
+                        {isShiftComplete ? "Goal Reached" : `${remaining.toFixed(1)}H REMAINING`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t dark:border-slate-800 text-center">
+                    <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                      <Coffee className="size-3.5 text-amber-500 mb-1" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(breakHours)}</span>
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter mt-0.5">Breaks</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20">
+                      <Clock className="size-3.5 text-indigo-500 mb-1" />
+                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{formatDuration(availHours)}</span>
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter mt-0.5">Total Log</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                      <Timer className="size-3.5 text-emerald-500 mb-1" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{formatDuration(prodHours)}</span>
+                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter mt-0.5">Production</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            } else {
+              let statusBg = "";
+              let statusTextClass = "";
+              let statusDot = "";
+
+              if (type === "holiday") {
+                statusBg = "bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10";
+                statusTextClass = "text-amber-600 dark:text-amber-400";
+                statusDot = "bg-amber-500";
+              } else if (type === "weekend") {
+                statusBg = "bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800/50";
+                statusTextClass = "text-slate-500 dark:text-slate-400";
+                statusDot = "bg-slate-400";
+              } else if (type === "leave") {
+                statusBg = "bg-rose-50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/10";
+                statusTextClass = "text-rose-600 dark:text-rose-400";
+                statusDot = "bg-rose-500";
+              } else {
+                statusBg = "bg-red-50 dark:bg-red-500/5 border-red-100 dark:border-red-500/10";
+                statusTextClass = "text-red-600 dark:text-red-400";
+                statusDot = "bg-red-500 animate-pulse";
+              }
+
+              return (
+                <div
+                  key={dateStr}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      <span className={cn("size-2 rounded-full shrink-0", statusDot)} />
+                    </h4>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                      No Clock In
+                    </p>
+                  </div>
+                  <div className={cn("inline-flex items-center px-3 py-1.5 rounded-2xl border text-[10px] font-black uppercase tracking-wider", statusBg, statusTextClass)}>
+                    {details}
+                  </div>
+                </div>
+              );
+            }
+          })}
+
+          {/* Empty State */}
+          {dayStatuses.length === 0 && (
+            <div className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-3xl p-12 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="size-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-300 mx-auto">
+                  <AlertCircle className="size-8" />
+                </div>
+                <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">No records for this period</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -539,4 +880,13 @@ function formatDuration(hours: number) {
   const h = Math.floor(hours);
   const m = Math.floor((hours % 1) * 60);
   return `${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m`;
+}
+
+function SummaryItem({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="p-6 flex flex-col gap-1">
+      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">{label}</p>
+      <p className={cn("text-lg font-black tracking-tight", color || "text-slate-900 dark:text-white")}>{value}</p>
+    </div>
+  );
 }
