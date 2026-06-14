@@ -65,14 +65,14 @@ function DirectoryPage() {
 
       <div className="rounded-2xl border-2 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="w-full table-fixed md:table-auto">
             <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
               <TableRow>
-                <TableHead className="pl-6 h-12 whitespace-nowrap">Employee</TableHead>
-                <TableHead className="whitespace-nowrap">Contact Info</TableHead>
-                <TableHead className="whitespace-nowrap">Department</TableHead>
-                <TableHead className="whitespace-nowrap">Designation</TableHead>
-                <TableHead className="text-right pr-6 whitespace-nowrap">Employee ID</TableHead>
+                <TableHead className="pl-4 sm:pl-6 h-12 text-xs sm:text-sm font-semibold whitespace-nowrap w-[45%] md:w-[20%]">Employee</TableHead>
+                <TableHead className="px-3 sm:px-4 h-12 text-xs sm:text-sm font-semibold whitespace-nowrap w-[55%] md:w-[25%]">Contact Info</TableHead>
+                <TableHead className="hidden md:table-cell px-4 h-12 text-xs sm:text-sm font-semibold whitespace-nowrap md:w-[15%]">Department</TableHead>
+                <TableHead className="hidden md:table-cell px-4 h-12 text-xs sm:text-sm font-semibold whitespace-nowrap md:w-[25%]">Designation</TableHead>
+                <TableHead className="hidden md:table-cell pr-6 h-12 text-right text-xs sm:text-sm font-semibold whitespace-nowrap md:w-[15%]">Employee ID</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -97,41 +97,62 @@ function DirectoryPage() {
               ) : (
                 paginatedEmployees.map((e: any) => (
                   <TableRow key={e.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                    <TableCell className="pl-6 whitespace-nowrap">
+                    <TableCell className="pl-4 sm:pl-6 py-3 overflow-hidden">
                       <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shadow-sm shrink-0">
+                        <div className="hidden xs:flex size-10 rounded-full bg-primary/10 items-center justify-center text-primary font-bold shadow-sm shrink-0">
                           {e.full_name?.charAt(0)}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 dark:text-slate-100">{e.full_name}</span>
+                        <div className="flex flex-col min-w-0 w-full">
+                          <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm whitespace-normal break-words max-w-full">
+                            {e.full_name}
+                          </span>
+                          {/* Mobile-only stacked column info */}
+                          <div className="flex flex-col min-w-0 w-full gap-0.5 mt-0.5 md:hidden text-[10px] text-muted-foreground leading-normal">
+                            <span className="font-medium truncate max-w-full">{e.designation || "No Designation"}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[8px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                {e.department || "No Department"}
+                              </span>
+                              <span className="font-mono text-muted-foreground/80 font-bold text-[8px] bg-slate-100 dark:bg-slate-800 px-1 rounded">
+                                {e.employee_code || "—"}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer w-fit">
-                          <Mail className="size-3.5" />
-                          <span className="truncate max-w-[200px]">{e.email || "Not shared"}</span>
-                        </div>
-                        {e.phone && (
-                          <div className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer w-fit">
-                            <Phone className="size-3.5" />
-                            <span>{e.phone}</span>
+                    <TableCell className="px-3 sm:px-4 py-3 overflow-hidden">
+                      <div className="flex flex-col gap-0.5 sm:gap-1 text-xs sm:text-sm text-muted-foreground min-w-0 w-full">
+                        {e.email ? (
+                          <a href={`mailto:${e.email}`} className="flex items-center gap-1.5 sm:gap-2 hover:text-primary transition-colors cursor-pointer w-fit min-w-0 max-w-full">
+                            <Mail className="size-3.5 shrink-0" />
+                            <span className="truncate max-w-[110px] sm:max-w-[200px]">{e.email}</span>
+                          </a>
+                        ) : (
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground/50 w-fit min-w-0 max-w-full">
+                            <Mail className="size-3.5 shrink-0" />
+                            <span className="truncate max-w-[110px] sm:max-w-[200px]">Not shared</span>
                           </div>
+                        )}
+                        {e.phone && (
+                          <a href={`tel:${e.phone}`} className="flex items-center gap-1.5 sm:gap-2 hover:text-primary transition-colors cursor-pointer w-fit min-w-0 max-w-full">
+                            <Phone className="size-3.5 shrink-0" />
+                            <span className="whitespace-nowrap">{e.phone}</span>
+                          </a>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    <TableCell className="hidden md:table-cell px-4 py-3 overflow-hidden">
+                      <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 max-w-full truncate block w-fit">
                         {e.department || "N/A"}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <span className="font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                    <TableCell className="hidden md:table-cell px-4 py-3 overflow-hidden">
+                      <span className="font-medium text-slate-700 dark:text-slate-300 max-w-full truncate sm:whitespace-normal block">
                         {e.designation || "N/A"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right pr-6 font-mono text-sm text-muted-foreground font-bold whitespace-nowrap">
+                    <TableCell className="hidden md:table-cell pr-6 py-3 text-right font-mono text-xs sm:text-sm text-muted-foreground font-bold whitespace-nowrap overflow-hidden">
                       {e.employee_code || "—"}
                     </TableCell>
                   </TableRow>
@@ -140,6 +161,7 @@ function DirectoryPage() {
             </TableBody>
           </Table>
         </div>
+
         
         {/* Pagination Controls */}
         {!isLoading && filtered.length > 0 && (
