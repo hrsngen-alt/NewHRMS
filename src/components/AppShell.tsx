@@ -123,6 +123,61 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const { user, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [pullStart, setPullStart] = useState<number | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        setPullStart(e.touches[0].clientY);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (pullStart === null || isRefreshing) return;
+
+      const currentY = e.touches[0].clientY;
+      const dist = currentY - pullStart;
+
+      if (dist > 0 && window.scrollY === 0) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        setPullDistance(Math.min(dist * 0.4, 120));
+      } else {
+        setPullStart(null);
+        setPullDistance(0);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (pullStart === null || isRefreshing) return;
+
+      if (pullDistance > 60) {
+        setIsRefreshing(true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 800);
+      } else {
+        setPullDistance(0);
+      }
+      setPullStart(null);
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: false });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [pullStart, pullDistance, isRefreshing]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -597,6 +652,38 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background font-sans transition-colors duration-300">
+      {/* Pull to Refresh Indicator */}
+      {(pullDistance > 0 || isRefreshing) && (
+        <div 
+          className="fixed left-0 right-0 z-[100] flex justify-center pointer-events-none transition-all duration-200"
+          style={{ 
+            top: isRefreshing ? '20px' : `${Math.max(-40, pullDistance - 40)}px`,
+            opacity: isRefreshing ? 1 : Math.min(1, pullDistance / 60)
+          }}
+        >
+          <div className="size-10 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl flex items-center justify-center animate-in fade-in zoom-in-75">
+            <svg 
+              className={cn(
+                "size-5 text-primary", 
+                isRefreshing ? "animate-spin" : ""
+              )}
+              style={{
+                transform: isRefreshing ? undefined : `rotate(${pullDistance * 4}deg)`
+              }}
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="3" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.72 2.78L21 8" />
+              <polyline points="21 3 21 8 16 8" />
+            </svg>
+          </div>
+        </div>
+      )}
+
       <aside className="hidden w-72 shrink-0 flex-col bg-sidebar border-r border-sidebar-border p-6 text-sidebar-foreground md:flex shadow-2xl relative z-10">
         <Link to="/dashboard" className="mb-10 flex items-center gap-3 px-2">
           <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-primary/20">
