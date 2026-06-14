@@ -169,14 +169,14 @@ function HolidaysPage() {
         </div>
         
         {isAdmin && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
             <input type="file" id="holiday-import" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleImport} disabled={busy} />
-            <Button variant="outline" onClick={() => document.getElementById('holiday-import')?.click()} disabled={busy} className="h-12 px-6 rounded-xl font-black gap-2 border-2 border-primary/10 hover:border-primary/30 transition-all">
+            <Button variant="outline" onClick={() => document.getElementById('holiday-import')?.click()} disabled={busy} className="h-12 px-6 rounded-xl font-black gap-2 border-2 border-primary/10 hover:border-primary/30 transition-all w-full sm:w-auto">
               <FileSpreadsheet className="size-5" /> {busy ? "Importing..." : "Import Excel"}
             </Button>
             <Dialog open={open} onOpenChange={(v) => { if(!v) setEditingItem(null); setOpen(v); }}>
             <DialogTrigger asChild>
-              <Button className="h-12 px-8 rounded-xl font-black gap-2 shadow-lg shadow-primary/20">
+              <Button className="h-12 px-8 rounded-xl font-black gap-2 shadow-lg shadow-primary/20 w-full sm:w-auto">
                 <Plus className="size-5" /> Add Holiday
               </Button>
             </DialogTrigger>
@@ -237,60 +237,84 @@ function HolidaysPage() {
         </div>
       ) : (
         <div className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden bg-card">
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 pl-6">Holiday Name</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4">Date</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4">Type</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4">Description</TableHead>
-                {isAdmin && <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-right pr-6">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {upcomingHolidays.map((h: any) => (
-                <TableRow key={h.id} className="group hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-bold pl-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "size-8 rounded-lg flex items-center justify-center text-white",
-                        h.type === 'public' ? "bg-indigo-500" : h.type === 'company' ? "bg-teal-500" : "bg-amber-500"
-                      )}>
-                        {h.type === 'public' ? <CalendarDays className="size-4" /> : <Gift className="size-4" />}
-                      </div>
-                      {h.name}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium text-muted-foreground whitespace-nowrap">
-                    {new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </TableCell>
-                  <TableCell>
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest",
-                      h.type === 'public' ? "bg-indigo-100 text-indigo-700" : h.type === 'company' ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"
-                    )}>
-                      {h.type}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-medium max-w-xs truncate">
-                    {h.description || "Public Holiday"}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="w-full table-auto">
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 pl-6">Holiday Name</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase tracking-widest py-4">Date</TableHead>
+                  <TableHead className="hidden md:table-cell font-black text-[10px] uppercase tracking-widest py-4">Type</TableHead>
+                  <TableHead className="hidden md:table-cell font-black text-[10px] uppercase tracking-widest py-4">Description</TableHead>
                   {isAdmin && (
-                    <TableCell className="text-right pr-6">
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => { setEditingItem(h); setOpen(true); }} className="size-8 rounded-lg hover:bg-primary/10 hover:text-primary">
-                          <Edit2 className="size-3" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => deleteHoliday(h.id)} className="size-8 rounded-lg hover:bg-rose-100 hover:text-rose-600">
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-right pr-6">
+                      <span className="hidden sm:inline">Actions</span>
+                    </TableHead>
                   )}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {upcomingHolidays.map((h: any) => (
+                  <TableRow key={h.id} className="group hover:bg-muted/30 transition-colors">
+                    <TableCell className="font-bold pl-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "size-8 rounded-lg flex items-center justify-center text-white shrink-0",
+                          h.type === 'public' ? "bg-indigo-500" : h.type === 'company' ? "bg-teal-500" : "bg-amber-500"
+                        )}>
+                          {h.type === 'public' ? <CalendarDays className="size-4" /> : <Gift className="size-4" />}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs sm:text-sm md:text-base font-bold text-foreground block whitespace-normal break-words">
+                            {h.name}
+                          </span>
+                          {/* Mobile view stacked tags/description */}
+                          <div className="flex flex-col gap-1 mt-1 md:hidden leading-normal text-muted-foreground font-normal">
+                            <span className={cn(
+                              "px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-widest w-fit shrink-0",
+                              h.type === 'public' ? "bg-indigo-100 text-indigo-700" : h.type === 'company' ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"
+                            )}>
+                              {h.type}
+                            </span>
+                            {h.description && (
+                              <span className="text-[10px] font-medium text-muted-foreground whitespace-normal break-words">
+                                {h.description}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-muted-foreground text-xs sm:text-sm whitespace-nowrap">
+                      {new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest",
+                        h.type === 'public' ? "bg-indigo-100 text-indigo-700" : h.type === 'company' ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"
+                      )}>
+                        {h.type}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground font-medium max-w-xs truncate">
+                      {h.description || "Public Holiday"}
+                    </TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right pr-6 py-4">
+                        <div className="flex flex-col sm:flex-row justify-end items-center gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => { setEditingItem(h); setOpen(true); }} className="size-8 rounded-lg hover:bg-primary/10 hover:text-primary shrink-0">
+                            <Edit2 className="size-3" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteHoliday(h.id)} className="size-8 rounded-lg hover:bg-rose-100 hover:text-rose-600 shrink-0">
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>
