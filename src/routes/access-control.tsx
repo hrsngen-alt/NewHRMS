@@ -1024,7 +1024,8 @@ function AccessControlCenter() {
                 <DialogTitle className="text-2xl font-black">User Override Matrix: {overrideEmployee?.full_name}</DialogTitle>
                 <DialogDescription>Define employee-specific overrides. Toggling permissions here will bypass role configurations.</DialogDescription>
               </DialogHeader>
-              <div className="py-6 overflow-x-auto">
+              {/* Desktop View: Table */}
+              <div className="hidden md:block py-6 overflow-x-auto">
                 <Table className="w-full min-w-[700px]">
                   <TableHeader>
                     <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
@@ -1060,6 +1061,40 @@ function AccessControlCenter() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* Mobile View: Card Stack */}
+              <div className="block md:hidden py-4 space-y-4">
+                {MODULES.map(module => (
+                  <div key={module} className="p-4 rounded-2xl border bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white text-left">{module}</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {MATRIX_ACTIONS.map(action => {
+                        const ov = (localOverrides || []).find((o: any) => o.module === module && o.action === action);
+                        const isOverrideChecked = !!ov;
+                        const overrideAllow = ov?.allow ?? true;
+                        const currentScope: Scope = ov?.scope || "company";
+
+                        return (
+                          <div key={action} className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <Checkbox 
+                              id={`override-${module}-${action}`}
+                              checked={isOverrideChecked}
+                              onCheckedChange={(val) => handleLocalOverrideToggle(module, action, !!val, overrideAllow, currentScope)}
+                              className="size-4 rounded-md border-2"
+                            />
+                            <Label 
+                              htmlFor={`override-${module}-${action}`} 
+                              className="text-xs font-semibold capitalize cursor-pointer select-none text-slate-700 dark:text-slate-300"
+                            >
+                              {action}
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
               <DialogFooter className="bg-muted/10 border-t p-6 mt-6 -mx-8 -mb-8 flex items-center justify-between sm:justify-between gap-4">
                 <div className="flex items-center gap-2">
