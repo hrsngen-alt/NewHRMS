@@ -9,6 +9,14 @@ export type Payslip = {
   special_allowance: number; bonus: number;
   pf: number; esic: number; pt: number; tds: number; leave_deduction: number; gratuity: number;
   gross: number; total_deductions: number; net_pay: number;
+  overtime_hours?: number;
+  overtime_pay?: number;
+  incentives?: number;
+  loan_deductions?: number;
+  absent_days?: number;
+  leave_days?: number;
+  half_days?: number;
+  late_marks?: number;
   payroll_runs?: { period_month: number; period_year: number };
   employees?: {
     full_name: string; employee_code: string; department?: string | null;
@@ -73,19 +81,33 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
   y += left.length * 16 + 14;
   doc.setFillColor(245, 245, 252);
   doc.rect(40, y, W - 80, 28, "F");
-  doc.setFont("helvetica", "normal").setTextColor(80).setFontSize(10);
-  doc.text(`Working days: ${p.working_days}`, 50, y + 18);
-  doc.text(`Paid days: ${p.paid_days}`, 200, y + 18);
+  doc.setFont("helvetica", "normal").setTextColor(80).setFontSize(9);
+  doc.text(`Total Days: ${p.working_days}`, 45, y + 18);
+  doc.text(`Paid: ${p.paid_days}`, 135, y + 18);
+  doc.text(`Absent LOP: ${p.absent_days || 0}`, 215, y + 18);
+  doc.text(`Half Days: ${p.half_days || 0}`, 315, y + 18);
+  doc.text(`Late Marks: ${p.late_marks || 0}`, 410, y + 18);
+  doc.text(`OT Hours: ${p.overtime_hours || 0}`, 505, y + 18);
 
   // Earnings & Deductions tables
   const earnings = [
     ["Basic", fmt(p.basic)], ["HRA", fmt(p.hra)],
     ["Bonus", fmt(p.bonus)],
   ];
+  if (p.overtime_pay && Number(p.overtime_pay) > 0) {
+    earnings.push(["Overtime Pay", fmt(p.overtime_pay)]);
+  }
+  if (p.incentives && Number(p.incentives) > 0) {
+    earnings.push(["Incentives", fmt(p.incentives)]);
+  }
+
   const deductions = [
     ["PF", fmt(p.pf)], ["ESIC (Employee)", fmt(p.esic)], ["Professional tax", fmt(p.pt)],
-    ["TDS", fmt(p.tds)], ["Leave deduction", fmt(p.leave_deduction)],
+    ["TDS", fmt(p.tds)], ["Leave deduction (LOP)", fmt(p.leave_deduction)],
   ];
+  if (p.loan_deductions && Number(p.loan_deductions) > 0) {
+    deductions.push(["Loan Deductions", fmt(p.loan_deductions)]);
+  }
 
   autoTable(doc, {
     head: [["Earnings", "Amount"]],

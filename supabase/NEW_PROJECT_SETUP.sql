@@ -3,6 +3,9 @@
 -- Run this ONCE in your BRAND NEW Supabase project's SQL Editor
 -- ================================================================
 
+-- Enable pgcrypto extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. ENUMS
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN

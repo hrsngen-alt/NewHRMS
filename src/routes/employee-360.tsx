@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,11 +27,31 @@ export const Route = createFileRoute("/employee-360")({
 });
 
 function Employee360Page() {
+  const queryClient = useQueryClient();
   const { role, user } = useAuth();
   const isAdmin = role === "admin" || role === "manager";
   const [selectedEmpId, setSelectedEmpId] = useState<string>("");
   const [isEmpComboboxOpen, setIsEmpComboboxOpen] = useState(false);
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshInsights = async () => {
+    if (!selectedEmpId) return;
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employee-360-leaves", selectedEmpId] }),
+        queryClient.invalidateQueries({ queryKey: ["employee-360-attendance", selectedEmpId] }),
+        queryClient.invalidateQueries({ queryKey: ["employee-360-performance", selectedEmpId] })
+      ]);
+      toast.success("AI Insights refreshed successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to refresh insights");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-360-list"],
@@ -616,8 +636,13 @@ function Employee360Page() {
                     </div>
                   </div>
                 </div>
-                <Button className="w-full mt-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 gap-2 font-bold shadow-lg shadow-indigo-200 dark:shadow-none">
-                  <Sparkles className="size-4" /> Refresh Insights
+                <Button 
+                  onClick={handleRefreshInsights}
+                  disabled={isRefreshing}
+                  className="w-full mt-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 gap-2 font-bold shadow-lg shadow-indigo-200 dark:shadow-none"
+                >
+                  <Sparkles className={cn("size-4", isRefreshing && "animate-spin")} />
+                  {isRefreshing ? "Refreshing..." : "Refresh Insights"}
                 </Button>
               </CardContent>
             </Card>

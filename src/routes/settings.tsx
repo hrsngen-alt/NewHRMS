@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -330,6 +330,29 @@ function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="roles" className="space-y-6">
+          <Card className="rounded-2xl border-2 border-primary/10 bg-primary/5 shadow-card overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-start gap-4">
+                <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20">
+                  <ShieldCheck className="size-6 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <CardTitle className="text-lg font-black">Enterprise Access Control Center</CardTitle>
+                  <CardDescription className="text-sm font-medium">
+                    Configure dynamic permission matrices, custom roles, temporary access delegations, approval workflows, and view complete security audit logs.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6 flex justify-end">
+              <Link to="/access-control">
+                <Button className="h-11 px-6 rounded-xl font-bold bg-primary hover:bg-primary-glow shadow-md shadow-primary/20 transition-all flex items-center gap-2">
+                  <ShieldCheck className="size-4" /> Launch Access Control Center
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
           <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
             <CardHeader className="bg-muted/30 border-b">
               <CardTitle>User Access Controls</CardTitle>
