@@ -20,7 +20,8 @@ import { logSecurityAudit } from "@/lib/audit";
 import { cn } from "../lib/utils";
 import { 
   ShieldAlert, ShieldCheck, Users, Workflow, CalendarClock, History, Plus, Edit2, 
-  Trash2, Copy, Archive, ArrowRight, Settings, Check, Search, Filter, ShieldAlert as AlertTriangle
+  Trash2, Copy, Archive, ArrowRight, Settings, Check, Search, Filter, ShieldAlert as AlertTriangle,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { MODULES, ACTIONS, type Scope, type Action } from "@/lib/permissions";
 
