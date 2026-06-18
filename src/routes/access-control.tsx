@@ -13,10 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { logSecurityAudit } from "@/lib/audit";
+import { cn } from "../lib/utils";
 import { 
   ShieldAlert, ShieldCheck, Users, Workflow, CalendarClock, History, Plus, Edit2, 
   Trash2, Copy, Archive, ArrowRight, Settings, Check, Search, Filter, ShieldAlert as AlertTriangle
@@ -145,6 +146,15 @@ function AccessControlCenter() {
   // Delegation states
   const [isDelegationDialogOpen, setIsDelegationDialogOpen] = useState(false);
   const [delegationForm, setDelegationForm] = useState({ from_employee_id: "", to_employee_id: "", role_id: "", start_date: "", end_date: "" });
+
+  // Employees pagination for User Assignments tab
+  const [employeesPage, setEmployeesPage] = useState(1);
+  const EMPLOYEES_PER_PAGE = 5;
+  const totalEmployeesPages = Math.ceil(employees.length / EMPLOYEES_PER_PAGE);
+  const paginatedEmployees = useMemo(() => {
+    const start = (employeesPage - 1) * EMPLOYEES_PER_PAGE;
+    return employees.slice(start, start + EMPLOYEES_PER_PAGE);
+  }, [employees, employeesPage]);
 
   const activeRole = roles.find((r: any) => r.id === selectedRoleId) || null;
 
@@ -880,7 +890,7 @@ function AccessControlCenter() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y">
-                    {employees.map((emp: any) => {
+                    {paginatedEmployees.map((emp: any) => {
                       const assignedRoleId = employeeRoles.find((r: any) => r.employee_id === emp.id)?.role_id || "none";
                       const userOverrides = overrides.filter((o: any) => o.employee_id === emp.id);
 
@@ -934,7 +944,7 @@ function AccessControlCenter() {
 
               {/* Mobile View Card Stack */}
               <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-                {employees.map((emp: any) => {
+                {paginatedEmployees.map((emp: any) => {
                   const assignedRoleId = employeeRoles.find((r: any) => r.employee_id === emp.id)?.role_id || "none";
                   const userOverrides = overrides.filter((o: any) => o.employee_id === emp.id);
 
@@ -1007,6 +1017,65 @@ function AccessControlCenter() {
                   );
                 })}
               </div>
+
+              {/* Pagination Controls */}
+              {totalEmployeesPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t bg-muted/10 px-6 py-4">
+                  <div className="text-xs text-muted-foreground font-medium">
+                    Showing <span className="font-bold text-foreground">{(employeesPage - 1) * EMPLOYEES_PER_PAGE + 1}</span> to{" "}
+                    <span className="font-bold text-foreground">
+                      {Math.min(employeesPage * EMPLOYEES_PER_PAGE, employees.length)}
+                    </span>{" "}
+                    of <span className="font-bold text-foreground">{employees.length}</span> entries
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 rounded-lg"
+                      onClick={() => setEmployeesPage(p => Math.max(1, p - 1))}
+                      disabled={employeesPage === 1}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: totalEmployeesPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalEmployeesPages || Math.abs(p - employeesPage) <= 1)
+                      .map((p, idx, arr) => {
+                        const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                        return (
+                          <div key={p} className="flex items-center gap-2">
+                            {showEllipsis && (
+                              <span className="text-xs text-muted-foreground px-1">...</span>
+                            )}
+                            <Button
+                              variant={employeesPage === p ? "default" : "outline"}
+                              size="sm"
+                              className={cn(
+                                "h-8 w-8 p-0 rounded-lg text-xs font-bold transition-all",
+                                employeesPage === p ? "shadow-md text-white" : ""
+                              )}
+                              onClick={() => setEmployeesPage(p)}
+                            >
+                              {p}
+                            </Button>
+                          </div>
+                        );
+                      })}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 rounded-lg"
+                      onClick={() => setEmployeesPage(p => Math.min(totalEmployeesPages, p + 1))}
+                      disabled={employeesPage === totalEmployeesPages}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
