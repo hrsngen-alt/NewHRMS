@@ -7,10 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { generatePayslipPDF } from "@/lib/payslip";
-import { FileDown, Search } from "lucide-react";
-import { useState } from "react";
+import { FileDown, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { X } from "lucide-react";
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/payslips")({ component: () => <AppShell><PayslipsPage /></AppShell> });
 
@@ -21,7 +21,13 @@ function PayslipsPage() {
   const [q, setQ] = useState("");
   const [selMonth, setSelMonth] = useState<string>("all");
   const [selYear, setSelYear] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const isAdmin = role === "admin";
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, selMonth, selYear]);
 
   const { data: myEmployee } = useQuery({
     queryKey: ["my-employee", user?.id],
@@ -60,6 +66,12 @@ function PayslipsPage() {
 
     return matchesSearch && matchesMonth && matchesYear;
   });
+
+  const totalPages = Math.ceil(filteredSlips.length / ITEMS_PER_PAGE);
+  const paginatedSlips = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filteredSlips.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredSlips, page]);
 
   const availableYears = Array.from(new Set(slips.map((s: any) => s.payroll_runs?.period_year))).sort((a, b) => b - a);
 
@@ -134,7 +146,7 @@ function PayslipsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredSlips.map((s: any) => (
+            {paginatedSlips.map((s: any) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{months[s.payroll_runs!.period_month - 1]} {s.payroll_runs!.period_year}</TableCell>
                 {role === "admin" && <TableCell>{s.employees?.full_name}</TableCell>}
@@ -149,6 +161,64 @@ function PayslipsPage() {
             {filteredSlips.length === 0 && <TableRow><TableCell colSpan={role === "admin" ? 6 : 5} className="py-12 text-center text-muted-foreground">No matching payslips found.</TableCell></TableRow>}
           </TableBody>
         </Table>
+
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t bg-muted/10 px-6 py-4">
+            <div className="text-xs text-muted-foreground font-medium">
+              Showing <span className="font-bold text-foreground">{(page - 1) * ITEMS_PER_PAGE + 1}</span> to{" "}
+              <span className="font-bold text-foreground">
+                {Math.min(page * ITEMS_PER_PAGE, filteredSlips.length)}
+              </span>{" "}
+              of <span className="font-bold text-foreground">{filteredSlips.length}</span> payslips
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-lg"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .map((p, idx, arr) => {
+                  const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                  return (
+                    <div key={p} className="flex items-center gap-2">
+                      {showEllipsis && (
+                        <span className="text-xs text-muted-foreground px-1">...</span>
+                      )}
+                      <Button
+                        variant={page === p ? "default" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "h-8 w-8 p-0 rounded-lg text-xs font-bold transition-all",
+                          page === p ? "shadow-md text-white" : ""
+                        )}
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    </div>
+                  );
+                })}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-lg"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

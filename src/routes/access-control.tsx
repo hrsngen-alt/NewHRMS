@@ -773,7 +773,7 @@ function AccessControlCenter() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
-                  <Table className="w-full">
+                  <Table className="w-full min-w-[800px]">
                     <TableHeader>
                       <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
                         <TableHead className="font-bold text-[10px] pl-6 py-4 text-slate-800 dark:text-slate-200">Module</TableHead>
@@ -866,40 +866,114 @@ function AccessControlCenter() {
               <CardTitle>Assign Custom Roles</CardTitle>
               <CardDescription>Assign specific roles and configure individual permission overrides for employees.</CardDescription>
             </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table className="w-full">
-                <TableHeader>
-                  <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
-                    <TableHead className="font-bold text-[10px] pl-6 py-4 text-slate-800 dark:text-slate-200">Employee</TableHead>
-                    <TableHead className="font-bold text-[10px] text-slate-800 dark:text-slate-200">Department</TableHead>
-                    <TableHead className="font-bold text-[10px] text-slate-800 dark:text-slate-200">Designation</TableHead>
-                    <TableHead className="font-bold text-[10px] text-slate-800 dark:text-slate-200">Assigned Role</TableHead>
-                    <TableHead className="font-bold text-[10px] pr-6 text-right text-slate-800 dark:text-slate-200">Action Override</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y">
-                  {employees.map((emp: any) => {
-                    const assignedRoleId = employeeRoles.find((r: any) => r.employee_id === emp.id)?.role_id || "none";
-                    const userOverrides = overrides.filter((o: any) => o.employee_id === emp.id);
+            <CardContent className="p-0">
+              {/* Desktop View Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table className="w-full min-w-[900px]">
+                  <TableHeader>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
+                      <TableHead className="font-bold text-[10px] pl-6 py-4 text-slate-800 dark:text-slate-200">Employee</TableHead>
+                      <TableHead className="font-bold text-[10px] text-slate-800 dark:text-slate-200">Department</TableHead>
+                      <TableHead className="font-bold text-[10px] text-slate-800 dark:text-slate-200">Designation</TableHead>
+                      <TableHead className="font-bold text-[10px] text-slate-800 dark:text-slate-200">Assigned Role</TableHead>
+                      <TableHead className="font-bold text-[10px] pr-6 text-right text-slate-800 dark:text-slate-200">Action Override</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y">
+                    {employees.map((emp: any) => {
+                      const assignedRoleId = employeeRoles.find((r: any) => r.employee_id === emp.id)?.role_id || "none";
+                      const userOverrides = overrides.filter((o: any) => o.employee_id === emp.id);
 
-                    // Find corresponding default designation role
-                    const defaultRoleCode = emp.designation ? emp.designation.toLowerCase().trim().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") : null;
-                    const defaultRole = roles.find((r: any) => r.code === defaultRoleCode);
+                      // Find corresponding default designation role
+                      const defaultRoleCode = emp.designation ? emp.designation.toLowerCase().trim().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") : null;
+                      const defaultRole = roles.find((r: any) => r.code === defaultRoleCode);
 
-                    return (
-                      <TableRow key={emp.id} className="hover:bg-muted/10">
-                        <TableCell className="pl-6 py-4 font-bold text-sm tracking-tight text-slate-900 dark:text-white">
-                          {emp.full_name}
-                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{emp.email}</p>
-                        </TableCell>
-                        <TableCell className="text-sm font-semibold text-muted-foreground">{emp.department || "—"}</TableCell>
-                        <TableCell className="text-sm font-medium text-muted-foreground">{emp.designation || "—"}</TableCell>
-                        <TableCell>
+                      return (
+                        <TableRow key={emp.id} className="hover:bg-muted/10">
+                          <TableCell className="pl-6 py-4 font-bold text-sm tracking-tight text-slate-900 dark:text-white">
+                            {emp.full_name}
+                            <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{emp.email}</p>
+                          </TableCell>
+                          <TableCell className="text-sm font-semibold text-muted-foreground">{emp.department || "—"}</TableCell>
+                          <TableCell className="text-sm font-medium text-muted-foreground">{emp.designation || "—"}</TableCell>
+                          <TableCell>
+                            <Select 
+                              value={assignedRoleId} 
+                              onValueChange={(val) => handleAssignUserRole(emp.id, val)}
+                            >
+                              <SelectTrigger className="h-9 w-56 rounded-xl bg-background border">
+                                <SelectValue placeholder={defaultRole ? `Auto: ${defaultRole.name}` : "No Custom Role"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">
+                                  {defaultRole ? `No Custom Role (Auto: ${defaultRole.name})` : "No Custom Role"}
+                                </SelectItem>
+                                {roles.map((r: any) => (
+                                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="pr-6 text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => { setOverrideEmployee(emp); setIsOverrideDialogOpen(true); }}
+                              className="rounded-xl font-bold h-9 gap-1"
+                            >
+                              <Settings className="size-3.5" /> Overrides
+                              {userOverrides.length > 0 && <span className="bg-primary text-white text-[8px] font-black size-4 rounded-full flex items-center justify-center">{userOverrides.length}</span>}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile View Card Stack */}
+              <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                {employees.map((emp: any) => {
+                  const assignedRoleId = employeeRoles.find((r: any) => r.employee_id === emp.id)?.role_id || "none";
+                  const userOverrides = overrides.filter((o: any) => o.employee_id === emp.id);
+
+                  // Find corresponding default designation role
+                  const defaultRoleCode = emp.designation ? emp.designation.toLowerCase().trim().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") : null;
+                  const defaultRole = roles.find((r: any) => r.code === defaultRoleCode);
+
+                  return (
+                    <div key={emp.id} className="p-4 space-y-4 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
+                      {/* Header: Name & Email */}
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="text-left">
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-white">{emp.full_name}</h4>
+                          <span className="text-[10px] font-mono text-muted-foreground">{emp.email}</span>
+                        </div>
+                        {/* Department/Designation tags */}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {emp.department && (
+                            <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[9px] font-black uppercase tracking-wider border border-indigo-100/50 dark:border-indigo-500/20">
+                              {emp.department}
+                            </span>
+                          )}
+                          {emp.designation && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold uppercase tracking-wide border border-slate-100 dark:border-slate-700">
+                              {emp.designation}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Dropdown & Actions */}
+                      <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                        <div className="flex-1 space-y-1 text-left">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/80 block">Assigned Role</label>
                           <Select 
                             value={assignedRoleId} 
                             onValueChange={(val) => handleAssignUserRole(emp.id, val)}
                           >
-                            <SelectTrigger className="h-9 w-56 rounded-xl bg-background border">
+                            <SelectTrigger className="h-9 w-full rounded-xl bg-background border text-xs font-semibold">
                               <SelectValue placeholder={defaultRole ? `Auto: ${defaultRole.name}` : "No Custom Role"} />
                             </SelectTrigger>
                             <SelectContent>
@@ -911,23 +985,28 @@ function AccessControlCenter() {
                               ))}
                             </SelectContent>
                           </Select>
-                        </TableCell>
-                        <TableCell className="pr-6 text-right">
+                        </div>
+                        
+                        <div className="flex items-end justify-start sm:justify-end">
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={() => { setOverrideEmployee(emp); setIsOverrideDialogOpen(true); }}
-                            className="rounded-xl font-bold h-9 gap-1"
+                            className="rounded-xl font-bold h-9 gap-1 text-xs w-full sm:w-auto"
                           >
                             <Settings className="size-3.5" /> Overrides
-                            {userOverrides.length > 0 && <span className="bg-primary text-white text-[8px] font-black size-4 rounded-full flex items-center justify-center">{userOverrides.length}</span>}
+                            {userOverrides.length > 0 && (
+                              <span className="bg-primary text-white text-[8px] font-black size-4 rounded-full flex items-center justify-center">
+                                {userOverrides.length}
+                              </span>
+                            )}
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
@@ -946,7 +1025,7 @@ function AccessControlCenter() {
                 <DialogDescription>Define employee-specific overrides. Toggling permissions here will bypass role configurations.</DialogDescription>
               </DialogHeader>
               <div className="py-6 overflow-x-auto">
-                <Table className="w-full">
+                <Table className="w-full min-w-[700px]">
                   <TableHeader>
                     <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
                       <TableHead className="font-bold text-[10px] pl-6 py-4 text-slate-800 dark:text-slate-200">Module</TableHead>
@@ -1134,7 +1213,7 @@ function AccessControlCenter() {
               </Dialog>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-              <Table className="w-full">
+              <Table className="w-full min-w-[800px]">
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
                     <TableHead className="font-bold text-[10px] pl-6 py-4 text-slate-800 dark:text-slate-200">Workflow Name</TableHead>
@@ -1269,7 +1348,7 @@ function AccessControlCenter() {
               </Dialog>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-              <Table className="w-full">
+              <Table className="w-full min-w-[900px]">
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
                     <TableHead className="font-bold text-[10px] pl-6 py-4 text-slate-800 dark:text-slate-200">Owner (From)</TableHead>
@@ -1337,7 +1416,7 @@ function AccessControlCenter() {
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-              <Table className="w-full">
+              <Table className="w-full min-w-[900px]">
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-transparent">
                     <TableHead className="font-bold text-[10px] pl-6 py-4 text-slate-800 dark:text-slate-200">Date/Time</TableHead>
