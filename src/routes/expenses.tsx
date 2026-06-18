@@ -22,7 +22,7 @@ export const Route = createFileRoute("/expenses")({ component: () => <AppShell><
 
 const getEmailUrl = (email: string, employeeName: string, title: string, amount: number) => {
   const subject = encodeURIComponent(`Inquiry regarding your expense claim: ${title}`);
-  const body = encodeURIComponent(`Hi ${employeeName},\n\nI have a question/doubt regarding your expense claim "${title}" of amount ₹${Number(amount).toLocaleString('en-IN')}.\n\nBest regards,\nPulseHR Admin`);
+  const body = encodeURIComponent(`Hi ${employeeName},\n\nI have a question/doubt regarding your expense claim "${title}" of amount ₹${Number(amount).toLocaleString('en-IN')}.\n\nBest regards,\nHR SNGeneLab`);
   return `mailto:${email || ''}?subject=${subject}&body=${body}`;
 };
 

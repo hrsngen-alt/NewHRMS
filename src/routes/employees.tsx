@@ -964,7 +964,7 @@ function DetailItem({ label, value, badge, isPhone, employeeName }: { label: str
     if (cleaned.length === 10) {
       cleaned = "91" + cleaned; // Default to India prefix
     }
-    const text = `Hi ${name || 'there'}, just reaching out from PulseHR.`;
+    const text = `Hi ${name || 'there'}, just reaching out from HR SNGeneLab.`;
     return `https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`;
   };
 
