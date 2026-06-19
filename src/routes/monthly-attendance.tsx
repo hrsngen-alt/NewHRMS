@@ -13,10 +13,11 @@ import { toast } from "sonner";
 import { 
   Clock, Play, Square, Search, Users, Calendar, Activity, 
   CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, 
-  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, AlertTriangle
+  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, AlertTriangle, FileSpreadsheet
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import * as XLSX from "xlsx";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -49,6 +50,135 @@ function AttendancePage() {
   const [selectedTimelineDate, setSelectedTimelineDate] = useState<string | null>(null);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  const downloadMonthlyAttendanceReport = async () => {
+    setDownloadingReport(true);
+    const loadingToast = toast.loading("Compiling monthly attendance report...");
+    try {
+      const year = Number(selYear);
+      const month = Number(selMonth);
+      const totalDays = new Date(year, month, 0).getDate();
+      const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
+      const endStr = `${year}-${String(month).padStart(2, "0")}-${totalDays}`;
+
+      // 1. Fetch active employees (filtered by department if manager)
+      let empQuery = supabase.from("employees").select("*").eq("status", "active");
+      if (isManager && myEmployee) {
+        empQuery = empQuery.eq("department", myEmployee.department);
+      }
+      const { data: employees, error: empErr } = await empQuery;
+      if (empErr) throw empErr;
+
+      if (!employees || employees.length === 0) {
+        toast.error("No active employees found.");
+        return;
+      }
+
+      // 2. Fetch attendance logs for all fetched employees
+      const employeeIds = employees.map(e => e.id);
+      const { data: attendanceLogs, error: attErr } = await supabase
+        .from("attendance")
+        .select("*")
+        .in("employee_id", employeeIds)
+        .gte("date", startStr)
+        .lte("date", endStr);
+      if (attErr) throw attErr;
+
+      // 3. Fetch leaves for fetched employees
+      const { data: leavesLogs, error: lvErr } = await supabase
+        .from("leaves")
+        .select("*")
+        .in("employee_id", employeeIds)
+        .eq("status", "approved")
+        .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`);
+      if (lvErr) throw lvErr;
+
+      // 4. Fetch holidays
+      const { data: holidaysLogs, error: holErr } = await supabase
+        .from("holidays" as any)
+        .select("*")
+        .gte("date", startStr)
+        .lte("date", endStr);
+      const holidays = holidaysLogs || [];
+
+      // 5. Calculate metrics for each employee
+      const reportRows = employees.map((emp) => {
+        const empAtt = (attendanceLogs || []).filter((a) => a.employee_id === emp.id);
+        const empLeaves = (leavesLogs || []).filter((l) => l.employee_id === emp.id);
+
+        let presentCount = 0;
+        let absentCount = 0;
+        let halfCount = 0;
+        let lateCount = 0;
+        let otCount = 0;
+
+        for (let d = 1; d <= totalDays; d++) {
+          const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const dObj = new Date(year, month - 1, d);
+          const isSunday = dObj.getDay() === 0;
+
+          const attRec = empAtt.find((a) => a.date === dateStr);
+          const isHoliday = holidays.some((h: any) => h.date === dateStr);
+          const isLeave = empLeaves.some((l) => dateStr >= l.start_date && dateStr <= l.end_date);
+
+          if (attRec) {
+            const hrs = Number(attRec.hours_worked || 0);
+            if (hrs > 0 && hrs < 4) {
+              halfCount++;
+              presentCount += 0.5;
+            } else {
+              presentCount++;
+            }
+            if (hrs > 9) {
+              otCount += (hrs - 9);
+            }
+            if (attRec.check_in) {
+              const ciTime = new Date(attRec.check_in);
+              const thresh = new Date(attRec.check_in);
+              thresh.setHours(9, 45, 0, 0);
+              if (ciTime.getTime() > thresh.getTime()) {
+                lateCount++;
+              }
+            }
+          } else {
+            if (!isHoliday && !isSunday && !isLeave) {
+              absentCount++;
+            }
+          }
+        }
+
+        const paid = totalDays - absentCount - (halfCount * 0.5);
+
+        return {
+          "Employee ID": emp.employee_code,
+          "Employee Name": emp.full_name,
+          "Department": emp.department || "—",
+          "Designation": emp.designation || "—",
+          "Total Days": totalDays,
+          "Paid Days": Number(paid.toFixed(1)),
+          "Absent Days": absentCount,
+          "Half Days": halfCount,
+          "Late Marks": lateCount,
+          "OT Hours": Number(otCount.toFixed(1)),
+        };
+      });
+
+      // 6. Generate Excel workbook
+      const ws = XLSX.utils.json_to_sheet(reportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Attendance Report");
+      
+      const periodStr = `${months[month - 1]}_${year}`;
+      XLSX.writeFile(wb, `Attendance_Report_${periodStr}.xlsx`);
+      toast.success("Attendance report downloaded!");
+    } catch (err: any) {
+      toast.error("Failed to generate report: " + err.message);
+    } finally {
+      setDownloadingReport(false);
+      toast.dismiss(loadingToast);
+    }
+  };
 
   const { data: allEmployees = [] } = useQuery({
     queryKey: ["employees", "list"],
@@ -417,6 +547,16 @@ function AttendancePage() {
             className="h-12 w-full md:w-auto px-6 rounded-xl font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
            >
              Clear Filters
+           </Button>
+
+           <Button
+             variant="outline"
+             onClick={downloadMonthlyAttendanceReport}
+             disabled={downloadingReport}
+             className="h-12 w-full md:w-auto px-6 rounded-xl font-bold text-green-600 border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-500/10 flex items-center gap-2 shadow-sm"
+           >
+             <FileSpreadsheet className={cn("size-4", downloadingReport && "animate-spin")} />
+             Export Attendance Excel
            </Button>
 
             <div className="flex flex-wrap items-center gap-4 w-full md:w-auto md:ml-auto justify-center md:justify-end text-[10px] font-black uppercase tracking-widest text-muted-foreground pt-2 md:pt-0">

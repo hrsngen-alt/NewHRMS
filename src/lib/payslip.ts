@@ -17,6 +17,10 @@ export type Payslip = {
   leave_days?: number;
   half_days?: number;
   late_marks?: number;
+  other_allowance?: number;
+  other_deduction?: number;
+  employer_pf?: number;
+  employer_esic?: number;
   payroll_runs?: { period_month: number; period_year: number };
   employees?: {
     full_name: string; employee_code: string; department?: string | null;
@@ -101,13 +105,11 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
     earnings.push(["Incentives", fmt(p.incentives)]);
   }
 
+
   const deductions = [
     ["PF", fmt(p.pf)], ["ESIC (Employee)", fmt(p.esic)], ["Professional tax", fmt(p.pt)],
     ["TDS", fmt(p.tds)], ["Leave deduction (LOP)", fmt(p.leave_deduction)],
   ];
-  if (p.loan_deductions && Number(p.loan_deductions) > 0) {
-    deductions.push(["Loan Deductions", fmt(p.loan_deductions)]);
-  }
 
   autoTable(doc, {
     head: [["Earnings", "Amount"]],
@@ -161,6 +163,5 @@ export function generatePayslipPDF(p: Payslip, companyName: string = "SN Gene HR
   // Footer
   doc.setFontSize(8).setTextColor(140);
   doc.text(`This is a system-generated payslip. Digitally verified by ${companyName}.`, W / 2, 800, { align: "center" });
-
   doc.save(`Payslip_${emp.employee_code}_${period.replace(" ", "_")}.pdf`);
 }
