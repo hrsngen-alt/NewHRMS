@@ -1232,37 +1232,39 @@ function PayslipsPage() {
     return (
       <div className="space-y-6">
         {/* Controls row */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/20 p-6 rounded-2xl border">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Period:</Label>
-              <Select value={importMonth} onValueChange={setImportMonth}>
-                <SelectTrigger className="w-[120px] h-10 bg-background shadow-sm font-bold">
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((m, i) => (
-                    <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={importYear} onValueChange={setImportYear}>
-                <SelectTrigger className="w-[100px] h-10 bg-background shadow-sm font-bold">
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-muted/20 p-4 md:p-6 rounded-2xl border">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+            <div className="flex items-center gap-2 justify-between sm:justify-start">
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Period:</Label>
+              <div className="flex items-center gap-2">
+                <Select value={importMonth} onValueChange={setImportMonth}>
+                  <SelectTrigger className="w-[110px] sm:w-[120px] h-10 bg-background shadow-sm font-bold">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((m, i) => (
+                      <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={importYear} onValueChange={setImportYear}>
+                  <SelectTrigger className="w-[90px] sm:w-[100px] h-10 bg-background shadow-sm font-bold">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {importedData.length > 0 && (
               <Button 
                 variant="outline" 
                 onClick={fetchAttendanceData} 
                 disabled={loadingAttendance}
-                className="h-10 px-4 gap-2 text-indigo-500 font-bold border-indigo-200 hover:bg-indigo-50/50 shadow-sm"
+                className="h-10 px-4 gap-2 text-indigo-500 font-bold border-indigo-200 hover:bg-indigo-50/50 shadow-sm w-full sm:w-auto justify-center"
               >
                 <RefreshCw className={cn("size-4", loadingAttendance && "animate-spin")} />
                 Fetch Attendance
@@ -1270,7 +1272,7 @@ function PayslipsPage() {
             )}
           </div>
 
-          <Button variant="ghost" onClick={downloadTemplate} className="gap-2 h-10 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" onClick={downloadTemplate} className="gap-2 h-10 text-muted-foreground hover:text-foreground w-full md:w-auto justify-center md:justify-end">
             <Download className="size-4" /> Download Template
           </Button>
         </div>
@@ -1307,9 +1309,9 @@ function PayslipsPage() {
           </div>
         ) : (
           /* Small Upload zone banner when data is loaded */
-          <div className="flex items-center justify-between border bg-card p-4 rounded-2xl shadow-sm text-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border bg-card p-4 rounded-2xl shadow-sm text-sm gap-3">
             <div className="flex items-center gap-3">
-              <div className="size-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
+              <div className="size-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center shrink-0">
                 <Check className="size-4" />
               </div>
               <div>
@@ -1317,7 +1319,7 @@ function PayslipsPage() {
                 <span className="text-muted-foreground ml-2">({importedData.length} records)</span>
               </div>
             </div>
-            <Button size="sm" variant="ghost" className="text-muted-foreground gap-2" onClick={() => setImportedData([])}>
+            <Button size="sm" variant="ghost" className="text-muted-foreground gap-2 w-full sm:w-auto justify-center sm:justify-start" onClick={() => setImportedData([])}>
               <Trash2 className="size-4" /> Clear and Upload New
             </Button>
           </div>
@@ -1388,68 +1390,131 @@ function PayslipsPage() {
 
             {/* Data Table */}
             <div className="rounded-2xl border bg-card overflow-hidden shadow-elegant">
-              <div className="px-6 py-4 bg-muted/20 border-b flex justify-between items-center">
+              <div className="px-6 py-4 bg-muted/20 border-b flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                 <h4 className="font-bold">Imported Payroll Records</h4>
-                <div className="text-xs text-muted-foreground">Double check columns and click edit to tweak values.</div>
+                <div className="text-xs text-muted-foreground sm:text-right">Double check columns and click edit to tweak values.</div>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee ID</TableHead>
-                    <TableHead>Employee Name</TableHead>
-                    <TableHead className="text-center">Days (Paid/Total)</TableHead>
-                    <TableHead className="text-right">Gross</TableHead>
-                    <TableHead className="text-right">Deductions</TableHead>
-                    <TableHead className="text-right">Net Pay</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {importedData.map((row, idx) => (
-                    <TableRow key={`${row.employeeCode}-${idx}`} className={cn(!row.isValid && "bg-destructive/5 hover:bg-destructive/10")}>
-                      <TableCell className="font-semibold">{row.employeeCode}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{row.fullName}</span>
-                          <span className="text-xs text-muted-foreground">{row.department} · {row.designation}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">{row.paidDays} / {row.totalDays}</TableCell>
-                      <TableCell className="text-right">₹{row.gross.toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-right text-destructive">₹{row.totalDeductions.toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-right font-bold text-indigo-500">₹{row.netPay.toLocaleString("en-IN")}</TableCell>
-                      <TableCell className="text-center">
+
+              {/* Card List View for Mobile */}
+              <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                {importedData.map((row, idx) => (
+                  <div key={`${row.employeeCode}-${idx}`} className={cn("p-4 space-y-3", !row.isValid && "bg-destructive/5")}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-semibold text-foreground text-sm block">{row.fullName}</span>
+                        <span className="text-xs text-muted-foreground">{row.employeeCode} · {row.department} · {row.designation}</span>
+                      </div>
+                      <div>
                         {row.isValid ? (
-                          <span className="px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-bold">Valid</span>
+                          <span className="px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 text-[10px] font-bold">Valid</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-xs font-bold" title={row.warningMessage}>
+                          <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-[10px] font-bold" title={row.warningMessage}>
                             {row.isDuplicate ? "Duplicate" : "Invalid ID"}
                           </span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2 pr-2">
-                          <Button size="icon" variant="ghost" onClick={() => previewPDF(row)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <Eye className="size-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => { setEditingRecord(row); setEditIndex(idx); }} className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <Edit2 className="size-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => {
-                            const copy = [...importedData];
-                            copy.splice(idx, 1);
-                            setImportedData(copy);
-                            toast.success("Row deleted from current upload.");
-                          }} className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs border-y py-2 dark:border-slate-800">
+                      <div>
+                        <span className="text-muted-foreground block">Days (Paid/Total):</span>
+                        <span className="font-medium text-foreground">{row.paidDays} / {row.totalDays}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block">Gross Salary:</span>
+                        <span className="font-medium text-foreground">₹{row.gross.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block">Deductions:</span>
+                        <span className="font-medium text-destructive">₹{row.totalDeductions.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block">Net Pay:</span>
+                        <span className="font-bold text-indigo-500">₹{row.netPay.toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <Button size="sm" variant="outline" onClick={() => previewPDF(row)} className="h-8 gap-1 px-3 text-xs">
+                        <Eye className="size-3.5" /> Preview
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setEditingRecord(row); setEditIndex(idx); }} className="h-8 gap-1 px-3 text-xs">
+                        <Edit2 className="size-3.5" /> Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        const copy = [...importedData];
+                        copy.splice(idx, 1);
+                        setImportedData(copy);
+                        toast.success("Row deleted from current upload.");
+                      }} className="h-8 gap-1 px-3 text-xs text-destructive hover:bg-destructive/10">
+                        <Trash2 className="size-3.5" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Table View for Desktop */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee ID</TableHead>
+                      <TableHead>Employee Name</TableHead>
+                      <TableHead className="text-center">Days (Paid/Total)</TableHead>
+                      <TableHead className="text-right">Gross</TableHead>
+                      <TableHead className="text-right">Deductions</TableHead>
+                      <TableHead className="text-right">Net Pay</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {importedData.map((row, idx) => (
+                      <TableRow key={`${row.employeeCode}-${idx}`} className={cn(!row.isValid && "bg-destructive/5 hover:bg-destructive/10")}>
+                        <TableCell className="font-semibold">{row.employeeCode}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{row.fullName}</span>
+                            <span className="text-xs text-muted-foreground">{row.department} · {row.designation}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">{row.paidDays} / {row.totalDays}</TableCell>
+                        <TableCell className="text-right">₹{row.gross.toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right text-destructive">₹{row.totalDeductions.toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-right font-bold text-indigo-500">₹{row.netPay.toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-center">
+                          {row.isValid ? (
+                            <span className="px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-bold">Valid</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-xs font-bold" title={row.warningMessage}>
+                              {row.isDuplicate ? "Duplicate" : "Invalid ID"}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2 pr-2">
+                            <Button size="icon" variant="ghost" onClick={() => previewPDF(row)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                              <Eye className="size-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => { setEditingRecord(row); setEditIndex(idx); }} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                              <Edit2 className="size-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => {
+                              const copy = [...importedData];
+                              copy.splice(idx, 1);
+                              setImportedData(copy);
+                              toast.success("Row deleted from current upload.");
+                            }} className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
 
             {/* Bottom Actions panel */}
@@ -1493,7 +1558,7 @@ function PayslipsPage() {
 
       {isAdmin ? (
         <Tabs defaultValue="history" className="w-full space-y-6">
-          <TabsList className="grid w-[400px] grid-cols-2 rounded-xl bg-muted p-1">
+          <TabsList className="grid w-full max-w-[400px] grid-cols-2 rounded-xl bg-muted p-1">
             <TabsTrigger value="history" className="rounded-lg font-bold">Slips History</TabsTrigger>
             <TabsTrigger value="import" className="rounded-lg font-bold">Import & Auto-Generation</TabsTrigger>
           </TabsList>
