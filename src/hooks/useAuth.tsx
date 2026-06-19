@@ -37,13 +37,43 @@ async function fetchRole(userId: string, email: string): Promise<Role> {
     return "admin";
   }
   try {
-    const { data } = await supabase
+    const { data: userRolesData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    const roles = (data ?? []).map((r) => r.role as Role);
-    return roles.includes("admin") ? "admin" : roles.includes("manager") ? "manager" : roles[0] ?? "employee";
-  } catch {
+    
+    const basicRoles = (userRolesData ?? []).map((r) => r.role as Role);
+    if (basicRoles.includes("admin")) return "admin";
+
+    // Also check the new Enterprise Access Control custom roles
+    const { data: empData } = await (supabase.from("employees") as any)
+      .select(`
+        id,
+        employee_custom_roles (
+          custom_roles (
+            name
+          )
+        )
+      `)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (empData?.employee_custom_roles) {
+      for (const ecr of empData.employee_custom_roles) {
+        const roleName = ecr.custom_roles?.name?.toLowerCase() || "";
+        // Grant admin privileges to HR Admin, System Admin, etc.
+        if (roleName.includes("admin") || roleName.includes("hr")) {
+          return "admin";
+        }
+        if (roleName.includes("manager")) {
+          if (!basicRoles.includes("manager")) basicRoles.push("manager");
+        }
+      }
+    }
+
+    return basicRoles.includes("manager") ? "manager" : basicRoles[0] ?? "employee";
+  } catch (err) {
+    console.error("[Auth] fetchRole error:", err);
     return "employee";
   }
 }
