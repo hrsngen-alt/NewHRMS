@@ -7,17 +7,21 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
 import { SNLogo } from "@/components/SNLogo";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, ArrowLeft, CheckCircle2, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
+
+type View = "auth" | "forgot" | "forgot-sent";
 
 function LoginPage() {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [view, setView] = useState<View>("auth");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
 
   useEffect(() => { if (user) navigate({ to: "/dashboard" }); }, [user, navigate]);
 
@@ -38,8 +42,24 @@ function LoginPage() {
     setBusy(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return toast.error("Please enter your email address.");
+    setForgotBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotBusy(false);
+    if (error) {
+      toast.error(error.message || "Failed to send reset email.");
+    } else {
+      setView("forgot-sent");
+    }
+  };
+
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
+      {/* Left branding panel */}
       <div className="hidden gradient-hero p-12 lg:flex lg:flex-col lg:justify-between">
         <div className="flex items-center text-primary-foreground">
           <div className="h-16 w-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shrink-0">
@@ -53,63 +73,176 @@ function LoginPage() {
         <div className="text-xs text-white/60">© SN Gene Lab · Modern HRMS</div>
       </div>
 
+      {/* Right panel */}
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <h1 className="font-display text-2xl font-bold">Welcome to SN Gene Lab</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your portal or create a new account if this is your first time.</p>
-          <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
-            💡 Note: If you were added by HR, please use the "Create account" tab to register your email first.
-          </div>
 
-          <Tabs defaultValue="signin" className="mt-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Create account</TabsTrigger>
-            </TabsList>
+          {/* ─── FORGOT PASSWORD SENT ─────────────────────────────── */}
+          {view === "forgot-sent" && (
+            <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mx-auto size-20 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                <CheckCircle2 className="size-10" />
+              </div>
+              <div>
+                <h1 className="font-display text-2xl font-black text-foreground">Check your inbox!</h1>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  We sent a password reset link to <span className="font-bold text-foreground">{forgotEmail}</span>.
+                  Check your email and click the link to set a new password.
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium text-left">
+                💡 If you don't see the email within a few minutes, check your spam or junk folder.
+              </div>
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl font-bold gap-2"
+                onClick={() => { setView("auth"); setForgotEmail(""); }}
+              >
+                <ArrowLeft className="size-4" /> Back to Sign In
+              </Button>
+            </div>
+          )}
 
-            <TabsContent value="signin">
-              <form className="mt-4 space-y-4" onSubmit={handleSubmit("in")}>
-                <div><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required /></div>
-                <div className="space-y-1">
-                  <Label htmlFor="password">Password</Label>
+          {/* ─── FORGOT PASSWORD FORM ────────────────────────────────── */}
+          {view === "forgot" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <button
+                onClick={() => { setView("auth"); setForgotEmail(""); }}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 font-medium"
+              >
+                <ArrowLeft className="size-4" /> Back to Sign In
+              </button>
+
+              <div className="flex items-center gap-3 mb-6">
+                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <KeyRound className="size-6" />
+                </div>
+                <div>
+                  <h1 className="font-display text-2xl font-black text-foreground">Forgot Password?</h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">No worries, we'll send you a reset link.</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="forgot-email" className="text-sm font-bold">Work Email</Label>
                   <div className="relative">
-                    <Input id="password" name="password" type={showPassword ? "text" : "password"} required className="pr-12" />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      required
+                      placeholder="you@company.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50"
+                    />
                   </div>
                 </div>
-                <Button className="w-full h-12 rounded-xl text-sm font-bold" disabled={busy}>{busy ? "Signing in..." : "Sign in"}</Button>
-              </form>
-            </TabsContent>
 
-            <TabsContent value="signup">
-              <form className="mt-4 space-y-4" onSubmit={handleSubmit("up")}>
-                <div><Label htmlFor="fullName">Full name</Label><Input id="fullName" name="fullName" required /></div>
-                <div><Label htmlFor="email2">Email</Label><Input id="email2" name="email" type="email" required /></div>
-                <div className="space-y-1">
-                  <Label htmlFor="password2">Password</Label>
-                  <div className="relative">
-                    <Input id="password2" name="password" type={showPassword ? "text" : "password"} minLength={8} required className="pr-12" />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                </div>
-                <Button className="w-full h-12 rounded-xl text-sm font-bold" disabled={busy}>{busy ? "Creating..." : "Create account"}</Button>
-                <p className="text-center text-xs text-muted-foreground">First user can be promoted to admin from the database.</p>
+                <Button
+                  type="submit"
+                  disabled={forgotBusy}
+                  className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  {forgotBusy ? (
+                    <span className="flex items-center gap-2">
+                      <span className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Sending reset link...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Mail className="size-4" /> Send Reset Link
+                    </span>
+                  )}
+                </Button>
               </form>
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
 
+          {/* ─── SIGN IN / SIGN UP TABS ──────────────────────────────── */}
+          {view === "auth" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h1 className="font-display text-2xl font-bold">Welcome to SN Gene Lab</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Sign in to your portal or create a new account if this is your first time.</p>
+              <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
+                💡 Note: If you were added by HR, please use the "Create account" tab to register your email first.
+              </div>
+
+              <Tabs defaultValue="signin" className="mt-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign in</TabsTrigger>
+                  <TabsTrigger value="signup">Create account</TabsTrigger>
+                </TabsList>
+
+                {/* Sign In */}
+                <TabsContent value="signin">
+                  <form className="mt-4 space-y-4" onSubmit={handleSubmit("in")}>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" name="email" type="email" required className="mt-1 h-11 rounded-xl" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password">Password</Label>
+                        <button
+                          type="button"
+                          onClick={() => setView("forgot")}
+                          className="text-xs text-primary font-bold hover:underline underline-offset-2 transition-colors"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Input id="password" name="password" type={showPassword ? "text" : "password"} required className="pr-12 h-11 rounded-xl" />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <Button className="w-full h-12 rounded-xl text-sm font-bold shadow-md shadow-primary/20" disabled={busy}>
+                      {busy ? "Signing in..." : "Sign in"}
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                {/* Sign Up */}
+                <TabsContent value="signup">
+                  <form className="mt-4 space-y-4" onSubmit={handleSubmit("up")}>
+                    <div>
+                      <Label htmlFor="fullName">Full name</Label>
+                      <Input id="fullName" name="fullName" required className="mt-1 h-11 rounded-xl" />
+                    </div>
+                    <div>
+                      <Label htmlFor="email2">Email</Label>
+                      <Input id="email2" name="email" type="email" required className="mt-1 h-11 rounded-xl" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="password2">Password</Label>
+                      <div className="relative">
+                        <Input id="password2" name="password" type={showPassword ? "text" : "password"} minLength={8} required className="pr-12 h-11 rounded-xl" />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <Button className="w-full h-12 rounded-xl text-sm font-bold" disabled={busy}>
+                      {busy ? "Creating..." : "Create account"}
+                    </Button>
+                    <p className="text-center text-xs text-muted-foreground">First user can be promoted to admin from the database.</p>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
 
         </div>
       </div>
