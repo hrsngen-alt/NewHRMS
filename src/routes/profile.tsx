@@ -37,6 +37,7 @@ function ProfilePage() {
   const { user } = useAuth();
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
 
   const [passcodeEnabled, setPasscodeEnabled] = useState(() => {
     if (typeof window !== "undefined") {
@@ -193,13 +194,15 @@ function ProfilePage() {
       });
       
       const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 170; // mm
+      const pageHeight = (canvas.height * imgWidth) / canvas.width;
       const pdf = new jsPDF({
-        orientation: 'portrait',
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
         unit: 'mm',
-        format: [85.6, 120] // Standard ID card size-ish
+        format: [imgWidth, pageHeight]
       });
       
-      pdf.addImage(imgData, 'PNG', 0, 0, 85.6, 120);
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, pageHeight);
       pdf.save(`SNGENE_ID_${employee.employee_code}.pdf`);
       toast.success("ID Card downloaded successfully!", { id: toastId });
     } catch (err) {
@@ -284,69 +287,201 @@ function ProfilePage() {
          </div>
       </div>
 
-      <div className="grid md:grid-cols-12 gap-12 items-start">
-        {/* Physical Card Representation */}
-        <div className="md:col-span-5 perspective-1000">
-            <div ref={cardRef} className="relative w-full aspect-[2/3] max-w-[320px] mx-auto rounded-[32px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] group transition-transform duration-700 hover:rotate-y-12">
-              {/* Card Header Background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary via-indigo-600 to-purple-700" />
-              <div className="absolute top-0 inset-x-0 h-40 bg-white/10 backdrop-blur-3xl rounded-b-[40px]" />
-              
-              <div className="relative h-full flex flex-col items-center p-8 text-white">
-                 <div className="flex items-center gap-2 mb-8 opacity-90">
-                    <div className="size-6 rounded-lg bg-white flex items-center justify-center">
-                       <ShieldCheck className="size-4 text-primary" />
-                    </div>
-                    <span className="font-display font-black tracking-widest text-xs uppercase">SN Gene HR Enterprise</span>
-                 </div>
+      <div className="grid lg:grid-cols-12 gap-12 items-start">
+        {/* Double-sided ID Card Display */}
+        <div className="lg:col-span-7 md:col-span-12 flex flex-col items-center">
+          
+          {/* 3D Flipping Card Wrapper */}
+          <div 
+            onClick={() => setIsFlipped(!isFlipped)}
+            className="relative w-[280px] h-[420px] cursor-pointer select-none shrink-0"
+            style={{ perspective: '1000px' }}
+          >
+            <div 
+              className="relative w-full h-full transition-transform duration-700"
+              style={{ 
+                transformStyle: 'preserve-3d',
+                transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+              }}
+            >
+              {/* Front Side */}
+              <div 
+                className="absolute inset-0 rounded-[32px] overflow-hidden shadow-[0_16px_32px_rgba(0,0,0,0.15)] flex flex-col items-center p-6 text-white bg-gradient-to-br from-primary via-indigo-600 to-purple-700"
+                style={{ backfaceVisibility: 'hidden' }}
+              >
+                <div className="absolute top-0 inset-x-0 h-32 bg-white/5 backdrop-blur-2xl rounded-b-[40px]" />
+                
+                {/* Header branding */}
+                <div className="relative flex items-center gap-2 mb-6 opacity-90">
+                  <div className="size-6 rounded-lg bg-white flex items-center justify-center">
+                    <ShieldCheck className="size-4 text-primary" />
+                  </div>
+                  <span className="font-display font-black tracking-widest text-xs uppercase">SNGene Lab</span>
+                </div>
 
-                 <div className="relative group/photo">
-                    <div className="w-32 h-40 rounded-[40px] border-4 border-white/30 p-1 mb-6 shadow-2xl group-hover:scale-105 transition-transform overflow-hidden bg-white/10 backdrop-blur-md">
-                        {(employee as any).photo_url ? (
-                            <img src={(employee as any).photo_url} alt={employee.full_name} className="size-full object-cover rounded-[32px]" />
-                        ) : (
-                            <div className="size-full rounded-[32px] flex items-center justify-center text-6xl font-black">
-                                {employee.full_name?.charAt(0)}
-                            </div>
-                        )}
-                    </div>
-                    <label className="absolute inset-0 mb-6 flex items-center justify-center bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity cursor-pointer rounded-3xl">
-                        <Camera className="size-8 text-white" />
-                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={downloading} />
-                    </label>
-                 </div>
+                {/* Photo container */}
+                <div className="relative group/photo mt-2">
+                  <div className="w-32 h-40 rounded-[40px] border-4 border-white/30 p-1 mb-4 shadow-2xl group-hover:scale-105 transition-transform overflow-hidden bg-white/10 backdrop-blur-md">
+                    {(employee as any).photo_url ? (
+                      <img src={(employee as any).photo_url} alt={employee.full_name} className="size-full object-cover rounded-[32px]" />
+                    ) : (
+                      <div className="size-full rounded-[32px] flex items-center justify-center text-6xl font-black">
+                        {employee.full_name?.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <label 
+                    onClick={(e) => e.stopPropagation()} 
+                    className="absolute inset-0 mb-4 flex items-center justify-center bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity cursor-pointer rounded-3xl"
+                  >
+                    <Camera className="size-8 text-white" />
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={downloading} />
+                  </label>
+                </div>
 
-                 <h2 className="text-2xl font-black tracking-tight text-center">{employee.full_name}</h2>
-                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mt-1">{employee.designation}</p>
+                {/* Name & Title */}
+                <div className="relative text-center mt-2">
+                  <h2 className="text-2xl font-black tracking-tight">{employee.full_name}</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mt-1">{employee.designation}</p>
+                </div>
 
-                 {/* Bottom Section */}
-                 <div className="mt-auto w-full space-y-5">
-                    <div className="grid grid-cols-2 gap-4 w-full">
-                       <div className="flex flex-col">
-                          <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">Employee ID</span>
-                          <span className="text-sm font-bold font-mono tracking-tighter">{employee.employee_code}</span>
-                       </div>
-                       <div className="flex flex-col text-right">
-                          <span className="text-[8px] font-black uppercase text-white/40 tracking-widest">Department</span>
-                          <span className="text-sm font-bold tracking-tight">{employee.department}</span>
-                       </div>
-                    </div>
-
-                    <div className="w-full h-14 bg-white/95 backdrop-blur-sm rounded-2xl p-2 flex items-center justify-center shadow-inner">
-                       <QRCodeSVG 
-                         value={`SNGENE_ID:${employee.id}`} 
-                         size={42}
-                         level="H"
-                         includeMargin={false}
-                       />
-                    </div>
-                 </div>
+                {/* Card tag */}
+                <div className="mt-auto py-1 px-4 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[9px] font-bold tracking-widest uppercase text-white/80">
+                  Official Identity Card
+                </div>
               </div>
-           </div>
+
+              {/* Back Side */}
+              <div 
+                className="absolute inset-0 rounded-[32px] overflow-hidden shadow-[0_16px_32px_rgba(0,0,0,0.15)] flex flex-col p-6 text-slate-900 bg-white border border-slate-100"
+                style={{ 
+                  backfaceVisibility: 'hidden',
+                  transform: 'rotateY(180deg)'
+                }}
+              >
+                {/* Header branding small */}
+                <div className="flex items-center gap-1.5 opacity-90 border-b border-slate-100 pb-3 mb-6">
+                  <ShieldCheck className="size-4 text-indigo-600" />
+                  <span className="font-display font-black tracking-wider text-[10px] uppercase text-slate-800">SNGene Lab</span>
+                </div>
+
+                {/* Info fields list */}
+                <div className="space-y-4 text-sm font-medium">
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Employee ID</span>
+                    <span className="font-bold font-mono tracking-tighter text-slate-800">{employee.employee_code}</span>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Department</span>
+                    <span className="font-bold text-slate-800">{employee.department || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Phone Number</span>
+                    <span className="font-bold text-slate-800">{employee.phone || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Email Contact</span>
+                    <span className="font-bold text-slate-800 text-xs truncate block max-w-full">{employee.email}</span>
+                  </div>
+                </div>
+
+                {/* QR Code container */}
+                <div className="mt-auto flex flex-col items-center gap-2">
+                  <div className="p-1">
+                    <QRCodeSVG 
+                      value={`SNGENE_ID:${employee.id}`} 
+                      size={80}
+                      level="H"
+                      includeMargin={false}
+                      fgColor="#0f172a"
+                      bgColor="transparent"
+                    />
+                  </div>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest text-center mt-1">Scan to Verify Status</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4 font-bold uppercase tracking-widest animate-pulse select-none">💡 Tap card to flip sides</p>
+
+          {/* Hidden Container for high-quality landscape side-by-side PDF generation */}
+          <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+            <div ref={cardRef} className="flex flex-row gap-6 p-6 bg-slate-900 rounded-[40px] items-center">
+              
+              {/* Front Card PDF layout */}
+              <div className="relative w-[280px] h-[420px] rounded-[32px] overflow-hidden flex flex-col items-center p-6 text-white bg-gradient-to-br from-primary via-indigo-600 to-purple-700 shrink-0">
+                <div className="absolute top-0 inset-x-0 h-32 bg-white/5 backdrop-blur-2xl rounded-b-[40px]" />
+                <div className="relative flex items-center gap-2 mb-6 opacity-90">
+                  <div className="size-6 rounded-lg bg-white flex items-center justify-center">
+                    <ShieldCheck className="size-4 text-primary" />
+                  </div>
+                  <span className="font-display font-black tracking-widest text-xs uppercase">SNGene Lab</span>
+                </div>
+                <div className="relative mt-2">
+                  <div className="w-32 h-40 rounded-[40px] border-4 border-white/30 p-1 mb-4 overflow-hidden bg-white/10 backdrop-blur-md">
+                    {(employee as any).photo_url ? (
+                      <img src={(employee as any).photo_url} alt={employee.full_name} className="size-full object-cover rounded-[32px]" />
+                    ) : (
+                      <div className="size-full rounded-[32px] flex items-center justify-center text-6xl font-black">
+                        {employee.full_name?.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="relative text-center mt-2">
+                  <h2 className="text-2xl font-black tracking-tight">{employee.full_name}</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mt-1">{employee.designation}</p>
+                </div>
+                <div className="mt-auto py-1 px-4 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[9px] font-bold tracking-widest uppercase text-white/80">
+                  Official Identity Card
+                </div>
+              </div>
+
+              {/* Back Card PDF layout */}
+              <div className="relative w-[280px] h-[420px] rounded-[32px] overflow-hidden flex flex-col p-6 text-slate-900 bg-white border border-slate-100 shrink-0">
+                <div className="flex items-center gap-1.5 opacity-90 border-b border-slate-100 pb-3 mb-6">
+                  <ShieldCheck className="size-4 text-indigo-600" />
+                  <span className="font-display font-black tracking-wider text-[10px] uppercase text-slate-800">SNGene Lab</span>
+                </div>
+                <div className="space-y-4 text-sm font-medium">
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Employee ID</span>
+                    <span className="font-bold font-mono tracking-tighter text-slate-800">{employee.employee_code}</span>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Department</span>
+                    <span className="font-bold text-slate-800">{employee.department || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Phone Number</span>
+                    <span className="font-bold text-slate-800">{employee.phone || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Email Contact</span>
+                    <span className="font-bold text-slate-800 text-xs truncate block max-w-full">{employee.email}</span>
+                  </div>
+                </div>
+                <div className="mt-auto flex flex-col items-center gap-2">
+                  <div className="p-1">
+                    <QRCodeSVG 
+                      value={`SNGENE_ID:${employee.id}`} 
+                      size={80}
+                      level="H"
+                      includeMargin={false}
+                      fgColor="#0f172a"
+                      bgColor="transparent"
+                    />
+                  </div>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest text-center mt-1">Scan to Verify Status</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
 
         {/* Details Section */}
-        <div className="md:col-span-7 space-y-8">
+        <div className="lg:col-span-5 md:col-span-12 space-y-8">
            <section className="space-y-4">
               <h3 className="text-xs font-black uppercase tracking-[0.3em] text-primary flex items-center gap-2">
                  <Building2 className="size-4" /> Professional Record
