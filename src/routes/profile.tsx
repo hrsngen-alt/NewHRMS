@@ -181,33 +181,254 @@ function ProfilePage() {
   });
 
   const handleDownload = async () => {
-    if (!cardRef.current || !employee) return;
+    if (!employee) return;
     setDownloading(true);
-    const toastId = toast.loading("Generating your high-fidelity Digital ID...");
-    
+    const toastId = toast.loading("Generating your Digital ID...");
+
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 3, // High quality
-        useCORS: true,
-        backgroundColor: null,
-        logging: false,
-      });
-      
+      const CARD_W = 560;
+      const CARD_H = 840;
+      const GAP = 48;
+      const PAD = 48;
+      const RADIUS = 64;
+      const TOTAL_W = PAD * 2 + CARD_W * 2 + GAP;
+      const TOTAL_H = PAD * 2 + CARD_H;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = TOTAL_W;
+      canvas.height = TOTAL_H;
+      const ctx = canvas.getContext('2d')!;
+
+      // Background
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, TOTAL_W, TOTAL_H);
+
+      const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      };
+
+      // ── FRONT CARD ──────────────────────────────────────────────────────────
+      const fx = PAD;
+      const fy = PAD;
+
+      // Gradient background
+      const grad = ctx.createLinearGradient(fx, fy, fx + CARD_W, fy + CARD_H);
+      grad.addColorStop(0, '#6366f1');
+      grad.addColorStop(0.5, '#4f46e5');
+      grad.addColorStop(1, '#7c3aed');
+      roundRect(fx, fy, CARD_W, CARD_H, RADIUS);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Clip to card shape for inner content
+      ctx.save();
+      roundRect(fx, fy, CARD_W, CARD_H, RADIUS);
+      ctx.clip();
+
+      // Header overlay band
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(fx, fy, CARD_W, 200);
+
+      // Logo badge
+      ctx.fillStyle = '#ffffff';
+      roundRect(fx + 36, fy + 40, 48, 48, 12);
+      ctx.fill();
+
+      // Shield text inside badge
+      ctx.fillStyle = '#4f46e5';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('✦', fx + 60, fy + 73);
+
+      // Brand name
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.letterSpacing = '4px';
+      ctx.fillText('SNGENE LAB', fx + 96, fy + 72);
+      ctx.letterSpacing = '0px';
+
+      // Photo area
+      const photoX = fx + CARD_W / 2 - 100;
+      const photoY = fy + 130;
+      const photoW = 200;
+      const photoH = 240;
+
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      roundRect(photoX, photoY, photoW, photoH, 40);
+      ctx.fill();
+
+      // Load and draw photo if exists
+      const photoUrl = (employee as any).photo_url;
+      if (photoUrl) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((res, rej) => {
+            img.onload = () => res();
+            img.onerror = () => res(); // fail silently
+            img.src = photoUrl;
+          });
+          ctx.save();
+          roundRect(photoX + 4, photoY + 4, photoW - 8, photoH - 8, 36);
+          ctx.clip();
+          ctx.drawImage(img, photoX + 4, photoY + 4, photoW - 8, photoH - 8);
+          ctx.restore();
+        } catch { /* ignore */ }
+      } else {
+        // Initial letter
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.font = `bold 96px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(employee.full_name?.charAt(0) || '?', photoX + photoW / 2, photoY + photoH / 2);
+        ctx.textBaseline = 'alphabetic';
+      }
+
+      // Name
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(employee.full_name || '', fx + CARD_W / 2, fy + 430);
+
+      // Designation
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '600 18px sans-serif';
+      ctx.fillText((employee.designation || '').toUpperCase(), fx + CARD_W / 2, fy + 468);
+
+      // Tag pill
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      roundRect(fx + CARD_W / 2 - 130, fy + CARD_H - 90, 260, 44, 22);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.font = '700 15px sans-serif';
+      ctx.fillText('OFFICIAL IDENTITY CARD', fx + CARD_W / 2, fy + CARD_H - 60);
+
+      ctx.restore(); // end front card clip
+
+      // ── BACK CARD ───────────────────────────────────────────────────────────
+      const bx = PAD + CARD_W + GAP;
+      const by = PAD;
+
+      roundRect(bx, by, CARD_W, CARD_H, RADIUS);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Border
+      roundRect(bx, by, CARD_W, CARD_H, RADIUS);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      roundRect(bx, by, CARD_W, CARD_H, RADIUS);
+      ctx.clip();
+
+      // Header logo
+      ctx.fillStyle = '#4f46e5';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('✦', bx + 36, by + 62);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('SNGENE LAB', bx + 64, by + 62);
+
+      // Divider
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(bx + 36, by + 82);
+      ctx.lineTo(bx + CARD_W - 36, by + 82);
+      ctx.stroke();
+
+      // Info rows
+      const rows = [
+        { label: 'EMPLOYEE ID', value: employee.employee_code || '—' },
+        { label: 'DEPARTMENT',  value: employee.department  || '—' },
+        { label: 'PHONE',       value: employee.phone       || '—' },
+        { label: 'EMAIL',       value: employee.email       || '—' },
+      ];
+
+      let rowY = by + 120;
+      for (const row of rows) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '700 16px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(row.label, bx + 36, rowY);
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '700 22px sans-serif';
+
+        // Wrap long values (email)
+        const maxW = CARD_W - 72;
+        const words = row.value.split('');
+        let line = '';
+        let valueY = rowY + 32;
+        for (const char of words) {
+          const testLine = line + char;
+          if (ctx.measureText(testLine).width > maxW && line !== '') {
+            ctx.fillText(line, bx + 36, valueY);
+            line = char;
+            valueY += 28;
+          } else {
+            line = testLine;
+          }
+        }
+        ctx.fillText(line, bx + 36, valueY);
+        rowY = valueY + 48;
+      }
+
+      // QR Code — render via QRCodeSVG to a temp canvas
+      const qrSize = 180;
+      const qrX = bx + CARD_W / 2 - qrSize / 2;
+      const qrY = by + CARD_H - qrSize - 80;
+
+      // Draw placeholder QR region (white box)
+      ctx.fillStyle = '#f8fafc';
+      roundRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, 12);
+      ctx.fill();
+
+      // QR via SVG → Image
+      try {
+        const svgEl = document.querySelector('[data-pdf-qr]');
+        if (svgEl) {
+          const svgData = new XMLSerializer().serializeToString(svgEl);
+          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(svgBlob);
+          const qrImg = new Image();
+          await new Promise<void>((res) => { qrImg.onload = () => res(); qrImg.onerror = () => res(); qrImg.src = url; });
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+          URL.revokeObjectURL(url);
+        }
+      } catch { /* ignore */ }
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SCAN TO VERIFY STATUS', bx + CARD_W / 2, by + CARD_H - 32);
+
+      ctx.restore(); // end back card clip
+
+      // Export
       const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 170; // mm
-      const pageHeight = (canvas.height * imgWidth) / canvas.width;
-      const pdf = new jsPDF({
-        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-        unit: 'mm',
-        format: [imgWidth, pageHeight]
-      });
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, pageHeight);
-      pdf.save(`SNGENE_ID_${employee.employee_code}.pdf`);
-      toast.success("ID Card downloaded successfully!", { id: toastId });
+      const pdfW = 210; // A4 landscape equivalent width in mm (landscape)
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [pdfW, pdfH] });
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+      pdf.save(`SNGENE_ID_${employee.employee_code || 'card'}.pdf`);
+      toast.success('ID Card downloaded successfully!', { id: toastId });
     } catch (err) {
       console.error(err);
-      toast.error("Failed to generate PDF. Please try again.", { id: toastId });
+      toast.error('Failed to generate PDF. Please try again.', { id: toastId });
     } finally {
       setDownloading(false);
     }
@@ -381,7 +602,7 @@ function ProfilePage() {
                   </div>
                   <div>
                     <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Email Contact</span>
-                    <span className="font-bold text-slate-800 text-xs truncate block max-w-full">{employee.email}</span>
+                    <span className="font-bold text-slate-800 text-xs truncate block max-w-full leading-normal">{employee.email}</span>
                   </div>
                 </div>
 
@@ -389,12 +610,13 @@ function ProfilePage() {
                 <div className="mt-auto flex flex-col items-center gap-2">
                   <div className="p-1">
                     <QRCodeSVG 
+                      data-pdf-qr
                       value={`SNGENE_ID:${employee.id}`} 
                       size={80}
                       level="H"
                       includeMargin={false}
                       fgColor="#0f172a"
-                      bgColor="transparent"
+                      bgColor="white"
                     />
                   </div>
                   <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest text-center mt-1">Scan to Verify Status</span>
@@ -404,61 +626,61 @@ function ProfilePage() {
           </div>
           <p className="text-xs text-muted-foreground mt-4 font-bold uppercase tracking-widest animate-pulse select-none">💡 Tap card to flip sides</p>
 
-          {/* Hidden Container for high-quality landscape side-by-side PDF generation */}
+          {/* Hidden QR container for PDF capture */}
           <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-            <div ref={cardRef} className="flex flex-row gap-6 p-6 bg-slate-900 rounded-[40px] items-center">
+            <div ref={cardRef}>
               
               {/* Front Card PDF layout */}
-              <div className="relative w-[280px] h-[420px] rounded-[32px] overflow-hidden flex flex-col items-center p-6 text-white bg-gradient-to-br from-primary via-indigo-600 to-purple-700 shrink-0">
-                <div className="absolute top-0 inset-x-0 h-32 bg-white/5 backdrop-blur-2xl rounded-b-[40px]" />
+              <div className="relative w-[280px] h-[420px] rounded-[32px] overflow-hidden flex flex-col items-center p-6 text-white shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5, #7c3aed)' }}>
+                <div className="absolute top-0 inset-x-0 h-32 rounded-b-[40px]" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(40px)' }} />
                 <div className="relative flex items-center gap-2 mb-6 opacity-90">
-                  <div className="size-6 rounded-lg bg-white flex items-center justify-center">
-                    <ShieldCheck className="size-4 text-primary" />
+                  <div className="size-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#ffffff' }}>
+                    <ShieldCheck className="size-4" style={{ color: '#4f46e5' }} />
                   </div>
-                  <span className="font-display font-black tracking-widest text-xs uppercase">SNGene Lab</span>
+                  <span className="font-display font-black tracking-widest text-xs uppercase" style={{ color: '#ffffff' }}>SNGene Lab</span>
                 </div>
                 <div className="relative mt-2">
-                  <div className="w-32 h-40 rounded-[40px] border-4 border-white/30 p-1 mb-4 overflow-hidden bg-white/10 backdrop-blur-md">
+                  <div className="w-32 h-40 rounded-[40px] border-4 p-1 mb-4 overflow-hidden" style={{ borderColor: 'rgba(255, 255, 255, 0.3)', backgroundColor: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(12px)' }}>
                     {(employee as any).photo_url ? (
                       <img src={(employee as any).photo_url} alt={employee.full_name} className="size-full object-cover rounded-[32px]" />
                     ) : (
-                      <div className="size-full rounded-[32px] flex items-center justify-center text-6xl font-black">
+                      <div className="size-full rounded-[32px] flex items-center justify-center text-6xl font-black" style={{ color: '#ffffff' }}>
                         {employee.full_name?.charAt(0)}
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="relative text-center mt-2">
-                  <h2 className="text-2xl font-black tracking-tight">{employee.full_name}</h2>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mt-1">{employee.designation}</p>
+                  <h2 className="text-2xl font-black tracking-tight" style={{ color: '#ffffff' }}>{employee.full_name}</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>{employee.designation}</p>
                 </div>
-                <div className="mt-auto py-1 px-4 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[9px] font-bold tracking-widest uppercase text-white/80">
+                <div className="mt-auto py-1 px-4 rounded-full border text-[9px] font-bold tracking-widest uppercase" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(12px)', borderColor: 'rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.8)' }}>
                   Official Identity Card
                 </div>
               </div>
 
               {/* Back Card PDF layout */}
-              <div className="relative w-[280px] h-[420px] rounded-[32px] overflow-hidden flex flex-col p-6 text-slate-900 bg-white border border-slate-100 shrink-0">
-                <div className="flex items-center gap-1.5 opacity-90 border-b border-slate-100 pb-3 mb-6">
-                  <ShieldCheck className="size-4 text-indigo-600" />
-                  <span className="font-display font-black tracking-wider text-[10px] uppercase text-slate-800">SNGene Lab</span>
+              <div className="relative w-[280px] h-[420px] rounded-[32px] overflow-hidden flex flex-col p-6 shrink-0" style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0' }}>
+                <div className="flex items-center gap-1.5 opacity-90 pb-3 mb-6" style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <ShieldCheck className="size-4" style={{ color: '#4f46e5' }} />
+                  <span className="font-display font-black tracking-wider text-[10px] uppercase" style={{ color: '#1e293b' }}>SNGene Lab</span>
                 </div>
                 <div className="space-y-4 text-sm font-medium">
                   <div>
-                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Employee ID</span>
-                    <span className="font-bold font-mono tracking-tighter text-slate-800">{employee.employee_code}</span>
+                    <span className="text-[8px] font-black uppercase tracking-wider block" style={{ color: '#94a3b8' }}>Employee ID</span>
+                    <span className="font-bold font-mono tracking-tighter" style={{ color: '#1e293b' }}>{employee.employee_code}</span>
                   </div>
                   <div>
-                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Department</span>
-                    <span className="font-bold text-slate-800">{employee.department || "—"}</span>
+                    <span className="text-[8px] font-black uppercase tracking-wider block" style={{ color: '#94a3b8' }}>Department</span>
+                    <span className="font-bold" style={{ color: '#1e293b' }}>{employee.department || "—"}</span>
                   </div>
                   <div>
-                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Phone Number</span>
-                    <span className="font-bold text-slate-800">{employee.phone || "—"}</span>
+                    <span className="text-[8px] font-black uppercase tracking-wider block" style={{ color: '#94a3b8' }}>Phone Number</span>
+                    <span className="font-bold" style={{ color: '#1e293b' }}>{employee.phone || "—"}</span>
                   </div>
                   <div>
-                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Email Contact</span>
-                    <span className="font-bold text-slate-800 text-xs truncate block max-w-full">{employee.email}</span>
+                    <span className="text-[8px] font-black uppercase tracking-wider block" style={{ color: '#94a3b8' }}>Email Contact</span>
+                    <span className="font-bold text-xs truncate block max-w-full" style={{ color: '#1e293b', lineHeight: '1.5' }}>{employee.email}</span>
                   </div>
                 </div>
                 <div className="mt-auto flex flex-col items-center gap-2">
@@ -472,7 +694,7 @@ function ProfilePage() {
                       bgColor="transparent"
                     />
                   </div>
-                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest text-center mt-1">Scan to Verify Status</span>
+                  <span className="text-[8px] font-bold uppercase tracking-widest text-center mt-1" style={{ color: '#94a3b8' }}>Scan to Verify Status</span>
                 </div>
               </div>
 
@@ -637,20 +859,21 @@ function InfoItem({ icon: Icon, label, value, badge }: any) {
   return (
     <Card className="rounded-2xl border-2 border-primary/5 shadow-none overflow-hidden hover:bg-primary/5 transition-colors group">
        <CardContent className="p-4 flex items-center gap-4">
-          <div className="size-10 rounded-xl bg-muted group-hover:bg-primary/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+          <div className="size-10 rounded-xl bg-muted group-hover:bg-primary/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors shrink-0">
              <Icon className="size-5" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0 flex-1">
              <span className="text-[10px] font-black uppercase text-muted-foreground/40 tracking-widest">{label}</span>
              {badge ? (
                 <span className="w-fit px-2 py-0.5 rounded-lg bg-green-100 text-green-700 text-[10px] font-black uppercase mt-1 tracking-tighter">
                    {value}
                 </span>
              ) : (
-                <span className="text-sm font-bold text-foreground leading-none mt-1">{value}</span>
+                <span className="text-sm font-bold text-foreground leading-snug mt-1 break-all">{value}</span>
              )}
           </div>
        </CardContent>
     </Card>
   );
 }
+

@@ -55,7 +55,7 @@ function AccessControlCenter() {
   const { data: employees = EMPTY_ARRAY, isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-for-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, full_name, email, department, designation").eq("status", "active").order("full_name");
+      const { data, error } = await supabase.from("employees").select("id, full_name, email, department, designation, employee_code").eq("status", "active").order("full_name");
       if (error) throw error;
       return data || [];
     }
@@ -148,14 +148,36 @@ function AccessControlCenter() {
   const [isDelegationDialogOpen, setIsDelegationDialogOpen] = useState(false);
   const [delegationForm, setDelegationForm] = useState({ from_employee_id: "", to_employee_id: "", role_id: "", start_date: "", end_date: "" });
 
-  // Employees pagination for User Assignments tab
+  // Employees search & pagination for User Assignments tab
+  const [userSearch, setUserSearch] = useState("");
   const [employeesPage, setEmployeesPage] = useState(1);
   const EMPLOYEES_PER_PAGE = 5;
-  const totalEmployeesPages = Math.ceil(employees.length / EMPLOYEES_PER_PAGE);
+
+  const filteredEmployees = useMemo(() => {
+    if (!userSearch) return employees;
+    const term = userSearch.toLowerCase().trim();
+    return employees.filter((emp: any) => {
+      return (
+        emp.full_name?.toLowerCase().includes(term) ||
+        emp.email?.toLowerCase().includes(term) ||
+        emp.employee_code?.toLowerCase().includes(term) ||
+        emp.department?.toLowerCase().includes(term) ||
+        emp.designation?.toLowerCase().includes(term)
+      );
+    });
+  }, [employees, userSearch]);
+
+  const totalEmployeesPages = Math.max(1, Math.ceil(filteredEmployees.length / EMPLOYEES_PER_PAGE));
+
   const paginatedEmployees = useMemo(() => {
     const start = (employeesPage - 1) * EMPLOYEES_PER_PAGE;
-    return employees.slice(start, start + EMPLOYEES_PER_PAGE);
-  }, [employees, employeesPage]);
+    return filteredEmployees.slice(start, start + EMPLOYEES_PER_PAGE);
+  }, [filteredEmployees, employeesPage]);
+
+  // Reset page to 1 when search changes
+  useEffect(() => {
+    setEmployeesPage(1);
+  }, [userSearch]);
 
   const activeRole = roles.find((r: any) => r.id === selectedRoleId) || null;
 
@@ -873,9 +895,20 @@ function AccessControlCenter() {
         {/* TAB 2: USER ROLE ASSIGNMENTS & OVERRIDES */}
         <TabsContent value="users" className="space-y-6">
           <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden bg-card">
-            <CardHeader className="bg-muted/30 border-b">
-              <CardTitle>Assign Custom Roles</CardTitle>
-              <CardDescription>Assign specific roles and configure individual permission overrides for employees.</CardDescription>
+            <CardHeader className="bg-muted/30 border-b flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <CardTitle>Assign Custom Roles</CardTitle>
+                <CardDescription>Assign specific roles and configure individual permission overrides for employees.</CardDescription>
+              </div>
+              <div className="relative w-full md:w-80 group">
+                <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Input 
+                  placeholder="Search name, email, ID..." 
+                  className="pl-10 h-10 rounded-xl border bg-background text-sm shadow-sm focus:border-primary/50 transition-all font-medium"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                />
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {/* Desktop View Table */}
@@ -891,7 +924,14 @@ function AccessControlCenter() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y">
-                    {paginatedEmployees.map((emp: any) => {
+                    {paginatedEmployees.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground font-medium">
+                          No employees found matching "{userSearch}"
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedEmployees.map((emp: any) => {
                       const assignedRoleId = employeeRoles.find((r: any) => r.employee_id === emp.id)?.role_id || "none";
                       const userOverrides = overrides.filter((o: any) => o.employee_id === emp.id);
 
@@ -938,14 +978,19 @@ function AccessControlCenter() {
                           </TableCell>
                         </TableRow>
                       );
-                    })}
+                    }))}
                   </TableBody>
                 </Table>
               </div>
 
               {/* Mobile View Card Stack */}
               <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-                {paginatedEmployees.map((emp: any) => {
+                {paginatedEmployees.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground font-medium text-sm">
+                    No employees found matching "{userSearch}"
+                  </div>
+                ) : (
+                  paginatedEmployees.map((emp: any) => {
                   const assignedRoleId = employeeRoles.find((r: any) => r.employee_id === emp.id)?.role_id || "none";
                   const userOverrides = overrides.filter((o: any) => o.employee_id === emp.id);
 
@@ -1016,18 +1061,18 @@ function AccessControlCenter() {
                       </div>
                     </div>
                   );
-                })}
+                }))}
               </div>
 
               {/* Pagination Controls */}
               {totalEmployeesPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t bg-muted/10 px-6 py-4">
                   <div className="text-xs text-muted-foreground font-medium">
-                    Showing <span className="font-bold text-foreground">{(employeesPage - 1) * EMPLOYEES_PER_PAGE + 1}</span> to{" "}
+                    Showing <span className="font-bold text-foreground">{filteredEmployees.length === 0 ? 0 : (employeesPage - 1) * EMPLOYEES_PER_PAGE + 1}</span> to{" "}
                     <span className="font-bold text-foreground">
-                      {Math.min(employeesPage * EMPLOYEES_PER_PAGE, employees.length)}
+                      {Math.min(employeesPage * EMPLOYEES_PER_PAGE, filteredEmployees.length)}
                     </span>{" "}
-                    of <span className="font-bold text-foreground">{employees.length}</span> entries
+                    of <span className="font-bold text-foreground">{filteredEmployees.length}</span> entries
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
