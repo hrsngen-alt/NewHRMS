@@ -13,6 +13,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "../lib/utils";
 
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/employees")({ component: () => <AppShell>
 function EmployeesPage() {
   const qc = useQueryClient();
   const { role, user } = useAuth();
+  const { hasPermission, isLoading: permsLoading } = usePermissions();
   const [q, setQ] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [open, setOpen] = useState(false);
@@ -32,12 +34,16 @@ function EmployeesPage() {
   const docRef = useRef<HTMLInputElement>(null);
   const isAdmin = role === "admin";
 
-  if (role !== "admin") {
+  if (permsLoading) {
+    return <div className="flex h-[50vh] items-center justify-center animate-pulse text-muted-foreground font-bold text-xl">Loading Employee Directory...</div>;
+  }
+
+  if (!hasPermission("Employee Directory", "manage")) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
         <AlertTriangle className="size-12 text-destructive animate-pulse" />
         <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
-        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin users. If you believe this is an error, please contact support.</p>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted. You do not have permission to manage the employee directory.</p>
       </div>
     );
   }

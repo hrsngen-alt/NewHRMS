@@ -188,77 +188,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log("[Auth] Provider mounted. Starting initial checks...");
+    let activeSessionUserId: string | null = null;
 
     // Safety valve: Ensure loading is always set to false after 5 seconds max
     const safetyTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn("[Auth] Initialization taking too long, forcing loading false");
-        setLoading(false);
-      }
+      console.warn("[Auth] Initialization taking too long, forcing loading false");
+      setLoading(false);
     }, 5000);
 
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+    const handleSessionInit = async (s: Session | null) => {
+      if (!s?.user) {
+        setSession(null);
+        setUser(null);
+        setRole(null);
+        setEmployeeId(null);
+        setLoading(false);
+        activeSessionUserId = null;
+        return;
+      }
+
+      // Skip if already initializing or initialized for this user
+      if (activeSessionUserId === s.user.id) return;
+      activeSessionUserId = s.user.id;
+
+      setSession(s);
+      setUser(s.user);
+
       try {
-        console.log("[Auth] getSession returned:", !!s);
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          // Perform sync but don't block the UI for more than 1.5 seconds total
-          const [empId, r] = await Promise.all([
-            Promise.race([
-              syncUserRecords(s.user),
-              new Promise<null>(res => setTimeout(() => res(null), 1500))
-            ]),
-            Promise.race([
-              fetchRole(s.user.id, s.user.email ?? ""),
-              new Promise<Role>(res => setTimeout(() => res("employee" as Role), 1500))
-            ])
-          ]);
-          console.log("[Auth] Role:", r, "EmployeeId:", empId);
-          setRole(r);
-          setEmployeeId(empId as string | null);
-        }
+        console.log("[Auth] Initializing user session for:", s.user.email);
+        
+        // Fetch role and employee ID in parallel without race timeouts that discard results
+        const [empId, r] = await Promise.all([
+          syncUserRecords(s.user),
+          fetchRole(s.user.id, s.user.email ?? "")
+        ]);
+
+        console.log("[Auth] Initialized successfully. Role:", r, "EmployeeId:", empId);
+        setRole(r);
+        setEmployeeId(empId);
       } catch (err) {
         console.error("[Auth] Initial session check failed:", err);
       } finally {
-        console.log("[Auth] Setting loading false");
         setLoading(false);
         clearTimeout(safetyTimeout);
       }
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_e, s) => {
-      console.log("[Auth] onAuthStateChange:", _e, !!s);
-      try {
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          const [empId, r] = await Promise.all([
-            Promise.race([
-              syncUserRecords(s.user),
-              new Promise<null>(res => setTimeout(() => res(null), 1500))
-            ]),
-            Promise.race([
-              fetchRole(s.user.id, s.user.email ?? ""),
-              new Promise<Role>(res => setTimeout(() => res("employee" as Role), 1500))
-            ])
-          ]);
-          console.log("[Auth] Role:", r, "EmployeeId:", empId);
-          setRole(r);
-          setEmployeeId(empId as string | null);
-        } else {
-          setRole(null);
-          setEmployeeId(null);
-        }
-      } catch (err) {
-        console.error("[Auth] Auth state change processing failed:", err);
-      } finally {
-        setLoading(false);
-        clearTimeout(safetyTimeout);
+    // 1. Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        handleSessionInit(session);
       }
     });
 
-    return () => subscription.unsubscribe();
+    // 2. Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[Auth] onAuthStateChange event:", event, "User:", session?.user?.email);
+      
+      if (event === "SIGNED_OUT") {
+        handleSessionInit(null);
+      } else if (session) {
+        handleSessionInit(session);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   const signIn: AuthContextValue["signIn"] = async (email, password) => {

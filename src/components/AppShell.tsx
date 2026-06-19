@@ -56,8 +56,8 @@ const essNav: NavItem[] = [
 ];
 
 const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requireWiderScope?: boolean }> = {
-  "/employees": { module: "Employee Directory", action: "view" },
-  "/employee-360": { module: "Performance Management", action: "view" },
+  "/employees": { module: "Employee Directory", action: "manage" },
+  "/employee-360": { module: "Performance Management", action: "manage" },
   "/attendance": { module: "Attendance", action: "view" },
   "/monthly-attendance": { module: "Attendance", action: "view", requireWiderScope: true },
   "/leaves": { module: "Leave", action: "view" },
@@ -73,10 +73,10 @@ const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requir
 };
 
 function NavContent({ role, location, onNavClick }: { role: string | null, location: any, onNavClick?: () => void }) {
-  const { hasPermission, getScope } = usePermissions();
+  const { hasPermission, getScope, isLoading } = usePermissions();
 
-  const isRouteAllowed = (to: string) => {
-    const requirement = ROUTE_PERMISSIONS[to];
+  const isRouteAllowed = (navItem: NavItem) => {
+    const requirement = ROUTE_PERMISSIONS[navItem.to];
     if (!requirement) return true; // public/self-service routes
     
     const permitted = hasPermission(requirement.module, requirement.action);
@@ -92,11 +92,30 @@ function NavContent({ role, location, onNavClick }: { role: string | null, locat
     return true;
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 custom-scrollbar py-4 px-2">
+        <div className="space-y-2">
+          <div className="h-2 w-20 bg-muted/50 rounded animate-pulse mb-4 ml-2" />
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-10 w-full bg-muted/20 rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="space-y-2 mt-8">
+          <div className="h-2 w-24 bg-muted/50 rounded animate-pulse mb-4 ml-2" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-10 w-full bg-muted/20 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 custom-scrollbar py-4">
       <nav className="space-y-1">
         <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Main Menu</p>
-        {nav.filter((n) => isRouteAllowed(n.to)).map((n) => {
+        {nav.filter((n) => isRouteAllowed(n)).map((n) => {
           const active = location.pathname.startsWith(n.to);
           const content = (
             <>
@@ -130,7 +149,7 @@ function NavContent({ role, location, onNavClick }: { role: string | null, locat
 
       <nav className="space-y-1">
         <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Employee Services</p>
-        {essNav.filter((n) => isRouteAllowed(n.to)).map((n) => {
+        {essNav.filter((n) => isRouteAllowed(n)).map((n) => {
           const active = location.pathname.startsWith(n.to);
           return (
             <Link key={n.to} to={n.to} onClick={onNavClick}
