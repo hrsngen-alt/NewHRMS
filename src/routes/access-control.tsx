@@ -238,7 +238,7 @@ function AccessControlCenter() {
     const dbOverrides = overrides.filter((o: any) => o.employee_id === overrideEmployee.id);
     if (dbOverrides.length !== localOverrides.length) return true;
 
-    const dbMap = new Map(dbOverrides.map((o: any) => [`${o.module}-${o.action}`, { allow: o.allow, scope: o.scope }]));
+    const dbMap = new Map<string, any>(dbOverrides.map((o: any) => [`${o.module}-${o.action}`, { allow: o.allow, scope: o.scope }]));
     for (const lo of localOverrides) {
       const dbVal = dbMap.get(`${lo.module}-${lo.action}`);
       if (!dbVal || dbVal.allow !== lo.allow || dbVal.scope !== lo.scope) {
