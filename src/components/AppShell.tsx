@@ -210,13 +210,20 @@ export function AppShell({ children }: { children?: ReactNode }) {
     if (typeof window === "undefined") return;
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (mobileOpen) return;
+      
+      const target = e.target as HTMLElement;
+      if (target.closest?.('[role="dialog"]') || target.closest?.('[data-radix-portal]')) {
+        return;
+      }
+
       if (window.scrollY === 0) {
         setPullStart(e.touches[0].clientY);
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (pullStart === null || isRefreshing) return;
+      if (mobileOpen || pullStart === null || isRefreshing) return;
 
       const currentY = e.touches[0].clientY;
       const dist = currentY - pullStart;
@@ -233,7 +240,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
     };
 
     const handleTouchEnd = () => {
-      if (pullStart === null || isRefreshing) return;
+      if (mobileOpen || pullStart === null || isRefreshing) return;
 
       if (pullDistance > 60) {
         setIsRefreshing(true);
@@ -255,7 +262,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [pullStart, pullDistance, isRefreshing]);
+  }, [pullStart, pullDistance, isRefreshing, mobileOpen]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
