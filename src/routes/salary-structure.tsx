@@ -823,8 +823,8 @@ function SalaryCalculator() {
               <label className="text-[10px] font-black uppercase tracking-widest text-indigo-700 mb-1.5 block">
                 Monthly CTC (₹)
               </label>
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="relative flex-1 w-full">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 font-black text-lg">₹</span>
                   <input
                     type="number"
@@ -835,7 +835,7 @@ function SalaryCalculator() {
                   />
                 </div>
                 {ctcVal > 0 && (
-                  <div className="flex items-center gap-1.5 text-indigo-700 font-bold text-xs bg-indigo-100 px-3 py-2 rounded-lg">
+                  <div className="flex items-center gap-1.5 text-indigo-700 font-bold text-xs bg-indigo-100 px-3 py-2 rounded-lg w-fit shrink-0">
                     <ArrowRight className="size-3.5" /> Auto-calculating…
                   </div>
                 )}
@@ -852,7 +852,7 @@ function SalaryCalculator() {
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 Enter Salary Components Manually
               </p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { label: "Basic Salary (₹)", val: manualBasic, set: setManualBasic, hint: "50% of gross typically" },
                   { label: "HRA (₹)", val: manualHra, set: setManualHra, hint: "42.53% of gross typically" },
