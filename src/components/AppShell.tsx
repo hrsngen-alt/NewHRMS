@@ -217,7 +217,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
         return;
       }
 
-      if (window.scrollY === 0) {
+      const mainEl = document.querySelector('main');
+      const isAtTop = mainEl ? mainEl.scrollTop === 0 : window.scrollY === 0;
+
+      if (isAtTop) {
         setPullStart(e.touches[0].clientY);
       }
     };
@@ -228,7 +231,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
       const currentY = e.touches[0].clientY;
       const dist = currentY - pullStart;
 
-      if (dist > 0 && window.scrollY === 0) {
+      const mainEl = document.querySelector('main');
+      const isAtTop = mainEl ? mainEl.scrollTop === 0 : window.scrollY === 0;
+
+      if (dist > 0 && isAtTop) {
         if (e.cancelable) {
           e.preventDefault();
         }
@@ -734,9 +740,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
       </div>
     );
   }
-
   return (
-    <div className="flex min-h-screen bg-background font-sans transition-colors duration-300">
+    <div className="flex h-screen bg-background font-sans transition-colors duration-300 overflow-hidden">
       {/* Pull to Refresh Indicator */}
       {(pullDistance > 0 || isRefreshing) && (
         <div 
@@ -797,7 +802,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden flex flex-col">
+      <main className="flex-1 h-full overflow-y-auto overflow-x-hidden flex flex-col">
         <header className="flex items-center justify-between border-b bg-card/40 px-4 md:px-8 py-5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
           <div className="flex items-center gap-4">
              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
