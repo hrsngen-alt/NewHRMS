@@ -72,7 +72,7 @@ const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requir
   "/directory": { module: "Employee Directory", action: "view" },
 };
 
-function NavContent({ role, location, onNavClick }: { role: string | null, location: any, onNavClick?: () => void }) {
+function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: string | null, location: any, onNavClick?: () => void, sidebarCollapsed?: boolean }) {
   const { hasPermission, getScope, isLoading } = usePermissions();
 
   const isRouteAllowed = (navItem: NavItem) => {
@@ -114,20 +114,23 @@ function NavContent({ role, location, onNavClick }: { role: string | null, locat
   return (
     <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 custom-scrollbar py-4">
       <nav className="space-y-1">
-        <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Main Menu</p>
+        {!sidebarCollapsed && <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Main Menu</p>}
         {nav.filter((n) => isRouteAllowed(n)).map((n) => {
           const active = location.pathname.startsWith(n.to);
           const content = (
             <>
-              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110", active ? "text-white" : "text-muted-foreground/40")} /> 
-              {n.label}
+              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110 shrink-0", active ? "text-white" : "text-muted-foreground/40 md:group-hover:text-sidebar-accent-foreground")} /> 
+              {!sidebarCollapsed && n.label}
             </>
           );
 
           if (n.external) {
             return (
               <a key={n.to} href={n.to} target="_blank" rel="noreferrer"
-                className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-white">
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-sidebar-accent-foreground",
+                  sidebarCollapsed ? "justify-center px-2" : ""
+                )}>
                 {content}
               </a>
             );
@@ -137,9 +140,10 @@ function NavContent({ role, location, onNavClick }: { role: string | null, locat
             <Link key={n.to} to={n.to} onClick={onNavClick}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
+                sidebarCollapsed ? "justify-center px-2" : "",
                 active 
                   ? "bg-primary text-white shadow-lg shadow-primary/30" 
-                  : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-white"
+                  : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-sidebar-accent-foreground"
               )}>
               {content}
             </Link>
@@ -148,19 +152,20 @@ function NavContent({ role, location, onNavClick }: { role: string | null, locat
       </nav>
 
       <nav className="space-y-1">
-        <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Employee Services</p>
+        {!sidebarCollapsed && <p className="px-3 mb-2 text-[10px] font-black text-sidebar-foreground/40 md:text-sidebar-foreground/40 text-muted-foreground/60 uppercase tracking-widest">Employee Services</p>}
         {essNav.filter((n) => isRouteAllowed(n)).map((n) => {
           const active = location.pathname.startsWith(n.to);
           return (
             <Link key={n.to} to={n.to} onClick={onNavClick}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
+                sidebarCollapsed ? "justify-center px-2" : "",
                 active 
                   ? "bg-primary text-white shadow-lg shadow-primary/30" 
-                  : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-white"
+                  : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-sidebar-accent-foreground"
               )}>
-              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110", active ? "text-white" : "text-muted-foreground/40")} /> 
-              {n.label}
+              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110 shrink-0", active ? "text-white" : "text-muted-foreground/40 md:group-hover:text-sidebar-accent-foreground")} /> 
+              {!sidebarCollapsed && n.label}
             </Link>
           );
         })}
@@ -179,6 +184,23 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const { user, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("sidebar_collapsed") === "true";
+    }
+    return false;
+  });
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", String(next));
+      return next;
+    });
+  };
 
   const [pullStart, setPullStart] = useState<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
@@ -740,27 +762,30 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </div>
       )}
 
-      <aside className="hidden w-72 shrink-0 flex-col bg-sidebar border-r border-sidebar-border p-6 text-sidebar-foreground md:flex shadow-2xl relative z-10">
+      <aside className={cn(
+        "hidden shrink-0 flex-col bg-sidebar border-r border-sidebar-border text-sidebar-foreground md:flex shadow-2xl relative z-10 transition-all duration-300 overflow-hidden",
+        sidebarCollapsed ? "w-0 p-0 border-r-0" : "w-72 p-6"
+      )}>
         <Link to="/dashboard" className="mb-10 flex items-center justify-center px-2 shrink-0">
           <div className="h-16 w-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
             <SNLogo className="h-10 w-auto" />
           </div>
         </Link>
         
-        <NavContent role={role} location={location} />
+        <NavContent role={role} location={location} sidebarCollapsed={false} />
 
         <div className="space-y-4 border-t border-sidebar-border/50 pt-8 mt-6">
           <Link to="/profile" className="flex items-center gap-3 px-2 group hover:opacity-80 transition-opacity">
-            <div className="size-10 rounded-full bg-sidebar-accent flex items-center justify-center text-white font-black border-2 border-primary/20 shadow-inner group-hover:border-primary/50 transition-colors">
+            <div className="size-10 rounded-full bg-sidebar-accent flex items-center justify-center text-sidebar-accent-foreground font-black border-2 border-primary/20 shadow-inner group-hover:border-primary/50 transition-colors shrink-0">
                {user.email?.charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col min-w-0">
-              <div className="truncate text-sm font-black text-white group-hover:text-primary transition-colors">{user.email?.split('@')[0]}</div>
+              <div className="truncate text-sm font-black text-sidebar-accent-foreground group-hover:text-primary transition-colors">{user.email?.split('@')[0]}</div>
               <div className="text-[10px] text-primary uppercase tracking-wider font-black">{role ?? "EMPLOYEE"}</div>
             </div>
           </Link>
           <button onClick={handleSignOut} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-400 hover:bg-rose-500/10 transition-all group">
-            <LogOut className="size-5 transition-transform group-hover:-translate-x-1" /> Sign out
+            <LogOut className="size-5 transition-transform group-hover:-translate-x-1 shrink-0" /> Sign out
           </button>
         </div>
       </aside>
@@ -768,7 +793,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <main className="flex-1 overflow-x-hidden flex flex-col">
         <header className="flex items-center justify-between border-b bg-card/40 px-4 md:px-8 py-5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
           <div className="flex items-center gap-4">
-             <Sheet>
+             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                <SheetTrigger asChild>
                  <Button variant="outline" size="icon" className="md:hidden rounded-xl border-2 shadow-sm">
                    <Menu className="size-5" />
@@ -782,21 +807,25 @@ export function AppShell({ children }: { children?: ReactNode }) {
                      </div>
                    </SheetTitle>
                  </SheetHeader>
-                 <NavContent role={role} location={location} onNavClick={() => {}} />
+                 <NavContent role={role} location={location} onNavClick={() => setMobileOpen(false)} />
                  <div className="mt-auto pt-6 border-t">
-                    <button onClick={handleSignOut} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
+                    <button onClick={() => { handleSignOut(); setMobileOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
                       <LogOut className="size-5" /> Sign out
                     </button>
                  </div>
                </SheetContent>
              </Sheet>
 
-             <div className="md:hidden flex items-center">
-                <div className="h-10 w-24 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-sm shrink-0">
-                   <SNLogo className="h-7 w-auto" />
-                </div>
-             </div>
-             
+             {/* Desktop Sidebar Collapse Toggle Button */}
+             <Button 
+               onClick={toggleSidebarCollapse}
+               variant="outline" 
+               size="icon" 
+               className="hidden md:flex rounded-xl border-2 shadow-sm hover:bg-slate-50 transition-colors"
+             >
+               <Menu className="size-5" />
+             </Button>
+
              <div className="hidden md:flex items-center gap-6">
                 <div className="h-4 w-px bg-border" />
                 <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{location.pathname.replace('/', '').replace('-', ' ') || 'Dashboard'}</div>

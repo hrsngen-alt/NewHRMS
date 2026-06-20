@@ -77,11 +77,11 @@
   --input: #dfe1e6;
   --ring: #4c9aff;
 
-  --sidebar: #0f172a;
-  --sidebar-foreground: #94a3b8;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: #1e293b;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #475569;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #dfe1e6;
 
   --gradient-primary: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   --gradient-sidebar: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);

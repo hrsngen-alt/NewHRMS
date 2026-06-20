@@ -501,7 +501,7 @@ function SalaryStructurePage() {
                 <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
                   <BookOpen className="size-4" /> Indian Labour Law References
                 </h2>
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     {
                       icon: ShieldCheck, title: "ESIC Act, 1948",
@@ -509,7 +509,17 @@ function SalaryStructurePage() {
                       points: [
                         "Applicable when Basic Salary ≤ ₹21,000/month.",
                         `This employee: ${esicEligible ? "✓ Eligible (Basic = " + fmt(BASIC) + ")" : "✗ Not Eligible (Basic = " + fmt(BASIC) + ")"}`,
-                        "Employee: 0.75% of Basic.", "Employer: 3.25% of Basic.",
+                        "Employee: 0.75% of Basic. Employer: 3.25% of Basic.",
+                      ],
+                    },
+                    {
+                      icon: ShieldCheck, title: "EPF Act, 1952",
+                      color: "text-rose-600", bg: "bg-rose-50 border-rose-100",
+                      points: [
+                        "Mandatory when Basic Salary ≤ ₹15,000/month.",
+                        `This employee: ${PF > 0 ? "✓ Contributing (" + fmt(PF) + "/mo)" : "✗ Not Contributing"}`,
+                        "Employee: 12% of Basic. Employer: 12% of Basic.",
+                        "Statutory capping: max ₹1,800/mo contribution.",
                       ],
                     },
                     {
@@ -611,28 +621,69 @@ function SalaryCalculator() {
   const [manualBonus, setManualBonus] = useState("");
   const [candidateName, setCandidateName] = useState("");
   const [designation, setDesignation] = useState("");
+  const [pfRule, setPfRule] = useState<"standard" | "actual" | "none">("standard");
 
   const reset = () => {
     setCtcInput(""); setManualBasic(""); setManualHra("");
     setManualBonus(""); setCandidateName(""); setDesignation("");
+    setPfRule("standard");
   };
+
+  const { data: settings } = useQuery({
+    queryKey: ["company-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("company_settings" as any).select("*").maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  const pfRateEmpr = (Number(settings?.pf_rate_employer) || 12.0) / 100;
+  const pfRateEmp = (Number(settings?.pf_rate_employee) || 12.0) / 100;
+  const esiRateEmpr = (Number(settings?.esi_rate_employer) || 3.25) / 100;
+  const esiRateEmp = (Number(settings?.esi_rate_employee) || 0.75) / 100;
 
   const ctcVal = Number(ctcInput) || 0;
 
   let basic = 0, hra = 0, bonus = 0;
 
   if (mode === "ctc" && ctcVal > 0) {
-    // CTC = Gross + Employer_ESIC(3.25% of Basic) + Gratuity(4.81% of Basic)
-    // Basic = 50% of Gross → CTC = Gross × (1 + 0.0325×0.5 + 0.0481×0.5) = Gross × 1.04028
-    // For basic > 21000, no ESIC: CTC = Gross × (1 + 0.0481×0.5) = Gross × 1.02405
-    const esicCheckGross = ctcVal / 1.04028;
-    const esicCheckBasic = esicCheckGross * 0.50;
-    const useEsic = esicCheckBasic <= 21000;
-    const divisor = useEsic ? 1.04028 : 1.02405;
-    const grossEst = Math.round(ctcVal / divisor);
-    basic = Math.round(grossEst * 0.50);
-    hra = Math.round(grossEst * 0.4253);
-    bonus = grossEst - basic - hra;
+    // Helper to calculate computed CTC from gross salary under current settings
+    const calcCtcFromGross = (g: number) => {
+      const b = Math.round(g * 0.5);
+      const useEsic = b <= 21000;
+      const esicVal = useEsic ? Math.round(b * esiRateEmpr) : 0;
+      let pfVal = 0;
+      if (pfRule === "actual") {
+        pfVal = Math.round(b * pfRateEmpr);
+      } else if (pfRule === "standard") {
+        pfVal = Math.min(Math.round(b * pfRateEmpr), Math.round(15000 * pfRateEmpr));
+      }
+      const gratVal = Math.round(b * 0.0481);
+      return g + esicVal + pfVal + gratVal;
+    };
+
+    // Binary search for Gross Salary corresponding to target CTC
+    let low = 0;
+    let high = ctcVal;
+    let bestGross = 0;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const computedCtc = calcCtcFromGross(mid);
+      if (computedCtc === ctcVal) {
+        bestGross = mid;
+        break;
+      } else if (computedCtc < ctcVal) {
+        bestGross = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    
+    basic = Math.round(bestGross * 0.50);
+    hra = Math.round(bestGross * 0.4253);
+    bonus = bestGross - basic - hra;
   } else if (mode === "manual") {
     basic = Number(manualBasic) || 0;
     hra = Number(manualHra) || 0;
@@ -641,13 +692,24 @@ function SalaryCalculator() {
 
   const gross = basic + hra + bonus;
   const esicElig = basic > 0 && basic <= 21000;
-  const esicEmp = esicElig ? Math.round(basic * 0.0075) : 0;
-  const esicEmpr = esicElig ? Math.round(basic * 0.0325) : 0;
+  const esicEmp = esicElig ? Math.round(basic * esiRateEmp) : 0;
+  const esicEmpr = esicElig ? Math.round(basic * esiRateEmpr) : 0;
+  
+  let pfEmp = 0;
+  let pfEmpr = 0;
+  if (pfRule === "actual") {
+    pfEmp = Math.round(basic * pfRateEmp);
+    pfEmpr = Math.round(basic * pfRateEmpr);
+  } else if (pfRule === "standard") {
+    pfEmp = Math.min(Math.round(basic * pfRateEmp), Math.round(15000 * pfRateEmp));
+    pfEmpr = Math.min(Math.round(basic * pfRateEmpr), Math.round(15000 * pfRateEmpr));
+  }
+
   const gratuity = Math.round(basic * 0.0481);
   const pt = gross > 15000 ? 200 : 0;
-  const totalEmpDed = esicEmp + pt;
+  const totalEmpDed = pfEmp + esicEmp + pt;
   const netPay = gross - totalEmpDed;
-  const ctc = gross + esicEmpr + gratuity;
+  const ctc = gross + esicEmpr + pfEmpr + gratuity;
   const hasResult = gross > 0;
 
   return (
@@ -724,6 +786,37 @@ function SalaryCalculator() {
             </div>
           </div>
 
+          {/* PF Mode Toggle */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
+              PF Contribution Mode
+            </label>
+            <div className="flex flex-wrap gap-2 p-1 bg-muted/40 rounded-xl border w-fit">
+              {([
+                { id: "standard" as const, label: "Standard PF (Capped)", desc: `12% of basic up to ${fmt(Math.round(15000 * pfRateEmp))}/mo` },
+                { id: "actual" as const, label: "Actual PF (Uncapped)", desc: "12% of full basic salary" },
+                { id: "none" as const, label: "No PF Contribution", desc: "No employee or employer PF" },
+              ]).map((rule) => (
+                <button
+                  key={rule.id}
+                  type="button"
+                  onClick={() => setPfRule(rule.id)}
+                  className={cn(
+                    "flex flex-col items-start px-4 py-2 rounded-lg transition-all text-left",
+                    pfRule === rule.id 
+                      ? "bg-primary text-white shadow-md" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                  )}
+                >
+                  <span className="text-xs font-bold">{rule.label}</span>
+                  <span className={cn("text-[9px] font-medium opacity-80 mt-0.5", pfRule === rule.id ? "text-white/90" : "text-muted-foreground/80")}>
+                    {rule.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* CTC input */}
           {mode === "ctc" && (
             <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4">
@@ -748,7 +841,7 @@ function SalaryCalculator() {
                 )}
               </div>
               <p className="text-[10px] text-indigo-600/60 mt-2">
-                CTC = Gross + ESIC Employer (3.25% of Basic) + Gratuity (4.81% of Basic). Basic = 50% · HRA = 42.53% · Bonus = balance. ESIC applies only if Basic ≤ ₹21,000.
+                CTC = Gross + ESIC Employer (3.25% of Basic) + PF Employer ({settings?.pf_rate_employer ?? 12}% of Basic) + Gratuity (4.81% of Basic). Basic = 50% · HRA = 42.53% · Bonus = balance. ESIC applies only if Basic ≤ ₹21,000.
               </p>
             </div>
           )}
@@ -822,9 +915,9 @@ function SalaryCalculator() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "Monthly CTC", value: fmt(ctc), icon: Building2, color: "bg-violet-600", note: "Gross + ESIC Empr + Gratuity" },
+              { label: "Monthly CTC", value: fmt(ctc), icon: Building2, color: "bg-violet-600", note: "Gross + ESIC Empr + PF Empr + Gratuity" },
               { label: "Gross Salary", value: fmt(gross), icon: TrendingUp, color: "bg-blue-600", note: "Basic + HRA + Bonus" },
-              { label: "Employee Deductions", value: fmt(totalEmpDed), icon: Calculator, color: "bg-amber-500", note: "ESIC + PT" },
+              { label: "Employee Deductions", value: fmt(totalEmpDed), icon: Calculator, color: "bg-amber-500", note: "PF + ESIC + PT" },
               { label: "Net Take-Home", value: fmt(netPay), icon: IndianRupee, color: "bg-emerald-600", note: "Gross − Deductions" },
             ].map((c) => (
               <div key={c.label} className="rounded-2xl border bg-card shadow-sm p-5 flex flex-col gap-3">
@@ -881,7 +974,8 @@ function SalaryCalculator() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">Employee Deductions (from salary)</p>
               </div>
               {[
-                { label: "ESIC Employee (0.75% of Basic)", value: esicEmp, note: esicElig ? `${fmt(basic)} × 0.75%` : "Not applicable — Basic > ₹21,000", applicable: esicElig },
+                { label: `PF Employee Share (${settings?.pf_rate_employee ?? 12}% of Basic)`, value: pfEmp, note: pfRule === "none" ? "Not applicable" : pfRule === "standard" ? `Capped at ₹15,000 basic → max ${fmt(Math.round(15000 * pfRateEmp))}` : `Calculated on actual basic of ${fmt(basic)}`, applicable: pfRule !== "none" && pfEmp > 0 },
+                { label: `ESIC Employee Share (${settings?.esi_rate_employee ?? 0.75}% of Basic)`, value: esicEmp, note: esicElig ? `${fmt(basic)} × ${settings?.esi_rate_employee ?? 0.75}%` : "Not applicable — Basic > ₹21,000", applicable: esicElig },
                 { label: "Professional Tax", value: pt, note: gross > 15000 ? "Gross > ₹15,000 → ₹200/month" : "Not applicable", applicable: pt > 0 },
               ].map((r) => (
                 <div key={r.label} className={`px-6 py-3.5 flex items-center justify-between gap-4 ${!r.applicable ? "opacity-50" : ""}`}>
@@ -901,15 +995,16 @@ function SalaryCalculator() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">Employer Contributions (NOT from salary)</p>
               </div>
               {[
-                { label: "ESIC Employer (3.25% of Basic)", value: esicEmpr, note: esicElig ? `${fmt(basic)} × 3.25%` : "Not applicable — Basic > ₹21,000" },
-                { label: "Gratuity Provision (4.81% of Basic)", value: gratuity, note: `${fmt(basic)} × 4.81% — Paid after 5 years` },
+                { label: `PF Employer Share (${settings?.pf_rate_employer ?? 12}% of Basic)`, value: pfEmpr, note: pfRule === "none" ? "Not applicable" : pfRule === "standard" ? `Capped at ₹15,000 basic → max ${fmt(Math.round(15000 * pfRateEmpr))}` : `Calculated on actual basic of ${fmt(basic)}`, applicable: pfRule !== "none" },
+                { label: `ESIC Employer Share (${settings?.esi_rate_employer ?? 3.25}% of Basic)`, value: esicEmpr, note: esicElig ? `${fmt(basic)} × ${settings?.esi_rate_employer ?? 3.25}%` : "Not applicable — Basic > ₹21,000", applicable: esicElig },
+                { label: "Gratuity Provision (4.81% of Basic)", value: gratuity, note: `${fmt(basic)} × 4.81% — Paid after 5 years`, applicable: true },
               ].map((r) => (
-                <div key={r.label} className="px-6 py-3.5 flex items-center justify-between gap-4">
+                <div key={r.label} className={`px-6 py-3.5 flex items-center justify-between gap-4 ${!r.applicable ? "opacity-50" : ""}`}>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-foreground">{r.label}</p>
                     <p className="text-[11px] text-muted-foreground">{r.note}</p>
                   </div>
-                  <p className="text-sm font-black text-violet-700">{fmt(r.value)}</p>
+                  <p className={`text-sm font-black ${r.applicable ? "text-violet-700" : "text-muted-foreground"}`}>{fmt(r.value)}</p>
                 </div>
               ))}
             </div>
@@ -924,8 +1019,9 @@ function SalaryCalculator() {
             <div className="px-6 py-5 space-y-2 text-sm">
               {[
                 { label: "Gross Salary", value: fmt(gross) },
-                { label: "+ ESIC Employer Share", value: fmt(esicEmpr) },
-                { label: "+ Gratuity Provision", value: fmt(gratuity) },
+                { label: pfRule !== "none" ? `+ PF Employer Share (${settings?.pf_rate_employer ?? 12}%)` : "+ PF Employer Share", value: fmt(pfEmpr) },
+                { label: esicElig ? `+ ESIC Employer Share (${settings?.esi_rate_employer ?? 3.25}%)` : "+ ESIC Employer Share", value: fmt(esicEmpr) },
+                { label: "+ Gratuity Provision (4.81%)", value: fmt(gratuity) },
               ].map((r) => (
                 <div key={r.label} className="flex justify-between py-2 border-b border-white/10 opacity-80">
                   <span className="text-white/70">{r.label}</span>
@@ -963,7 +1059,7 @@ function SalaryCalculator() {
                     { label: "Gross Salary", value: gross },
                     { label: "Net Take-Home", value: netPay },
                     { label: "Employee Deductions", value: totalEmpDed },
-                    { label: "Employer Contributions", value: esicEmpr + gratuity },
+                    { label: "Employer Contributions", value: esicEmpr + pfEmpr + gratuity },
                   ].map((r) => (
                     <tr key={r.label} className="hover:bg-muted/10">
                       <td className="px-6 py-3 font-semibold text-foreground">{r.label}</td>
@@ -973,6 +1069,71 @@ function SalaryCalculator() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Law Reference Cards */}
+          <div>
+            <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+              <BookOpen className="size-4" /> Indian Labour Law References
+            </h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  icon: ShieldCheck, title: "ESIC Act, 1948",
+                  color: "text-violet-600", bg: "bg-violet-50 border-violet-100",
+                  points: [
+                    "Applicable when Basic Salary ≤ ₹21,000/month.",
+                    `This candidate: ${esicElig ? "✓ Eligible (Basic = " + fmt(basic) + ")" : "✗ Not Eligible (Basic = " + fmt(basic) + ")"}`,
+                    "Employee: 0.75% of Basic. Employer: 3.25% of Basic.",
+                  ],
+                },
+                {
+                  icon: ShieldCheck, title: "EPF Act, 1952",
+                  color: "text-rose-600", bg: "bg-rose-50 border-rose-100",
+                  points: [
+                    "Mandatory when Basic Salary ≤ ₹15,000/month.",
+                    `This candidate: ${pfRule === "none" ? "✗ Opted out" : pfRule === "standard" ? "✓ Capped PF (" + fmt(pfEmp) + "/mo)" : "✓ Actual PF (" + fmt(pfEmp) + "/mo)"}`,
+                    "Employee: 12% of Basic. Employer: 12% of Basic.",
+                    "Statutory capping: max ₹1,800/mo contribution.",
+                  ],
+                },
+                {
+                  icon: IndianRupee, title: "Payment of Gratuity Act, 1972",
+                  color: "text-amber-600", bg: "bg-amber-50 border-amber-100",
+                  points: [
+                    "Employer liability — not deducted from salary.",
+                    "Payable after 5 years of continuous service.",
+                    "Formula: 15/26 × Basic × Years of service.",
+                    `Provision: ${fmt(gratuity)}/month for this candidate.`,
+                  ],
+                },
+                {
+                  icon: BadgeCheck, title: "Professional Tax",
+                  color: "text-blue-600", bg: "bg-blue-50 border-blue-100",
+                  points: [
+                    "State-level mandatory tax.",
+                    `This candidate: ${pt > 0 ? "₹200/month (Gross > ₹15,000)" : "₹0 (Gross ≤ ₹15,000)"}`,
+                    "Deducted from employee's gross salary.",
+                    "Capped at ₹2,500/year.",
+                  ],
+                },
+              ].map((card) => (
+                <div key={card.title} className={`rounded-2xl border p-5 ${card.bg}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <card.icon className={`size-5 ${card.color}`} />
+                    <p className="text-sm font-black text-foreground">{card.title}</p>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {card.points.map((ptLine) => (
+                      <li key={ptLine} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <ChevronRight className={`size-3 mt-0.5 shrink-0 ${card.color}`} />
+                        {ptLine}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           </div>
 
