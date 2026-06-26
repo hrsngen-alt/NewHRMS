@@ -70,16 +70,16 @@ function LoginPage() {
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Left branding panel */}
       <div className="hidden gradient-hero p-12 lg:flex lg:flex-col lg:justify-between">
-        <div className="flex items-center text-primary-foreground">
+        <div className="flex items-center text-indigo-950">
           <div className="h-16 w-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shrink-0">
             <SNLogo className="h-10 w-auto" />
           </div>
         </div>
-        <div className="text-primary-foreground">
+        <div className="text-indigo-950">
           <h2 className="font-display text-4xl font-bold leading-tight">People ops, refined.</h2>
-          <p className="mt-3 max-w-sm text-white/80">Onboard, track, pay — all in one beautifully simple workspace.</p>
+          <p className="mt-3 max-w-sm text-indigo-900/80">Onboard, track, pay — all in one beautifully simple workspace.</p>
         </div>
-        <div className="text-xs text-white/60">© SN Gene Lab · Modern HRMS</div>
+        <div className="text-xs text-indigo-900/60">© SN Gene Lab · Modern HRMS</div>
       </div>
 
       {/* Right panel */}
