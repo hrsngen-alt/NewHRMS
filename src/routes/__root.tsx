@@ -33,6 +33,38 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+function OrientationWarning() {
+  return (
+    <div className="hidden orientation-warning fixed inset-0 z-[9999] flex-col items-center justify-center bg-background p-6 text-center">
+      <div className="animate-bounce mb-4 text-primary">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="mx-auto"
+        >
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+          <line x1="12" y1="18" x2="12.01" y2="18" />
+          <path d="m17 8 3-3-3-3" />
+          <path d="M20 5H9" />
+        </svg>
+      </div>
+      <h2 className="font-display text-xl font-bold text-foreground mb-2">
+        Please Rotate Your Device
+      </h2>
+      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+        This application is optimized for portrait mode on mobile screens. Please rotate your device back to portrait.
+      </p>
+    </div>
+  );
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -46,6 +78,7 @@ function RootComponent() {
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
+          <OrientationWarning />
           <Outlet />
         </TooltipProvider>
       </AuthProvider>
