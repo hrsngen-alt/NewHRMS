@@ -15,6 +15,7 @@ interface AuthContextValue {
   employeeId: string | null; // Expose linked employee ID directly
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -306,6 +307,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   };
 
+  const signInWithGoogle = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+    if (error) {
+      setLoading(false);
+      return { error: error.message };
+    }
+    return { error: null };
+  };
+
   const signOut = async () => {
     setEmployeeId(null);
     await supabase.auth.signOut();
@@ -316,7 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isEmployee = role === "employee";
 
   return (
-    <AuthContext.Provider value={{ user, session, role, isAdmin, isManager, isEmployee, loading, employeeId, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, isAdmin, isManager, isEmployee, loading, employeeId, signIn, signUp, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );
