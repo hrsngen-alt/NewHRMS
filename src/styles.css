@@ -223,3 +223,9 @@
   padding: 4px 8px !important;
 }
 
+@media (max-width: 932px) and (orientation: landscape) {
+  .orientation-warning {
+    display: flex !important;
+  }
+}
+
