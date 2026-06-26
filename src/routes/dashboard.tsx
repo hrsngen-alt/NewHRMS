@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
-import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText } from "lucide-react";
+import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, Area, CartesianGrid, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, Suspense, lazy } from "react";
@@ -189,6 +189,49 @@ function Dashboard() {
   const today = new Date().toLocaleDateString('en-CA');
   const { myEmployee, isLoading: empLoading } = useMyEmployee();
 
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(!!standalone);
+
+    const checkIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOSDevice(checkIOS);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        toast.success("Thank you for installing SN Gene HR!");
+        setDeferredPrompt(null);
+      }
+    } else if (isIOSDevice) {
+      toast.info(
+        "To install: Tap the Share button at the bottom of Safari, then select 'Add to Home Screen'.", 
+        { duration: 6000 }
+      );
+    } else {
+      toast.info(
+        "To install SN Gene HR, look for the 'Install' icon in your browser's address bar (top right in Chrome) or select 'Add to Home screen' from your browser menu.",
+        { duration: 8000 }
+      );
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -337,11 +380,23 @@ function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col gap-1">
-        <h1 className="font-display text-4xl font-black tracking-tight text-foreground">
-          {getGreeting()}, <span className="text-primary">{isAdmin ? "Admin" : myEmployee?.full_name?.split(' ')[0] || 'User'}</span>
-        </h1>
-        <p className="text-muted-foreground font-medium">SN Gene HR Dashboard Overview • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-display text-4xl font-black tracking-tight text-foreground">
+            {getGreeting()}, <span className="text-primary">{isAdmin ? "Admin" : myEmployee?.full_name?.split(' ')[0] || 'User'}</span>
+          </h1>
+          <p className="text-muted-foreground font-medium">SN Gene HR Dashboard Overview • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+        </div>
+
+        {/* PWA Install Button with blink effect */}
+        {!isStandalone && (
+          <Button
+            onClick={handleInstallPWA}
+            className="animate-blink-glow bg-primary hover:bg-indigo-600 text-white font-black px-6 h-12 rounded-2xl shadow-lg border-2 border-primary/20 shrink-0 self-start md:self-auto gap-2 text-sm transition-all"
+          >
+            <Download className="size-4 animate-bounce" /> Install App
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

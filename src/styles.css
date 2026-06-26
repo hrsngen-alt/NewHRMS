@@ -229,3 +229,18 @@
   }
 }
 
+@keyframes blink-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.9), 0 0 10px rgba(99, 102, 241, 0.4);
+  }
+}
+
+.animate-blink-glow {
+  animation: blink-glow 2s infinite ease-in-out;
+}
+
