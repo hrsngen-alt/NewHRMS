@@ -69,9 +69,9 @@ function LoginPage() {
   return (
     <div className="flex flex-col min-h-screen lg:grid lg:grid-cols-2">
       {/* Mobile-only branding banner */}
-      <div className="relative lg:hidden bg-blue-600 pt-10 pb-16 px-6 flex flex-col items-center text-center text-white overflow-visible">
+      <div className="relative lg:hidden bg-blue-600 pt-8 pb-10 px-6 flex flex-col items-center text-center text-white overflow-visible">
         {/* Stacked Wavy Divider Layers (Horizontal) */}
-        <div className="absolute left-0 right-0 bottom-0 w-full h-12 pointer-events-none translate-y-[99%] z-20">
+        <div className="absolute left-0 right-0 bottom-0 w-full h-8 pointer-events-none translate-y-[99%] z-20">
           {/* Layer 1 (Backmost - Sky Blue) */}
           <svg className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path d="M0,0 L100,0 L100,20 C75,55 65,20 50,32 C35,55 15,20 0,20 Z" />
@@ -145,7 +145,7 @@ function LoginPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-slate-50/40 dark:bg-slate-950/20 pt-16 lg:pt-6">
+      <div className="flex-1 flex items-center justify-center p-6 bg-slate-50/40 dark:bg-slate-950/20 pt-12 lg:pt-6">
         <div className="w-full max-w-md bg-white/85 dark:bg-card/85 backdrop-blur-md border border-slate-200/50 dark:border-border/50 rounded-3xl p-8 shadow-2xl shadow-slate-100 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
 
           {/* ─── FORGOT PASSWORD SENT ─────────────────────────────── */}
