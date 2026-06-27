@@ -69,27 +69,58 @@ function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Left branding panel */}
-      <div className="hidden gradient-hero p-12 lg:flex lg:flex-col lg:justify-between">
-        <div className="flex items-center text-indigo-950">
-          <div className="h-16 w-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shrink-0">
-            <SNLogo className="h-10 w-auto" />
-          </div>
+      <div className="relative hidden bg-blue-600 p-16 lg:flex lg:flex-col lg:justify-between border-r border-slate-100 dark:border-border/10">
+        
+        {/* Stacked Wavy Divider Layers */}
+        <div className="absolute left-full top-0 bottom-0 w-48 h-full pointer-events-none z-20">
+          {/* Layer 1 (Backmost - Sky Blue) */}
+          <svg className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0,0 C45,15 35,35 60,55 C85,75 50,85 0,100 Z" />
+          </svg>
+          
+          {/* Layer 2 (Medium Blue) */}
+          <svg className="absolute inset-0 h-full w-full fill-blue-300/70 dark:fill-blue-800/40" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0,0 C35,15 28,35 48,55 C68,75 40,85 0,100 Z" />
+          </svg>
+          
+          {/* Layer 3 (Vibrant Blue) */}
+          <svg className="absolute inset-0 h-full w-full fill-blue-400/90 dark:fill-blue-700/60" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0,0 C25,15 20,35 38,55 C56,75 30,85 0,100 Z" />
+          </svg>
+          
+          {/* Layer 4 (Frontmost - matches solid bg-blue-600) */}
+          <svg className="absolute inset-0 h-full w-full fill-blue-600" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0,0 C15,15 12,35 28,55 C44,75 20,85 0,100 Z" />
+          </svg>
         </div>
-        <div className="text-indigo-950">
-          <h2 className="font-display text-4xl font-bold leading-tight">People ops, refined.</h2>
-          <p className="mt-3 max-w-sm text-indigo-900/80">Onboard, track, pay — all in one beautifully simple workspace.</p>
+
+        <div className="relative z-10 flex items-center">
+          <SNLogo className="h-16 w-auto" />
         </div>
-        <div className="text-xs text-indigo-900/60">© SN Gene Lab · Modern HRMS</div>
+
+        <div className="relative z-10 text-white space-y-4">
+          <h2 className="font-display text-5xl font-black leading-tight tracking-tight text-white drop-shadow-sm">
+            People ops, <br />
+            <span className="text-blue-200">refined.</span>
+          </h2>
+          <p className="max-w-md text-base text-blue-100/90 leading-relaxed font-semibold">
+            Onboard, track, pay — all in one beautifully simple workspace tailored for modern growth.
+          </p>
+        </div>
+
+        <div className="relative z-10 text-xs text-blue-200/60 font-semibold">
+          © SN Gene Lab · Modern HRMS
+        </div>
       </div>
 
       {/* Right panel */}
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
+      <div className="flex items-center justify-center p-6 bg-slate-50/40 dark:bg-slate-950/20">
+        <div className="w-full max-w-md bg-white/85 dark:bg-card/85 backdrop-blur-md border border-slate-200/50 dark:border-border/50 rounded-3xl p-8 shadow-2xl shadow-slate-100 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
 
           {/* ─── FORGOT PASSWORD SENT ─────────────────────────────── */}
           {view === "forgot-sent" && (
             <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="mx-auto size-20 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+              <div className="mx-auto size-20 rounded-full bg-green-50 flex items-center justify-center text-green-600">
                 <CheckCircle2 className="size-10" />
               </div>
               <div>
@@ -99,8 +130,8 @@ function LoginPage() {
                   Check your email and click the link to set a new password.
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium text-left">
-                💡 If you don't see the email within a few minutes, check your spam or junk folder.
+              <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/50 text-amber-800 text-xs font-medium text-left">
+                💡 If you don't see the email within a few minutes, check your spam folder.
               </div>
               <Button
                 variant="outline"
@@ -144,7 +175,7 @@ function LoginPage() {
                       placeholder="you@company.com"
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
-                      className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50"
+                      className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50"
                     />
                   </div>
                 </div>
@@ -172,28 +203,31 @@ function LoginPage() {
           {/* ─── SIGN IN / SIGN UP TABS ──────────────────────────────── */}
           {view === "auth" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h1 className="font-display text-2xl font-bold">Welcome to SN Gene Lab</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Sign in to your portal or create a new account if this is your first time.</p>
+              <h1 className="font-display text-2xl font-black text-foreground tracking-tight">Welcome to SN Gene Lab</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Sign in or register your account if this is your first time.</p>
               <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
                 💡 Note: If you were added by HR, please use the "Create account" tab to register your email first.
               </div>
 
               <Tabs defaultValue="signin" className="mt-6">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="signin">Sign in</TabsTrigger>
-                  <TabsTrigger value="signup">Create account</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 p-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl h-11">
+                  <TabsTrigger value="signin" className="rounded-lg font-semibold">Sign in</TabsTrigger>
+                  <TabsTrigger value="signup" className="rounded-lg font-semibold">Create account</TabsTrigger>
                 </TabsList>
 
                 {/* Sign In */}
                 <TabsContent value="signin">
                   <form className="mt-4 space-y-4" onSubmit={handleSubmit("in")}>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" name="email" type="email" required className="mt-1 h-11 rounded-xl" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email" className="text-sm font-bold">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                        <Input id="email" name="email" type="email" required placeholder="you@company.com" className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
+                      </div>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="password" className="text-sm font-bold">Password</Label>
                         <button
                           type="button"
                           onClick={() => setView("forgot")}
@@ -203,7 +237,7 @@ function LoginPage() {
                         </button>
                       </div>
                       <div className="relative">
-                        <Input id="password" name="password" type={showPassword ? "text" : "password"} required className="pr-12 h-11 rounded-xl" />
+                        <Input id="password" name="password" type={showPassword ? "text" : "password"} required placeholder="••••••••" className="pr-12 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
@@ -213,7 +247,7 @@ function LoginPage() {
                         </button>
                       </div>
                     </div>
-                    <Button className="w-full h-12 rounded-xl text-sm font-bold shadow-md shadow-primary/20" disabled={busy}>
+                    <Button className="w-full h-12 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]" disabled={busy}>
                       {busy ? "Signing in..." : "Sign in"}
                     </Button>
                   </form>
@@ -222,18 +256,21 @@ function LoginPage() {
                 {/* Sign Up */}
                 <TabsContent value="signup">
                   <form className="mt-4 space-y-4" onSubmit={handleSubmit("up")}>
-                    <div>
-                      <Label htmlFor="fullName">Full name</Label>
-                      <Input id="fullName" name="fullName" required className="mt-1 h-11 rounded-xl" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fullName" className="text-sm font-bold">Full name</Label>
+                      <Input id="fullName" name="fullName" required placeholder="John Doe" className="h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
                     </div>
-                    <div>
-                      <Label htmlFor="email2">Email</Label>
-                      <Input id="email2" name="email" type="email" required className="mt-1 h-11 rounded-xl" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="password2">Password</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email2" className="text-sm font-bold">Email</Label>
                       <div className="relative">
-                        <Input id="password2" name="password" type={showPassword ? "text" : "password"} minLength={8} required className="pr-12 h-11 rounded-xl" />
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                        <Input id="email2" name="email" type="email" required placeholder="you@company.com" className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="password2" className="text-sm font-bold">Password</Label>
+                      <div className="relative">
+                        <Input id="password2" name="password" type={showPassword ? "text" : "password"} minLength={8} required placeholder="••••••••" className="pr-12 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
@@ -243,7 +280,7 @@ function LoginPage() {
                         </button>
                       </div>
                     </div>
-                    <Button className="w-full h-12 rounded-xl text-sm font-bold" disabled={busy}>
+                    <Button className="w-full h-12 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]" disabled={busy}>
                       {busy ? "Creating..." : "Create account"}
                     </Button>
                     <p className="text-center text-xs text-muted-foreground">First user can be promoted to admin from the database.</p>
@@ -256,14 +293,14 @@ function LoginPage() {
                   <span className="w-full border-t border-muted" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-3 text-muted-foreground font-medium">Or continue with</span>
+                  <span className="bg-white dark:bg-card px-3 text-muted-foreground font-medium">Or continue with</span>
                 </div>
               </div>
 
               <Button
                 type="button"
                 variant="outline"
-                className="w-full h-12 rounded-xl font-bold flex items-center justify-center gap-2 border-2 hover:bg-muted/50 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                className="w-full h-12 rounded-xl font-bold flex items-center justify-center gap-2 border-2 hover:bg-muted/50 transition-all hover:scale-[1.01] active:scale-[0.99] bg-white dark:bg-card text-foreground"
                 onClick={handleGoogleSignIn}
                 disabled={busy}
               >
@@ -289,7 +326,6 @@ function LoginPage() {
               </Button>
             </div>
           )}
-
         </div>
       </div>
     </div>

@@ -588,9 +588,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-16 w-40 rounded-2xl bg-white p-2.5 flex items-center justify-center animate-pulse shadow-md">
-            <SNLogo className="h-10 w-auto" />
-          </div>
+          <SNLogo className="h-16 w-auto animate-pulse" />
           <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Initializing SN Gene Lab...</p>
         </div>
       </div>
@@ -640,10 +638,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
           <div className="lock-info flex flex-col items-center">
             {/* Avatar/Branding */}
             <div className="relative mb-6">
-              <div className="h-16 w-36 rounded-[22px] bg-gradient-to-tr from-primary via-indigo-500 to-purple-600 p-[3px] shadow-2xl shadow-primary/30">
-                <div className="size-full rounded-[19px] bg-white p-2 flex items-center justify-center">
-                  <SNLogo className="h-10 w-auto" />
-                </div>
+              <div className="h-16 w-36 rounded-[22px] bg-gradient-to-tr from-primary via-indigo-500 to-purple-600 p-[3px] shadow-2xl shadow-primary/30 flex items-center justify-center">
+                <SNLogo className="h-12 w-auto" />
               </div>
               <div className="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-4 border-slate-950 flex items-center justify-center">
                 <span className="size-1.5 rounded-full bg-white animate-pulse" />
@@ -779,9 +775,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         sidebarCollapsed ? "w-0 p-0 border-r-0" : "w-72 p-6"
       )}>
         <Link to="/dashboard" className="mb-10 flex items-center justify-center px-2 shrink-0">
-          <div className="h-16 w-40 bg-white rounded-2xl p-2.5 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-            <SNLogo className="h-10 w-auto" />
-          </div>
+          <SNLogo className="h-16 w-auto" />
         </Link>
         
         <NavContent role={role} location={location} sidebarCollapsed={false} />
@@ -814,9 +808,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                <SheetContent side="left" className="w-[300px] p-6 flex flex-col">
                  <SheetHeader className="text-left mb-6">
                    <SheetTitle className="flex items-center">
-                     <div className="h-10 w-24 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-sm shrink-0">
-                       <SNLogo className="h-7 w-auto" />
-                     </div>
+                     <SNLogo className="h-10 w-auto" />
                    </SheetTitle>
                  </SheetHeader>
                  <NavContent role={role} location={location} onNavClick={() => setMobileOpen(false)} />
