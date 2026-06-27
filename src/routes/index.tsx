@@ -15,19 +15,6 @@ function Landing() {
     if (!loading && user) navigate({ to: "/dashboard" });
   }, [loading, user, navigate]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-16 w-40 rounded-2xl bg-white p-2.5 flex items-center justify-center animate-pulse shadow-md">
-            <SNLogo className="h-10 w-auto" />
-          </div>
-          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Initializing SN Gene Lab...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <header className="container mx-auto flex items-center justify-between px-6 py-5">

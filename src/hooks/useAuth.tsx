@@ -42,7 +42,7 @@ async function fetchRole(userId: string, email: string): Promise<Role> {
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    
+
     const basicRoles = (userRolesData ?? []).map((r) => r.role as Role);
     if (basicRoles.includes("admin")) return "admin";
 
@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         console.log("[Auth] Initializing user session for:", s.user.email);
-        
+
         // Fetch role and employee ID in parallel without race timeouts that discard results
         const [empId, r] = await Promise.all([
           syncUserRecords(s.user),
@@ -239,21 +239,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         handleSessionInit(session);
-      } else {
-        handleSessionInit(null);
       }
     });
 
     // 2. Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[Auth] onAuthStateChange event:", event, "User:", session?.user?.email);
-      
+
       if (event === "SIGNED_OUT") {
         handleSessionInit(null);
       } else if (session) {
         handleSessionInit(session);
-      } else {
-        handleSessionInit(null);
       }
     });
 
