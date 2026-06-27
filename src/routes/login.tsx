@@ -15,7 +15,7 @@ export const Route = createFileRoute("/login")({ component: LoginPage });
 type View = "auth" | "forgot" | "forgot-sent";
 
 function LoginPage() {
-  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user, loading } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +24,19 @@ function LoginPage() {
   const [forgotBusy, setForgotBusy] = useState(false);
 
   useEffect(() => { if (user) navigate({ to: "/dashboard" }); }, [user, navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-16 w-40 rounded-2xl bg-white p-2.5 flex items-center justify-center animate-pulse shadow-md">
+            <SNLogo className="h-10 w-auto" />
+          </div>
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Initializing SN Gene Lab...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleGoogleSignIn = async () => {
     setBusy(true);

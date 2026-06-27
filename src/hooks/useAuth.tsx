@@ -239,6 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         handleSessionInit(session);
+      } else {
+        handleSessionInit(null);
       }
     });
 
@@ -250,6 +252,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         handleSessionInit(null);
       } else if (session) {
         handleSessionInit(session);
+      } else {
+        handleSessionInit(null);
       }
     });
 
