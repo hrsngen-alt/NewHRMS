@@ -67,13 +67,11 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen lg:grid lg:grid-cols-2 relative overflow-hidden">
-      {/* Mobile-only branding banner (Background) */}
-      <div className="absolute top-0 left-0 right-0 h-[32vh] bg-blue-600 lg:hidden flex flex-col items-center justify-start text-white z-10 pt-6 px-4">
-        <SNLogo className="h-9 w-auto" />
-        
+    <div className="flex flex-col min-h-screen lg:grid lg:grid-cols-2">
+      {/* Mobile-only branding banner */}
+      <div className="relative lg:hidden bg-blue-600 pt-10 pb-16 px-6 flex flex-col items-center text-center text-white overflow-visible">
         {/* Stacked Wavy Divider Layers (Horizontal) */}
-        <div className="absolute left-0 right-0 bottom-0 w-full h-10 pointer-events-none translate-y-[99%] z-20">
+        <div className="absolute left-0 right-0 bottom-0 w-full h-12 pointer-events-none translate-y-[99%] z-20">
           {/* Layer 1 (Backmost - Sky Blue) */}
           <svg className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path d="M0,0 L100,0 L100,20 C75,55 65,20 50,32 C35,55 15,20 0,20 Z" />
@@ -94,31 +92,36 @@ function LoginPage() {
             <path d="M0,0 L100,0 L100,5 C75,25 65,5 50,10 C35,25 15,5 0,5 Z" />
           </svg>
         </div>
+
+        <SNLogo className="h-12 w-auto mb-2" />
+        <p className="text-xs text-blue-100/90 font-medium max-w-xs leading-relaxed">
+          People ops, refined. Onboard, track, pay — all in one simple workspace.
+        </p>
       </div>
 
       {/* Left branding panel (Desktop) */}
       <div className="relative hidden bg-blue-600 p-16 lg:flex lg:flex-col lg:justify-between border-r border-slate-100 dark:border-border/10">
         
         {/* Stacked Wavy Divider Layers (Vertical) */}
-        <div className="absolute left-full top-0 bottom-0 w-64 h-full pointer-events-none z-20">
+        <div className="absolute left-full top-0 bottom-0 w-48 h-full pointer-events-none z-20">
           {/* Layer 1 (Backmost - Sky Blue) */}
           <svg className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0,0 C50,15 40,35 70,55 C95,75 60,85 0,100 Z" />
+            <path d="M0,0 C45,15 35,35 60,55 C85,75 50,85 0,100 Z" />
           </svg>
           
           {/* Layer 2 (Medium Blue) */}
           <svg className="absolute inset-0 h-full w-full fill-blue-300/70 dark:fill-blue-800/40" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0,0 C40,15 32,35 58,55 C78,75 48,85 0,100 Z" />
+            <path d="M0,0 C35,15 28,35 48,55 C68,75 40,85 0,100 Z" />
           </svg>
           
           {/* Layer 3 (Vibrant Blue) */}
           <svg className="absolute inset-0 h-full w-full fill-blue-400/90 dark:fill-blue-700/60" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0,0 C30,15 24,35 46,55 C64,75 36,85 0,100 Z" />
+            <path d="M0,0 C25,15 20,35 38,55 C56,75 30,85 0,100 Z" />
           </svg>
           
           {/* Layer 4 (Frontmost - matches solid bg-blue-600) */}
           <svg className="absolute inset-0 h-full w-full fill-blue-600" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0,0 C20,15 16,35 34,55 C50,75 24,85 0,100 Z" />
+            <path d="M0,0 C15,15 12,35 28,55 C44,75 20,85 0,100 Z" />
           </svg>
         </div>
 
@@ -142,8 +145,8 @@ function LoginPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center p-4 bg-slate-50/40 dark:bg-slate-950/20 pt-24 lg:pt-6 relative min-h-screen lg:min-h-0">
-        <div className="w-full max-w-md bg-white/85 dark:bg-card/85 backdrop-blur-md border border-slate-200/50 dark:border-border/50 rounded-3xl p-5 sm:p-8 shadow-2xl shadow-slate-100 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-30">
+      <div className="flex-1 flex items-center justify-center p-6 bg-slate-50/40 dark:bg-slate-950/20 pt-16 lg:pt-6">
+        <div className="w-full max-w-md bg-white/85 dark:bg-card/85 backdrop-blur-md border border-slate-200/50 dark:border-border/50 rounded-3xl p-8 shadow-2xl shadow-slate-100 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
 
           {/* ─── FORGOT PASSWORD SENT ─────────────────────────────── */}
           {view === "forgot-sent" && (
