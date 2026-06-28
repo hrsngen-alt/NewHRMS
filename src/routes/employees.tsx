@@ -32,23 +32,6 @@ function EmployeesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
-  const isAdmin = role === "admin";
-
-  if (permsLoading) {
-    return <div className="flex h-[50vh] items-center justify-center animate-pulse text-muted-foreground font-bold text-xl">Loading Employee Directory...</div>;
-  }
-
-  if (!hasPermission("Employee Directory", "manage")) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
-        <AlertTriangle className="size-12 text-destructive animate-pulse" />
-        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
-        <p className="text-sm text-muted-foreground font-medium">This page is restricted. You do not have permission to manage the employee directory.</p>
-      </div>
-    );
-  }
-
-
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
@@ -73,12 +56,6 @@ function EmployeesPage() {
       return data;
     },
   });
-
-
-
-
-
-
 
   const departments = useMemo(() => {
     const set = new Set(employees.map(e => e.department).filter(Boolean));
@@ -119,6 +96,22 @@ function EmployeesPage() {
     const start = (page - 1) * ITEMS_PER_PAGE;
     return filtered.slice(start, start + ITEMS_PER_PAGE);
   }, [filtered, page]);
+
+  const isAdmin = role === "admin";
+
+  if (permsLoading) {
+    return <div className="flex h-[50vh] items-center justify-center animate-pulse text-muted-foreground font-bold text-xl">Loading Employee Directory...</div>;
+  }
+
+  if (!hasPermission("Employee Directory", "manage")) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <AlertTriangle className="size-12 text-destructive animate-pulse" />
+        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted. You do not have permission to manage the employee directory.</p>
+      </div>
+    );
+  }
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -821,7 +814,7 @@ function EmployeesPage() {
                     />
                   )}
                   <div className="size-10 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center font-bold text-primary text-sm shrink-0">
-                    {e.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                    {e.full_name ? e.full_name.trim().split(/\s+/).map((n: string) => n[0] || "").join("").toUpperCase().slice(0, 2) : ""}
                   </div>
                   <div>
                     <h3 className="font-bold text-sm tracking-tight text-foreground cursor-pointer hover:text-primary hover:underline" onClick={() => setViewingEmployee(e)}>
