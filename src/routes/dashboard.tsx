@@ -399,6 +399,91 @@ function Dashboard() {
         )}
       </div>
 
+      {/* Quick Attendance Action Banner */}
+      {myEmployee && (
+        <div className={cn(
+          "rounded-3xl border p-6 md:p-8 transition-all relative overflow-hidden group shadow-card flex flex-col md:flex-row md:items-center justify-between gap-6",
+          isCheckedIn 
+            ? "bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/20" 
+            : "bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border-indigo-500/20"
+        )}>
+          {/* Decorative background blob */}
+          <div className={cn(
+            "absolute -right-16 -bottom-16 size-48 rounded-full opacity-20 blur-3xl pointer-events-none transition-transform group-hover:scale-110",
+            isCheckedIn ? "bg-emerald-500" : "bg-indigo-500"
+          )} />
+          
+          <div className="flex items-start gap-4 z-10">
+            <div className={cn(
+              "inline-flex size-14 items-center justify-center rounded-2xl shrink-0 shadow-sm transition-all",
+              isCheckedIn 
+                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+                : "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
+            )}>
+              {isCheckedIn ? (
+                <Clock className="size-7 animate-pulse text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <Play className="size-7 text-indigo-600 dark:text-indigo-400" />
+              )}
+            </div>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                  isCheckedIn 
+                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200" 
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                )}>
+                  <span className={cn("size-1.5 rounded-full", isCheckedIn ? "bg-emerald-500 animate-ping" : "bg-slate-400")} />
+                  {isCheckedIn ? "Checked In" : "Offline / Checked Out"}
+                </span>
+                {isMarketing && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-[10px] font-black uppercase tracking-wider">
+                    <Plane className="size-3" /> Field Mode
+                  </span>
+                )}
+              </div>
+              <h2 className="font-display text-2xl font-black tracking-tight text-foreground mt-1">
+                {isCheckedIn ? "Active Work Session" : "Ready to start your shift?"}
+              </h2>
+              <p className="text-sm text-muted-foreground font-medium max-w-xl leading-relaxed">
+                {isCheckedIn 
+                  ? `You checked in today at ${latestSession?.check_in ? new Date(latestSession.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}. Have a productive day!`
+                  : "Register your attendance now to log your hours. Location access is required."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 z-10 w-full md:w-auto">
+            {isCheckedIn && (
+              <div className="flex flex-col items-center md:items-end justify-center px-4 py-2 bg-card/60 backdrop-blur-md rounded-2xl border text-center md:text-right shrink-0">
+                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest leading-none">Shift Duration</span>
+                <span className="text-3xl font-black font-display text-primary tracking-tighter tabular-nums mt-1 leading-none">
+                  {elapsed}
+                </span>
+              </div>
+            )}
+            
+            {isCheckedIn ? (
+              <Button 
+                onClick={() => punch("out")} 
+                variant="destructive" 
+                className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-red-100 dark:shadow-none hover:bg-rose-600 transition-all cursor-pointer"
+              >
+                <Square className="size-5 fill-current" /> End Session
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => punch("in")} 
+                className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-indigo-100 dark:shadow-none hover:bg-indigo-600 transition-all cursor-pointer"
+              >
+                <Play className="size-5 fill-current" /> Check In Now
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Total Workforce" value={stats?.totalEmployees ?? 0} trend="up" trendValue="+3.2%" colorClass="bg-indigo-500" />
         <StatCard icon={Clock} label="Attendance Rate" value={`${stats?.attTrend?.[6]?.value ?? 96}%`} trend="up" trendValue="+0.8%" colorClass="bg-teal-500" />
@@ -443,28 +528,52 @@ function Dashboard() {
         ) : (
           <div className="lg:col-span-12">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-2xl border bg-card p-8 shadow-card flex flex-col justify-between border-b-8 border-b-primary transition-all hover:shadow-elegant group min-h-[300px]">
+                <div className="rounded-2xl border bg-card p-6 shadow-card flex flex-col justify-between transition-all hover:shadow-elegant group min-h-[300px]">
                   <div>
-                    <h3 className="font-black text-2xl tracking-tight flex items-center gap-3">
-                      <Activity className="size-6 text-primary" /> Time Tracking
+                    <h3 className="font-bold text-lg tracking-tight flex items-center gap-2.5">
+                      <Clock className="size-5 text-primary" /> Today's Session Logs
                     </h3>
-                    <p className="text-sm text-muted-foreground font-medium mt-2">Record your shift and track productivity</p>
+                    <p className="text-xs text-muted-foreground font-medium mt-1">Your check-in and check-out logs for today</p>
                   </div>
                   
-                  <div className="text-center py-6">
-                    <div className="text-5xl font-black font-display text-primary tracking-tighter mb-2 tabular-nums">
-                      {isCheckedIn ? elapsed : "00:00:00"}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-8">Shift Duration Today</p>
-                    
-                    {isCheckedIn ? (
-                      <Button onClick={() => punch("out")} variant="destructive" className="w-full h-14 rounded-2xl gap-3 text-base font-black shadow-lg shadow-red-100">
-                        <Square className="size-5 fill-current" /> Finish My Session
-                      </Button>
+                  <div className="flex-1 mt-4 overflow-y-auto max-h-[160px] custom-scrollbar space-y-2.5 pr-1">
+                    {!myAttendance || myAttendance.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center p-4 text-muted-foreground">
+                        <Activity className="size-8 opacity-20 mb-2" />
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">No logs for today</p>
+                      </div>
                     ) : (
-                      <Button onClick={() => punch("in")} className="w-full h-14 rounded-2xl gap-3 text-base font-black shadow-lg shadow-indigo-100">
-                        <Play className="size-5 fill-current" /> Start My Session
-                      </Button>
+                      myAttendance.map((log: any) => (
+                        <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs">
+                          <div className="space-y-1">
+                            <span className={cn(
+                              "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                              log.check_out 
+                                ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                            )}>
+                              {log.check_out ? "Completed" : "In Progress"}
+                            </span>
+                            <div className="flex items-center gap-2 text-muted-foreground font-medium mt-1">
+                              <span>In: {new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {log.check_out && (
+                                <>
+                                  <span>•</span>
+                                  <span>Out: {new Date(log.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-foreground">
+                              {log.hours_worked ? `${log.hours_worked} hrs` : (log.check_out ? 'Calculated' : 'Active')}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-medium capitalize mt-0.5">
+                              {log.metadata?.mode || 'Office'}
+                            </p>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
