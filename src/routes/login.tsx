@@ -8,7 +8,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SNLogo } from "@/components/SNLogo";
-import { Eye, EyeOff, Mail, ArrowLeft, CheckCircle2, KeyRound, Smartphone, Download, X, Share, PlusSquare } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  ArrowLeft,
+  CheckCircle2,
+  KeyRound,
+  Smartphone,
+  Download,
+  X,
+  Share,
+  PlusSquare,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
@@ -36,7 +48,7 @@ function LoginPage() {
 
   useEffect(() => {
     const ua = navigator.userAgent;
-    
+
     // iOS check
     const isIOSDevice = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
@@ -69,12 +81,17 @@ function LoginPage() {
       e.preventDefault();
       setDeferredPrompt(e);
     };
-    
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     const timer = setTimeout(() => {
-      const dismissed = sessionStorage.getItem("pwa_download_banner_dismissed") === "true";
-      if (!dismissed) {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone ||
+        document.referrer.includes("android-app://");
+
+      const dismissed = localStorage.getItem("pwa_download_banner_dismissed") === "true";
+      if (!dismissed && !isStandalone) {
         setShowBanner(true);
       }
     }, 1500);
@@ -86,6 +103,10 @@ function LoginPage() {
   }, []);
 
   const handleInstallClick = async () => {
+    // Permanently dismiss the banner since the user clicked to install/guide
+    localStorage.setItem("pwa_download_banner_dismissed", "true");
+    setShowBanner(false);
+
     if (isIOS) {
       setActiveGuide("ios");
       setShowInstallGuide(true);
@@ -98,7 +119,6 @@ function LoginPage() {
       if (outcome === "accepted") {
         toast.success("Thank you for installing SN Gene HR!");
         setDeferredPrompt(null);
-        setShowBanner(false);
       }
     } else if (isAndroid) {
       toast.success("Starting APK download...");
@@ -123,8 +143,8 @@ function LoginPage() {
     }
     if (isMac) {
       return {
-        description: isSafari 
-          ? "Add SN Gene HR to your Mac Dock for instant access" 
+        description: isSafari
+          ? "Add SN Gene HR to your Mac Dock for instant access"
           : "Install SN Gene HR App on your Mac",
         buttonText: "Install App",
       };
@@ -143,10 +163,12 @@ function LoginPage() {
 
   const dismissBanner = () => {
     setShowBanner(false);
-    sessionStorage.setItem("pwa_download_banner_dismissed", "true");
+    localStorage.setItem("pwa_download_banner_dismissed", "true");
   };
 
-  useEffect(() => { if (user) navigate({ to: "/dashboard" }); }, [user, navigate]);
+  useEffect(() => {
+    if (user) navigate({ to: "/dashboard" });
+  }, [user, navigate]);
 
   const handleGoogleSignIn = async () => {
     setBusy(true);
@@ -165,11 +187,13 @@ function LoginPage() {
     setBusy(true);
     if (mode === "in") {
       const { error } = await signIn(email, password);
-      if (error) toast.error(error); else toast.success("Welcome back!");
+      if (error) toast.error(error);
+      else toast.success("Welcome back!");
     } else {
       const fullName = String(fd.get("fullName"));
       const { error } = await signUp(email, password, fullName);
-      if (error) toast.error(error); else toast.success("Account created. You're in!");
+      if (error) toast.error(error);
+      else toast.success("Account created. You're in!");
     }
     setBusy(false);
   };
@@ -196,22 +220,38 @@ function LoginPage() {
         {/* Stacked Wavy Divider Layers (Horizontal) */}
         <div className="absolute left-0 right-0 bottom-0 w-full h-8 pointer-events-none translate-y-[99%] z-20">
           {/* Layer 1 (Backmost - Sky Blue) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 L100,0 L100,20 C75,55 65,20 50,32 C35,55 15,20 0,20 Z" />
           </svg>
-          
+
           {/* Layer 2 (Medium Blue) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-300/70 dark:fill-blue-800/40" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-300/70 dark:fill-blue-800/40"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 L100,0 L100,15 C75,45 65,15 50,25 C35,45 15,15 0,15 Z" />
           </svg>
-          
+
           {/* Layer 3 (Vibrant Blue) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-400/90 dark:fill-blue-700/60" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-400/90 dark:fill-blue-700/60"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 L100,0 L100,10 C75,35 65,10 50,18 C35,35 15,10 0,10 Z" />
           </svg>
-          
+
           {/* Layer 4 (Frontmost - Matches solid bg-blue-600) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-600" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-600"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 L100,0 L100,5 C75,25 65,5 50,10 C35,25 15,5 0,5 Z" />
           </svg>
         </div>
@@ -224,26 +264,41 @@ function LoginPage() {
 
       {/* Left branding panel (Desktop) */}
       <div className="relative hidden bg-blue-600 p-16 lg:flex lg:flex-col lg:justify-between border-r border-slate-100 dark:border-border/10">
-        
         {/* Stacked Wavy Divider Layers (Vertical) */}
         <div className="absolute left-full top-0 bottom-0 w-48 h-full pointer-events-none z-20">
           {/* Layer 1 (Backmost - Sky Blue) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-200/50 dark:fill-blue-900/30"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 C45,15 35,35 60,55 C85,75 50,85 0,100 Z" />
           </svg>
-          
+
           {/* Layer 2 (Medium Blue) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-300/70 dark:fill-blue-800/40" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-300/70 dark:fill-blue-800/40"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 C35,15 28,35 48,55 C68,75 40,85 0,100 Z" />
           </svg>
-          
+
           {/* Layer 3 (Vibrant Blue) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-400/90 dark:fill-blue-700/60" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-400/90 dark:fill-blue-700/60"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 C25,15 20,35 38,55 C56,75 30,85 0,100 Z" />
           </svg>
-          
+
           {/* Layer 4 (Frontmost - matches solid bg-blue-600) */}
-          <svg className="absolute inset-0 h-full w-full fill-blue-600" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="absolute inset-0 h-full w-full fill-blue-600"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <path d="M0,0 C15,15 12,35 28,55 C44,75 20,85 0,100 Z" />
           </svg>
         </div>
@@ -258,7 +313,8 @@ function LoginPage() {
             <span className="text-blue-200">refined.</span>
           </h2>
           <p className="max-w-md text-base text-blue-100/90 leading-relaxed font-semibold">
-            Onboard, track, pay — all in one beautifully simple workspace tailored for modern growth.
+            Onboard, track, pay — all in one beautifully simple workspace tailored for modern
+            growth.
           </p>
         </div>
 
@@ -270,7 +326,6 @@ function LoginPage() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-6 bg-slate-50/40 dark:bg-slate-950/20 pt-12 lg:pt-6">
         <div className="w-full max-w-md bg-white/85 dark:bg-card/85 backdrop-blur-md border border-slate-200/50 dark:border-border/50 rounded-3xl p-8 shadow-2xl shadow-slate-100 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-
           {/* ─── FORGOT PASSWORD SENT ─────────────────────────────── */}
           {view === "forgot-sent" && (
             <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -278,10 +333,13 @@ function LoginPage() {
                 <CheckCircle2 className="size-10" />
               </div>
               <div>
-                <h1 className="font-display text-2xl font-black text-foreground">Check your inbox!</h1>
+                <h1 className="font-display text-2xl font-black text-foreground">
+                  Check your inbox!
+                </h1>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  We sent a password reset link to <span className="font-bold text-foreground">{forgotEmail}</span>.
-                  Check your email and click the link to set a new password.
+                  We sent a password reset link to{" "}
+                  <span className="font-bold text-foreground">{forgotEmail}</span>. Check your email
+                  and click the link to set a new password.
                 </p>
               </div>
               <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/50 text-amber-800 text-xs font-medium text-left">
@@ -290,7 +348,10 @@ function LoginPage() {
               <Button
                 variant="outline"
                 className="w-full h-12 rounded-xl font-bold gap-2"
-                onClick={() => { setView("auth"); setForgotEmail(""); }}
+                onClick={() => {
+                  setView("auth");
+                  setForgotEmail("");
+                }}
               >
                 <ArrowLeft className="size-4" /> Back to Sign In
               </Button>
@@ -301,7 +362,10 @@ function LoginPage() {
           {view === "forgot" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <button
-                onClick={() => { setView("auth"); setForgotEmail(""); }}
+                onClick={() => {
+                  setView("auth");
+                  setForgotEmail("");
+                }}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 font-medium"
               >
                 <ArrowLeft className="size-4" /> Back to Sign In
@@ -312,14 +376,20 @@ function LoginPage() {
                   <KeyRound className="size-6" />
                 </div>
                 <div>
-                  <h1 className="font-display text-2xl font-black text-foreground">Forgot Password?</h1>
-                  <p className="text-sm text-muted-foreground mt-0.5">No worries, we'll send you a reset link.</p>
+                  <h1 className="font-display text-2xl font-black text-foreground">
+                    Forgot Password?
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    No worries, we'll send you a reset link.
+                  </p>
                 </div>
               </div>
 
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="forgot-email" className="text-sm font-bold">Work Email</Label>
+                  <Label htmlFor="forgot-email" className="text-sm font-bold">
+                    Work Email
+                  </Label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input
@@ -357,31 +427,51 @@ function LoginPage() {
           {/* ─── SIGN IN / SIGN UP TABS ──────────────────────────────── */}
           {view === "auth" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h1 className="font-display text-2xl font-black text-foreground tracking-tight">Welcome to SN Gene Lab</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Sign in or register your account if this is your first time.</p>
+              <h1 className="font-display text-2xl font-black text-foreground tracking-tight">
+                Welcome to SN Gene Lab
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Sign in or register your account if this is your first time.
+              </p>
               <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10 text-[10px] font-bold text-primary uppercase tracking-widest leading-relaxed">
-                💡 Note: If you were added by HR, please use the "Create account" tab to register your email first.
+                💡 Note: If you were added by HR, please use the "Create account" tab to register
+                your email first.
               </div>
 
               <Tabs defaultValue="signin" className="mt-6">
                 <TabsList className="grid w-full grid-cols-2 p-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl h-11">
-                  <TabsTrigger value="signin" className="rounded-lg font-semibold">Sign in</TabsTrigger>
-                  <TabsTrigger value="signup" className="rounded-lg font-semibold">Create account</TabsTrigger>
+                  <TabsTrigger value="signin" className="rounded-lg font-semibold">
+                    Sign in
+                  </TabsTrigger>
+                  <TabsTrigger value="signup" className="rounded-lg font-semibold">
+                    Create account
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Sign In */}
                 <TabsContent value="signin">
                   <form className="mt-4 space-y-4" onSubmit={handleSubmit("in")}>
                     <div className="space-y-1.5">
-                      <Label htmlFor="email" className="text-sm font-bold">Email</Label>
+                      <Label htmlFor="email" className="text-sm font-bold">
+                        Email
+                      </Label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <Input id="email" name="email" type="email" required placeholder="you@company.com" className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          required
+                          placeholder="you@company.com"
+                          className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50"
+                        />
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="password" className="text-sm font-bold">Password</Label>
+                        <Label htmlFor="password" className="text-sm font-bold">
+                          Password
+                        </Label>
                         <button
                           type="button"
                           onClick={() => setView("forgot")}
@@ -391,17 +481,31 @@ function LoginPage() {
                         </button>
                       </div>
                       <div className="relative">
-                        <Input id="password" name="password" type={showPassword ? "text" : "password"} required placeholder="••••••••" className="pr-12 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
+                        <Input
+                          id="password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          required
+                          placeholder="••••••••"
+                          className="pr-12 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50"
+                        />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          {showPassword ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
                         </button>
                       </div>
                     </div>
-                    <Button className="w-full h-12 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]" disabled={busy}>
+                    <Button
+                      className="w-full h-12 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                      disabled={busy}
+                    >
                       {busy ? "Signing in..." : "Sign in"}
                     </Button>
                   </form>
@@ -411,33 +515,69 @@ function LoginPage() {
                 <TabsContent value="signup">
                   <form className="mt-4 space-y-4" onSubmit={handleSubmit("up")}>
                     <div className="space-y-1.5">
-                      <Label htmlFor="fullName" className="text-sm font-bold">Full name</Label>
-                      <Input id="fullName" name="fullName" required placeholder="John Doe" className="h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
+                      <Label htmlFor="fullName" className="text-sm font-bold">
+                        Full name
+                      </Label>
+                      <Input
+                        id="fullName"
+                        name="fullName"
+                        required
+                        placeholder="John Doe"
+                        className="h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50"
+                      />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="email2" className="text-sm font-bold">Email</Label>
+                      <Label htmlFor="email2" className="text-sm font-bold">
+                        Email
+                      </Label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <Input id="email2" name="email" type="email" required placeholder="you@company.com" className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
+                        <Input
+                          id="email2"
+                          name="email"
+                          type="email"
+                          required
+                          placeholder="you@company.com"
+                          className="pl-10 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50"
+                        />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="password2" className="text-sm font-bold">Password</Label>
+                      <Label htmlFor="password2" className="text-sm font-bold">
+                        Password
+                      </Label>
                       <div className="relative">
-                        <Input id="password2" name="password" type={showPassword ? "text" : "password"} minLength={8} required placeholder="••••••••" className="pr-12 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50" />
+                        <Input
+                          id="password2"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          minLength={8}
+                          required
+                          placeholder="••••••••"
+                          className="pr-12 h-12 rounded-xl border-2 focus:border-primary/50 bg-slate-50/50 dark:bg-slate-900/50"
+                        />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          {showPassword ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
                         </button>
                       </div>
                     </div>
-                    <Button className="w-full h-12 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]" disabled={busy}>
+                    <Button
+                      className="w-full h-12 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                      disabled={busy}
+                    >
                       {busy ? "Creating..." : "Create account"}
                     </Button>
-                    <p className="text-center text-xs text-muted-foreground">First user can be promoted to admin from the database.</p>
+                    <p className="text-center text-xs text-muted-foreground">
+                      First user can be promoted to admin from the database.
+                    </p>
                   </form>
                 </TabsContent>
               </Tabs>
@@ -447,7 +587,9 @@ function LoginPage() {
                   <span className="w-full border-t border-muted" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white dark:bg-card px-3 text-muted-foreground font-medium">Or continue with</span>
+                  <span className="bg-white dark:bg-card px-3 text-muted-foreground font-medium">
+                    Or continue with
+                  </span>
                 </div>
               </div>
 
@@ -485,28 +627,30 @@ function LoginPage() {
 
       {/* Floating App Download Banner */}
       {showBanner && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-blue-500/20 dark:border-blue-500/10 shadow-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
-          <div className="flex items-center gap-3">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-blue-500/20 dark:border-blue-500/10 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <div className="flex items-center gap-3 min-w-0 pr-8 sm:pr-0">
             <div className="size-11 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
               <Smartphone className="size-6" />
             </div>
-            <div>
-              <h4 className="font-display font-black text-sm text-foreground">Get the SN Gene HR Mobile App</h4>
+            <div className="min-w-0">
+              <h4 className="font-display font-black text-sm text-foreground leading-snug">
+                Get the SN Gene HR Mobile App
+              </h4>
               <p className="text-xs text-muted-foreground font-medium mt-0.5 leading-relaxed">
                 {getBannerDetails().description}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
             <button
               onClick={handleInstallClick}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer text-center"
             >
               {getBannerDetails().buttonText}
             </button>
             <button
               onClick={dismissBanner}
-              className="size-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground transition-colors cursor-pointer"
+              className="absolute sm:static top-3 right-3 size-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground transition-colors cursor-pointer"
               aria-label="Dismiss banner"
             >
               <X className="size-4" />
@@ -525,12 +669,14 @@ function LoginPage() {
             >
               <X className="size-4" />
             </button>
-            
+
             <div className="text-center space-y-1 mb-4">
               <div className="mx-auto size-14 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-inner">
                 <Smartphone className="size-7" />
               </div>
-              <h3 className="font-display font-black text-xl text-foreground mt-2">Install SN Gene HR</h3>
+              <h3 className="font-display font-black text-xl text-foreground mt-2">
+                Install SN Gene HR
+              </h3>
               <p className="text-xs text-muted-foreground font-medium px-2">
                 Choose your device platform to view installation instructions.
               </p>
@@ -542,7 +688,7 @@ function LoginPage() {
                 { id: "ios", label: "iPhone" },
                 { id: "mac", label: "Macbook" },
                 { id: "chrome", label: "Chrome" },
-                { id: "apk", label: "Android APK" }
+                { id: "apk", label: "Android APK" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -551,7 +697,7 @@ function LoginPage() {
                     "py-2 rounded-lg transition-all text-center cursor-pointer font-bold",
                     activeGuide === tab.id
                       ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {tab.label}
@@ -568,16 +714,35 @@ function LoginPage() {
                   </div>
                   <div className="space-y-3.5 text-xs">
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">1</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Tap Safari's Share button</span> <Share className="size-3.5 text-blue-600 inline mx-0.5 animate-pulse" /> at the bottom or top of your browser.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">Tap Safari's Share button</span>{" "}
+                        <Share className="size-3.5 text-blue-600 inline mx-0.5 animate-pulse" /> at
+                        the bottom or top of your browser.
+                      </p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">2</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Select "Add to Home Screen"</span> <PlusSquare className="size-3.5 text-blue-600 inline mx-0.5" /> from the actions menu list.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">
+                          Select "Add to Home Screen"
+                        </span>{" "}
+                        <PlusSquare className="size-3.5 text-blue-600 inline mx-0.5" /> from the
+                        actions menu list.
+                      </p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">3</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Tap "Add"</span> in the upper-right corner of the prompt screen to confirm.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">Tap "Add"</span> in the
+                        upper-right corner of the prompt screen to confirm.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -590,16 +755,33 @@ function LoginPage() {
                   </div>
                   <div className="space-y-3.5 text-xs">
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">1</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Open "File" in macOS top menu bar</span> while browsing this website in Safari.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">
+                          Open "File" in macOS top menu bar
+                        </span>{" "}
+                        while browsing this website in Safari.
+                      </p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">2</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Click "Add to Dock..."</span> from the dropdown file menu items.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">Click "Add to Dock..."</span>{" "}
+                        from the dropdown file menu items.
+                      </p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">3</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Click "Add"</span> in the prompt window. SN Gene HR will now be in your Dock!</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">Click "Add"</span> in the prompt
+                        window. SN Gene HR will now be in your Dock!
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -609,16 +791,33 @@ function LoginPage() {
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="space-y-3.5 text-xs">
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">1</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Look at your address bar</span> at the top of your desktop browser.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">Look at your address bar</span>{" "}
+                        at the top of your desktop browser.
+                      </p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">2</div>
-                      <p className="text-muted-foreground font-medium"><span className="font-bold text-foreground">Click the Install icon</span> (looks like a monitor with a down arrow, or a '+' sign) on the right side of the address bar.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        <span className="font-bold text-foreground">Click the Install icon</span>{" "}
+                        (looks like a monitor with a down arrow, or a '+' sign) on the right side of
+                        the address bar.
+                      </p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">3</div>
-                      <p className="text-muted-foreground font-medium">Or open the browser's menu (three dots <span className="font-bold text-foreground">⋮</span>) and select <span className="font-bold text-foreground">"Install SN Gene HR"</span>.</p>
+                      <div className="size-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <p className="text-muted-foreground font-medium">
+                        Or open the browser's menu (three dots{" "}
+                        <span className="font-bold text-foreground">⋮</span>) and select{" "}
+                        <span className="font-bold text-foreground">"Install SN Gene HR"</span>.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -627,7 +826,8 @@ function LoginPage() {
               {activeGuide === "apk" && (
                 <div className="space-y-5 animate-in fade-in duration-300 text-center py-2">
                   <p className="text-xs text-muted-foreground font-medium leading-relaxed px-4">
-                    Download the compiled Android APK file directly to install natively on any Android smartphone.
+                    Download the compiled Android APK file directly to install natively on any
+                    Android smartphone.
                   </p>
                   <Button
                     onClick={() => {
