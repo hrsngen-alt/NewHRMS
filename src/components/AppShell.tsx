@@ -5,7 +5,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText, 
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug, FileCheck
 } from "lucide-react";
 import { BugReportWidget } from "./BugReportWidget";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,7 @@ const nav: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings, allowedRoles: ["admin"] },
   { to: "/bugs", label: "Bug Management", icon: Bug, allowedRoles: ["admin"] },
   { to: "/resignation", label: "Resignation", icon: LogOut },
+  { to: "/offer-letters", label: "Offer Letters", icon: FileCheck, allowedRoles: ["admin"] },
 ];
 
 const essNav: NavItem[] = [
@@ -73,6 +74,7 @@ const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requir
   "/holidays": { module: "Holidays", action: "view" },
   "/directory": { module: "Employee Directory", action: "view" },
   "/bugs": { module: "Bug Management", action: "view" },
+  "/offer-letters": { module: "Offer Letters", action: "manage" },
 };
 
 function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: string | null, location: any, onNavClick?: () => void, sidebarCollapsed?: boolean }) {

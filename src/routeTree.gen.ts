@@ -18,6 +18,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as PayslipsRouteImport } from './routes/payslips'
 import { Route as PayrollRouteImport } from './routes/payroll'
+import { Route as OfferLettersRouteImport } from './routes/offer-letters'
 import { Route as MonthlyAttendanceRouteImport } from './routes/monthly-attendance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeavesRouteImport } from './routes/leaves'
@@ -80,6 +81,11 @@ const PayslipsRoute = PayslipsRouteImport.update({
 const PayrollRoute = PayrollRouteImport.update({
   id: '/payroll',
   path: '/payroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfferLettersRoute = OfferLettersRouteImport.update({
+  id: '/offer-letters',
+  path: '/offer-letters',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MonthlyAttendanceRoute = MonthlyAttendanceRouteImport.update({
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/leaves': typeof LeavesRoute
   '/login': typeof LoginRoute
   '/monthly-attendance': typeof MonthlyAttendanceRoute
+  '/offer-letters': typeof OfferLettersRoute
   '/payroll': typeof PayrollRoute
   '/payslips': typeof PayslipsRoute
   '/performance': typeof PerformanceRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/leaves': typeof LeavesRoute
   '/login': typeof LoginRoute
   '/monthly-attendance': typeof MonthlyAttendanceRoute
+  '/offer-letters': typeof OfferLettersRoute
   '/payroll': typeof PayrollRoute
   '/payslips': typeof PayslipsRoute
   '/performance': typeof PerformanceRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/leaves': typeof LeavesRoute
   '/login': typeof LoginRoute
   '/monthly-attendance': typeof MonthlyAttendanceRoute
+  '/offer-letters': typeof OfferLettersRoute
   '/payroll': typeof PayrollRoute
   '/payslips': typeof PayslipsRoute
   '/performance': typeof PerformanceRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/leaves'
     | '/login'
     | '/monthly-attendance'
+    | '/offer-letters'
     | '/payroll'
     | '/payslips'
     | '/performance'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/leaves'
     | '/login'
     | '/monthly-attendance'
+    | '/offer-letters'
     | '/payroll'
     | '/payslips'
     | '/performance'
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/leaves'
     | '/login'
     | '/monthly-attendance'
+    | '/offer-letters'
     | '/payroll'
     | '/payslips'
     | '/performance'
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   LeavesRoute: typeof LeavesRoute
   LoginRoute: typeof LoginRoute
   MonthlyAttendanceRoute: typeof MonthlyAttendanceRoute
+  OfferLettersRoute: typeof OfferLettersRoute
   PayrollRoute: typeof PayrollRoute
   PayslipsRoute: typeof PayslipsRoute
   PerformanceRoute: typeof PerformanceRoute
@@ -444,6 +457,13 @@ declare module '@tanstack/react-router' {
       path: '/payroll'
       fullPath: '/payroll'
       preLoaderRoute: typeof PayrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offer-letters': {
+      id: '/offer-letters'
+      path: '/offer-letters'
+      fullPath: '/offer-letters'
+      preLoaderRoute: typeof OfferLettersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/monthly-attendance': {
@@ -594,6 +614,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeavesRoute: LeavesRoute,
   LoginRoute: LoginRoute,
   MonthlyAttendanceRoute: MonthlyAttendanceRoute,
+  OfferLettersRoute: OfferLettersRoute,
   PayrollRoute: PayrollRoute,
   PayslipsRoute: PayslipsRoute,
   PerformanceRoute: PerformanceRoute,
