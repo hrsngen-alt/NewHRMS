@@ -217,7 +217,7 @@ function Dashboard() {
   async function onScanSuccess(decodedText: string) {
     if (decodedText === "SNGENE_OFFICE_ENTRANCE") {
       setIsScannerOpen(false);
-      await punch(isCheckedIn ? "out" : "in");
+      await punch(isCheckedIn ? "out" : "in", "QR");
     } else if (decodedText.startsWith("SNGENE_ID:")) {
       toast.error("This is an employee ID QR code. Please scan the Office Entrance QR code.");
     } else {
@@ -366,7 +366,7 @@ function Dashboard() {
     return () => clearInterval(interval);
   }, [isCheckedIn, latestSession?.check_in]);
 
-  const punch = async (type: "in" | "out") => {
+  const punch = async (type: "in" | "out", source: "Manual" | "QR" = "Manual") => {
     if (!myEmployee) return toast.error("Employee profile not linked.");
     
     setIsPunching(true);
@@ -417,7 +417,7 @@ function Dashboard() {
         await (supabase.from("attendance") as any).insert({ 
           employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
           status: "present", check_in_lat: lat || null, check_in_lng: lng || null,
-          metadata: isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }
+          metadata: { punchSource: source, ...(isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }) }
         });
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",
@@ -428,7 +428,8 @@ function Dashboard() {
         const hours = Math.max(0, (Date.now() - new Date(latestSession!.check_in!).getTime()) / 3600000);
         await (supabase.from("attendance") as any).update({ 
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
-          check_out_lat: lat || null, check_out_lng: lng || null
+          check_out_lat: lat || null, check_out_lng: lng || null,
+          check_out_type: source
         }).eq("id", latestSession!.id);
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",

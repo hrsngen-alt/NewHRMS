@@ -56,7 +56,7 @@ function AttendancePage() {
   async function onScanSuccess(decodedText: string) {
     if (decodedText === "SNGENE_OFFICE_ENTRANCE") {
       setIsScannerOpen(false);
-      await punch(isCheckedIn ? "out" : "in");
+      await punch(isCheckedIn ? "out" : "in", "QR");
     } else if (decodedText.startsWith("SNGENE_ID:")) {
       toast.error("This is an employee ID QR code. Please scan the Office Entrance QR code.");
     } else {
@@ -330,7 +330,7 @@ function AttendancePage() {
   const availableYears = Array.from(new Set(records.map((r: any) => new Date(r.date).getFullYear()))).sort((a: any, b: any) => b - a);
   const isMarketing = myEmployee?.department?.toLowerCase() === "marketing";
 
-  const punch = async (type: "in" | "out") => {
+  const punch = async (type: "in" | "out", source: "Manual" | "QR" = "Manual") => {
     if (!myEmployee) return toast.error("No employee profile linked.");
     if (myEmployee.status === "Terminated") {
       return toast.error("Terminated employees cannot perform attendance actions.");
@@ -424,8 +424,8 @@ function AttendancePage() {
           check_in_address: address || null,
           employee_name: myEmployee.full_name,
           department: myEmployee.department || "Staff",
-          check_out_type: "Manual",
-          metadata: { mode: isMarketing ? 'field' : 'office', deviceInfo }
+          check_out_type: source,
+          metadata: { mode: isMarketing ? 'field' : 'office', deviceInfo, punchSource: source }
         });
 
         await supabase.functions.invoke("attendance-cached", {
@@ -459,7 +459,7 @@ function AttendancePage() {
             check_out_lat: lat || null, 
             check_out_lng: lng || null,
             check_out_address: address || null,
-            check_out_type: "Manual"
+            check_out_type: source
           }).eq("id", latestRecord!.id);
           toast.success("Shift ended!");
         }
@@ -1018,7 +1018,7 @@ function AttendancePage() {
                              )}
                            </div>
                            <div className="px-4 py-1.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0">
-                             Checked In
+                             {s.metadata?.punchSource === "QR" ? "Checked In (QR)" : "Checked In"}
                            </div>
                         </div>
                         
