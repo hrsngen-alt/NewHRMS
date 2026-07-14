@@ -138,12 +138,13 @@ function ResignationPage() {
     }
   };
 
-  const handleWithdraw = async (id: string) => {
+  const handleWithdraw = async (r: any) => {
     if (!window.confirm("Are you sure you want to withdraw your resignation request?")) return;
     setBusy(true);
     try {
-      const { error } = await (supabase.from("resignations" as any) as any).delete().eq("id", id);
+      const { error } = await (supabase as any).rpc('withdraw_resignation', { resignation_id: r.id });
       if (error) throw error;
+
       toast.success("Resignation request withdrawn.");
       qc.invalidateQueries({ queryKey: ["resignations"] });
     } catch (err: any) {
@@ -315,6 +316,7 @@ function ResignationPage() {
                            r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
                            r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
                            r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
+                           r.status === 'withdrawn' && "bg-slate-100 text-slate-600 border-slate-200",
                          )}>
                            {r.status}
                          </Badge>
@@ -353,11 +355,11 @@ function ResignationPage() {
                             </div>
                           )
                         ) : (
-                          r.status === 'pending' && (
+                          (r.status === 'pending' || r.status === 'approved') && (
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              onClick={() => handleWithdraw(r.id)} 
+                              onClick={() => handleWithdraw(r)} 
                               disabled={busy}
                               className="text-red-600 hover:bg-red-50 font-bold text-xs gap-2 rounded-xl"
                             >
@@ -401,6 +403,7 @@ function ResignationPage() {
                       r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
                       r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
                       r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
+                      r.status === 'withdrawn' && "bg-slate-100 text-slate-600 border-slate-200",
                     )}>
                       {r.status}
                     </Badge>
@@ -461,11 +464,11 @@ function ResignationPage() {
                         </Button>
                       )
                     ) : (
-                      r.status === 'pending' && (
+                      (r.status === 'pending' || r.status === 'approved') && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => handleWithdraw(r.id)} 
+                          onClick={() => handleWithdraw(r)} 
                           disabled={busy}
                           className="w-full text-red-600 hover:bg-red-50 border-red-200 font-bold text-xs gap-2 rounded-xl h-9"
                         >
