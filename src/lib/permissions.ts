@@ -13,7 +13,9 @@ export const MODULES = [
   'Announcements',
   'Assets',
   'Performance Management',
-  'Settings'
+  'Settings',
+  'Bug Management',
+  'Employee Access Control'
 ] as const;
 
 export const ACTIONS = [

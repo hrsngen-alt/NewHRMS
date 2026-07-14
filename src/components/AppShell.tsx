@@ -72,6 +72,7 @@ const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requir
   "/announcements": { module: "Announcements", action: "view" },
   "/holidays": { module: "Holidays", action: "view" },
   "/directory": { module: "Employee Directory", action: "view" },
+  "/bugs": { module: "Bug Management", action: "view" },
 };
 
 function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: string | null, location: any, onNavClick?: () => void, sidebarCollapsed?: boolean }) {

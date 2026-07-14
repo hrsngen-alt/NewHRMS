@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Calculator, MapPin, Save, ShieldCheck, QrCode, Plus, Trash2, AlertTriangle, Clock, Timer } from "lucide-react";
+import { Building2, Calculator, MapPin, Save, ShieldCheck, QrCode, Plus, Trash2, AlertTriangle, Clock, Timer, ShieldAlert } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -415,6 +415,29 @@ function SettingsPage() {
               <Link to="/access-control">
                 <Button className="h-11 px-6 rounded-xl font-bold bg-primary hover:bg-primary-glow shadow-md shadow-primary/20 transition-all flex items-center gap-2">
                   <ShieldCheck className="size-4" /> Launch Access Control Center
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border-2 border-primary/10 bg-primary/5 shadow-card overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-start gap-4">
+                <div className="size-12 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive shrink-0 border border-destructive/20">
+                  <ShieldAlert className="size-6 text-destructive" />
+                </div>
+                <div className="space-y-1">
+                  <CardTitle className="text-lg font-black">Employee Access Control</CardTitle>
+                  <CardDescription className="text-sm font-medium">
+                    Instantly enable or disable an employee's access to the HRMS without deleting any employee data.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6 flex justify-end">
+              <Link to="/employee-access">
+                <Button variant="destructive" className="h-11 px-6 rounded-xl font-bold shadow-md shadow-destructive/20 transition-all flex items-center gap-2">
+                  <ShieldAlert className="size-4" /> Manage Employee Access
                 </Button>
               </Link>
             </CardContent>

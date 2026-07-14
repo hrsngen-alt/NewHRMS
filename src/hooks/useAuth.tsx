@@ -106,7 +106,7 @@ async function syncUserRecords(user: User): Promise<string | null> {
 
     // 2. First check if employee is already linked to this user_id (fast path)
     const { data: alreadyLinked } = await (supabase.from("employees") as any)
-      .select("id, user_id, email, full_name, status")
+      .select("id, user_id, email, full_name, status, login_enabled")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -119,13 +119,17 @@ async function syncUserRecords(user: User): Promise<string | null> {
         await supabase.auth.signOut();
         throw new Error("Your account is deactivated due to resignation.");
       }
+      if (alreadyLinked.login_enabled === false) {
+        await supabase.auth.signOut();
+        throw new Error("Your access has been disabled by HR.");
+      }
       console.log("[Auth] Employee already linked:", alreadyLinked.id);
       return alreadyLinked.id;
     }
 
     // 3. Try to find employee by email (case-insensitive) and link them
     const { data: employee } = await (supabase.from("employees") as any)
-      .select("id, user_id, email, full_name, status")
+      .select("id, user_id, email, full_name, status, login_enabled")
       .ilike("email", email)
       .maybeSingle() as any;
 
@@ -137,6 +141,10 @@ async function syncUserRecords(user: User): Promise<string | null> {
       if (employee.status === "Resigned") {
         await supabase.auth.signOut();
         throw new Error("Your account is deactivated due to resignation.");
+      }
+      if (employee.login_enabled === false) {
+        await supabase.auth.signOut();
+        throw new Error("Your access has been disabled by HR.");
       }
       console.log("[Auth] Linking employee record for", email, "-> id:", employee.id);
       const updates: any = { user_id: user.id };

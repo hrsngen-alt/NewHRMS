@@ -63,7 +63,7 @@ export function TerminationPanel() {
   const { data: terminations = [], isLoading: loadingTerms } = useQuery({
     queryKey: ["terminations"],
     queryFn: async () => {
-      const { data } = await supabase.from("terminations")
+      const { data } = await supabase.from("terminations" as any)
         .select("*, employees:employee_id(full_name, employee_code, department, designation, photo_url)")
         .order("created_at", { ascending: false });
       return data || [];
@@ -102,7 +102,7 @@ export function TerminationPanel() {
       }
 
       // 1. Create termination record
-      const { error: insertError } = await (supabase.from("terminations") as any).insert({
+      const { error: insertError } = await supabase.from("terminations" as any).insert({
         employee_id: selectedEmpId,
         termination_date: termDate,
         last_working_date: lastDay,
@@ -150,7 +150,7 @@ export function TerminationPanel() {
     if (!window.confirm("Are you sure you want to cancel this termination? This will reactivate the employee account.")) return;
     setBusy(true);
     try {
-      const { error: updateTerm } = await supabase.from("terminations").update({ status: "Cancelled", audit_cancelled_by: employeeId, audit_cancelled_at: new Date().toISOString() }).eq("id", termId);
+      const { error: updateTerm } = await supabase.from("terminations" as any).update({ status: "Cancelled", audit_cancelled_by: employeeId, audit_cancelled_at: new Date().toISOString() }).eq("id", termId);
       if (updateTerm) throw updateTerm;
       const { error: updateEmp } = await supabase.from("employees").update({ status: "Active" }).eq("id", empId);
       if (updateEmp) throw updateEmp;
