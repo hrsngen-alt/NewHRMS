@@ -7,6 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Scan, UserCheck, UserMinus, ShieldAlert, Sparkles, Clock, MapPin, CheckCircle2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "@/components/ui/button";
+import { QRCodeSVG } from "qrcode.react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Printer } from "lucide-react";
 
 export const Route = createFileRoute("/kiosk")({ 
   component: () => <KioskPage /> 
@@ -21,6 +24,7 @@ function KioskPage() {
   });
   const [scannedResult, setScannedResult] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
@@ -214,6 +218,12 @@ function KioskPage() {
              <p className="text-slate-400 font-medium">Select the office location where this Kiosk is deployed.</p>
            </div>
            
+           <div className="flex gap-3 justify-center mb-4">
+             <Button onClick={() => setShowQRModal(true)} variant="outline" className="rounded-xl border-primary text-primary hover:bg-primary/20 gap-2 font-black">
+               <Scan className="size-4" /> Print Office QR
+             </Button>
+           </div>
+           
            <div className="grid gap-3">
               {locations.map((loc) => (
                 <Button 
@@ -234,6 +244,32 @@ function KioskPage() {
               {locations.length === 0 && <p className="text-slate-500 italic py-4">No locations found. Configure them in settings first.</p>}
            </div>
         </div>
+
+        {showQRModal && (
+          <Dialog open onOpenChange={setShowQRModal}>
+            <DialogContent className="max-w-md rounded-3xl bg-white text-slate-900 border-none shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-center">Office Entrance QR</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col items-center gap-6 p-4">
+                <p className="text-sm font-medium text-muted-foreground text-center">Print this QR code and stick it at your office entrance. Employees can scan this with their own phones to check in and out.</p>
+                <div id="office-qr-print" className="p-8 bg-white rounded-3xl border-4 border-slate-100 shadow-sm flex flex-col items-center">
+                  <h2 className="text-2xl font-black mb-6 tracking-tight">{companyName}</h2>
+                  <QRCodeSVG value={`SNGENE_OFFICE_ENTRANCE`} size={250} level="H" />
+                  <p className="text-sm font-black uppercase tracking-widest text-slate-400 mt-6">Scan to Check In / Out</p>
+                </div>
+                <Button onClick={() => {
+                  const content = document.getElementById("office-qr-print")?.innerHTML;
+                  if (!content) return;
+                  const win = window.open("", "_blank");
+                  win?.document.write(`<html><head><title>Office QR</title><style>body{display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;} .print-container{text-align:center;padding:40px;border:2px dashed #ccc;border-radius:24px;}</style></head><body><div class="print-container">${content}</div><script>window.print();window.close();</script></body></html>`);
+                }} className="w-full h-12 rounded-xl text-md font-black gap-2 bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
+                  <Printer className="size-5" /> Print QR Code
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     );
   }

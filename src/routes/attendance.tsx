@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,10 +12,12 @@ import { toast } from "sonner";
 import { 
   Clock, Play, Square, Search, Users, Calendar, Activity, 
   CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, 
-  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X
+  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, Scan
 } from "lucide-react";
 import { cn, getDeviceInfo, fetchAddress } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -32,6 +34,37 @@ function AttendancePage() {
   const [selectedTimelineDate, setSelectedTimelineDate] = useState<string | null>(null);
   const [isPunching, setIsPunching] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+  useEffect(() => {
+    if (isScannerOpen) {
+      setTimeout(() => {
+        scannerRef.current = new Html5QrcodeScanner(
+          "employee-qr-reader",
+          { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true },
+          false
+        );
+        scannerRef.current.render(onScanSuccess, onScanFailure);
+      }, 100);
+    } else {
+      scannerRef.current?.clear().catch(console.error);
+    }
+    return () => { scannerRef.current?.clear().catch(console.error); };
+  }, [isScannerOpen]);
+
+  async function onScanSuccess(decodedText: string) {
+    if (decodedText === "SNGENE_OFFICE_ENTRANCE") {
+      setIsScannerOpen(false);
+      await punch(isCheckedIn ? "out" : "in");
+    } else if (decodedText.startsWith("SNGENE_ID:")) {
+      toast.error("This is an employee ID QR code. Please scan the Office Entrance QR code.");
+    } else {
+      toast.error("Invalid QR Code.");
+    }
+  }
+
+  function onScanFailure(error: any) {}
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["attendance", role, myEmployee?.id],
@@ -541,14 +574,14 @@ function AttendancePage() {
               <p className="text-slate-500 dark:text-indigo-200/70 font-medium">Capture your location and start your work timer.</p>
             </div>
           </div>
-          <div className="relative z-10 flex items-center gap-4 w-full md:w-auto">
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
             {isCheckedIn ? (
               <Button 
                 onClick={() => punch("out")} 
                 size="lg" 
                 variant="destructive" 
                 disabled={isPunching}
-                className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-red-500/40 w-full md:w-auto"
+                className="h-16 px-6 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-red-500/40 w-full md:w-auto"
               >
                 {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Square className="size-6 fill-current" />}
                 {isPunching ? "Checking out..." : "End Shift"}
@@ -558,12 +591,20 @@ function AttendancePage() {
                 onClick={() => punch("in")} 
                 size="lg" 
                 disabled={isPunching}
-                className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-indigo-500/40 bg-indigo-500 hover:bg-indigo-600 w-full md:w-auto"
+                className="h-16 px-6 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-indigo-500/40 bg-indigo-500 hover:bg-indigo-600 w-full md:w-auto"
               >
                 {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Play className="size-6 fill-current" />}
                 {isPunching ? "Checking in..." : "Check In"}
               </Button>
             )}
+            <Button
+              onClick={() => setIsScannerOpen(true)}
+              size="lg"
+              variant="outline"
+              className="h-16 px-6 rounded-2xl text-lg font-black gap-3 w-full md:w-auto border-2 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <Scan className="size-6" /> Scan Office QR
+            </Button>
           </div>        </div>
       )}
 
@@ -598,6 +639,23 @@ function AttendancePage() {
       <div className="space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+
+      <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent className="max-w-md rounded-3xl bg-[#020617] text-white border-slate-800 shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-center mb-2">Scan to Check In/Out</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-slate-400 text-center text-sm font-medium">Point your camera at the Office QR Code to record your attendance.</p>
+            <div className="w-full rounded-[32px] overflow-hidden border-4 border-slate-800 bg-slate-900 shadow-inner">
+              <div id="employee-qr-reader" className="w-full aspect-square" />
+            </div>
+            <Button onClick={() => setIsScannerOpen(false)} variant="ghost" className="text-slate-400 hover:text-white mt-2">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
           <h2 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
             <Timer className="size-6 text-indigo-500" />
             <span>Time</span>

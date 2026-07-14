@@ -4,10 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
-import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download, LogOut, UserX } from "lucide-react";
+import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download, LogOut, UserX, Scan } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, Area, CartesianGrid, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, Suspense, lazy, useRef } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 
@@ -193,6 +195,37 @@ function Dashboard() {
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isPunching, setIsPunching] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+  useEffect(() => {
+    if (isScannerOpen) {
+      setTimeout(() => {
+        scannerRef.current = new Html5QrcodeScanner(
+          "dashboard-qr-reader",
+          { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true },
+          false
+        );
+        scannerRef.current.render(onScanSuccess, onScanFailure);
+      }, 100);
+    } else {
+      scannerRef.current?.clear().catch(console.error);
+    }
+    return () => { scannerRef.current?.clear().catch(console.error); };
+  }, [isScannerOpen]);
+
+  async function onScanSuccess(decodedText: string) {
+    if (decodedText === "SNGENE_OFFICE_ENTRANCE") {
+      setIsScannerOpen(false);
+      await punch(isCheckedIn ? "out" : "in");
+    } else if (decodedText.startsWith("SNGENE_ID:")) {
+      toast.error("This is an employee ID QR code. Please scan the Office Entrance QR code.");
+    } else {
+      toast.error("Invalid QR Code.");
+    }
+  }
+
+  function onScanFailure(error: any) {}
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
@@ -507,7 +540,7 @@ function Dashboard() {
                 onClick={() => punch("out")} 
                 variant="destructive" 
                 disabled={isPunching}
-                className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-red-100 dark:shadow-none hover:bg-rose-600 transition-all cursor-pointer"
+                className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-red-100 dark:shadow-none hover:bg-rose-600 transition-all cursor-pointer w-full md:w-auto"
               >
                 {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Square className="size-5 fill-current" />} 
                 {isPunching ? "Checking out..." : "End Session"}
@@ -516,12 +549,19 @@ function Dashboard() {
               <Button 
                 onClick={() => punch("in")} 
                 disabled={isPunching}
-                className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-indigo-100 dark:shadow-none hover:bg-indigo-600 transition-all cursor-pointer"
+                className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-indigo-100 dark:shadow-none hover:bg-indigo-600 transition-all cursor-pointer w-full md:w-auto"
               >
                 {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Play className="size-5 fill-current" />}
                 {isPunching ? "Checking in..." : "Check In Now"}
               </Button>
             )}
+            <Button
+              onClick={() => setIsScannerOpen(true)}
+              variant="outline"
+              className="h-14 px-6 rounded-2xl gap-3 text-base font-black w-full md:w-auto border-2 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              <Scan className="size-5" /> Scan QR
+            </Button>
           </div>
         </div>
       )}
@@ -712,6 +752,23 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent className="max-w-md rounded-3xl bg-[#020617] text-white border-slate-800 shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-center mb-2">Scan to Check In/Out</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-slate-400 text-center text-sm font-medium">Point your camera at the Office QR Code to record your attendance.</p>
+            <div className="w-full rounded-[32px] overflow-hidden border-4 border-slate-800 bg-slate-900 shadow-inner">
+              <div id="dashboard-qr-reader" className="w-full aspect-square" />
+            </div>
+            <Button onClick={() => setIsScannerOpen(false)} variant="ghost" className="text-slate-400 hover:text-white mt-2">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
