@@ -36,18 +36,18 @@ const nav: NavItem[] = [
   { to: "/employee-360", label: "Employee 360", icon: Sparkles, allowedRoles: ["admin", "manager"] },
   { to: "/attendance", label: "Attendance", icon: Clock },
   { to: "/monthly-attendance", label: "Monthly Attendance", icon: CalendarIcon, allowedRoles: ["admin", "manager"] },
+  { to: "/offer-letters", label: "Offer Letters", icon: FileCheck, allowedRoles: ["admin"] },
   { to: "/leaves", label: "Leaves", icon: CalendarDays },
   { to: "/performance", label: "Performance", icon: Award },
   { to: "/payroll", label: "Payroll", icon: Wallet, allowedRoles: ["admin"] },
   { to: "/salary-structure", label: "Salary Structure", icon: IndianRupee, allowedRoles: ["admin"] },
   { to: "/reports", label: "Reports", icon: BarChart3, allowedRoles: ["admin", "manager"] },
   { to: "/payslips", label: "Salary Slips", icon: FileText },
-  { to: "/profile", label: "My Profile", icon: User },
-  { to: "/kiosk", label: "Kiosk Terminal", icon: QrCode, allowedRoles: ["admin"], external: true },
-  { to: "/settings", label: "Settings", icon: Settings, allowedRoles: ["admin"] },
-  { to: "/bugs", label: "Bug Management", icon: Bug, allowedRoles: ["admin"] },
   { to: "/resignation", label: "Resignation", icon: LogOut },
-  { to: "/offer-letters", label: "Offer Letters", icon: FileCheck, allowedRoles: ["admin"] },
+  { to: "/profile", label: "My Profile", icon: User },
+  { to: "/settings", label: "Settings", icon: Settings, allowedRoles: ["admin"] },
+  { to: "/kiosk", label: "Kiosk Terminal", icon: QrCode, allowedRoles: ["admin"], external: true },
+  { to: "/bugs", label: "Bug Management", icon: Bug, allowedRoles: ["admin"] },
 ];
 
 const essNav: NavItem[] = [
