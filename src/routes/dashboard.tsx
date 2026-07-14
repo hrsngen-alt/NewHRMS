@@ -341,43 +341,40 @@ function Dashboard() {
     try {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
         const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { 
-          enableHighAccuracy: true,
-          timeout: 10000, 
-          maximumAge: 0 
-        })).catch(async (e) => {
-          if (e.code === 1) throw e;
-          return await new Promise<GeolocationPosition>((res2, rej2) => {
-            navigator.geolocation.getCurrentPosition(res2, rej2, { 
-              enableHighAccuracy: false, 
-              timeout: 10000,
-              maximumAge: 0
-            });
-          });
-        });
+          enableHighAccuracy: false,  // Use WiFi/network — avoids kCLErrorLocationUnknown
+          timeout: 8000, 
+          maximumAge: 60000  // Accept cached position up to 1 min old
+        }));
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
       } else {
         throw new Error("Geolocation not supported");
       }
     } catch (e: any) {
-      try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
-        if (data && data.latitude && data.longitude) {
-          lat = data.latitude;
-          lng = data.longitude;
-          toast.info("Using approximate network location.");
-        } else {
-          throw new Error("IP Geolocation failed");
-        }
-      } catch (ipError) {
+      if (e?.code === 1) {
+        // Hard block only on explicit permission denial
         if (type === "in") {
-          if (!isMarketing) {
-            return toast.error("Location access is required for office check-ins.");
-          }
-          toast.warning("Approximate location captured for Field Work.");
+          setIsPunching(false);
+          return toast.error("Location permission denied. Please allow it in your browser/device settings.");
         } else {
-          toast.warning("Check-out location could not be fetched, proceeding with check-out.");
+          toast.warning("Location permission denied. Proceeding without location.");
+        }
+      } else {
+        // code 2 (hardware unavailable / kCLErrorLocationUnknown) or code 3 (timeout) — try IP fallback
+        try {
+          const ipRes = await fetch("https://ipapi.co/json/");
+          const ipData = await ipRes.json();
+          if (ipData?.latitude && ipData?.longitude) {
+            lat = ipData.latitude;
+            lng = ipData.longitude;
+            toast.info("Using approximate network location.");
+          } else {
+            toast.warning("Location unavailable. Proceeding without coordinates.");
+          }
+        } catch {
+          if (type === "in") {
+            toast.warning("Could not determine location. Check-in proceeding without coordinates.");
+          }
         }
       }
     }

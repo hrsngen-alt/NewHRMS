@@ -77,18 +77,43 @@ function AttendancePage() {
       .channel('attendance_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => {
         qc.invalidateQueries({ queryKey: ["attendance"] });
+        qc.invalidateQueries({ queryKey: ["attendance-today-live"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
+  // Direct live query for today's status (not cached, always fresh)
   const todayStr = new Date().toLocaleDateString('en-CA');
-  const myTodayRecords = useMemo(() => 
-    records.filter((r: any) => r.date === todayStr && r.employee_id === myEmployee?.id),
-    [records, todayStr, myEmployee?.id]
-  );
+  const { data: todayRecordsDirect = [] } = useQuery({
+    queryKey: ["attendance-today-live", myEmployee?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("attendance")
+        .select("*")
+        .eq("employee_id", myEmployee!.id)
+        .eq("date", todayStr)
+        .order("check_in", { ascending: false });
+      return (data || []) as any[];
+    },
+    enabled: !!myEmployee?.id,
+    staleTime: 0,  // Always re-fetch on mount (page refresh)
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
+  const myTodayRecords = useMemo(() => {
+    // Prefer the direct live DB query for accuracy, fallback to cached records
+    const source = todayRecordsDirect.length > 0
+      ? todayRecordsDirect
+      : records.filter((r: any) => r.date === todayStr && r.employee_id === myEmployee?.id);
+    // Always sort descending by check_in so [0] is always the latest session
+    return [...source].sort((a: any, b: any) => new Date(b.check_in).getTime() - new Date(a.check_in).getTime());
+  }, [todayRecordsDirect, records, todayStr, myEmployee?.id]);
   
+  // Latest session is the most recent check-in today
   const latestRecord = myTodayRecords.length > 0 ? myTodayRecords[0] : null;
+  // Checked in = latest session exists AND has no check_out yet
   const isCheckedIn = !!(latestRecord && !latestRecord.check_out);
 
   const [elapsed, setElapsed] = useState<string>("00:00:00");
@@ -287,18 +312,9 @@ function AttendancePage() {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
         const pos = await new Promise<GeolocationPosition>((res, rej) => {
           navigator.geolocation.getCurrentPosition(res, rej, { 
-            enableHighAccuracy: true, 
-            timeout: 10000,
-            maximumAge: 0
-          });
-        }).catch(async (e) => {
-          if (e.code === 1) throw e;
-          return await new Promise<GeolocationPosition>((res2, rej2) => {
-            navigator.geolocation.getCurrentPosition(res2, rej2, { 
-              enableHighAccuracy: false, 
-              timeout: 10000,
-              maximumAge: 0
-            });
+            enableHighAccuracy: false,  // Use WiFi/network — avoids kCLErrorLocationUnknown 
+            timeout: 8000,
+            maximumAge: 60000  // Accept cached position up to 1 min old
           });
         });
         lat = pos.coords.latitude;
@@ -307,24 +323,35 @@ function AttendancePage() {
         throw new Error("Geolocation not supported");
       }
     } catch (e: any) {
-      try {
-        const res = await fetch("https://ipapi.co/json/");
-        const data = await res.json();
-        if (data && data.latitude && data.longitude) {
-          lat = data.latitude;
-          lng = data.longitude;
-          toast.info("Using approximate network location.");
-        } else {
-          throw new Error("IP Geolocation failed");
-        }
-      } catch (ipError) {
-        let msg = "Location access is mandatory for attendance tracking.";
-        if (e?.code === 1) msg = "Permission denied. Please allow location access in your browser/device settings.";
-        
+      // code 1 = Permission Denied (user explicitly blocked)
+      // code 2 = Position Unavailable (hardware/GPS can't fix - kCLErrorLocationUnknown)
+      // code 3 = Timeout
+      if (e?.code === 1) {
+        // Hard block only on explicit permission denial
         if (type === "in") {
-          return toast.error(msg);
+          setIsPunching(false);
+          return toast.error("Location access is required. Please allow location permission in your browser/device settings.");
         } else {
-          toast.warning("Check-out location could not be fetched, proceeding with check-out.");
+          toast.warning("Location permission denied. Proceeding without location.");
+        }
+      } else {
+        // For code 2 (hardware unavailable) or code 3 (timeout), try IP fallback
+        try {
+          const ipRes = await fetch("https://ipapi.co/json/");
+          const ipData = await ipRes.json();
+          if (ipData?.latitude && ipData?.longitude) {
+            lat = ipData.latitude;
+            lng = ipData.longitude;
+            toast.info("Using approximate network location.");
+          } else {
+            // IP also failed — proceed without location, don't block the user
+            toast.warning("Location unavailable. Proceeding with check-in.");
+          }
+        } catch {
+          // All location methods failed — proceed without location
+          if (type === "in") {
+            toast.warning("Could not determine location. Check-in proceeding without coordinates.");
+          }
         }
       }
     }
