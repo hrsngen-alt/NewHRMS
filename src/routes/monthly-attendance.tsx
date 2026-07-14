@@ -240,7 +240,7 @@ function AttendancePage() {
           "Check-In Location (Lat/Lng)": log.check_in_lat && log.check_in_lng ? `${log.check_in_lat}, ${log.check_in_lng}` : "—",
           "Check-In Address": log.check_in_address || "—",
           "Check-Out Location (Lat/Lng)": log.check_out_lat && log.check_out_lng ? `${log.check_out_lat}, ${log.check_out_lng}` : "—",
-          "Check-Out Address": log.check_out_address || "—",
+          "Check-Out Address": log.check_out_type === 'Automatic' ? 'System Generated (Auto Checkout)' : (log.check_out_address || "—"),
           "Device Info": deviceStr
         };
       });
@@ -1102,9 +1102,11 @@ function AttendancePage() {
                                  <div className="space-y-1">
                                    <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(O)</p>
                                    <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
-                                   {s.check_out_address && (
+                                   {s.check_out_address ? (
                                      <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_out_address}</p>
-                                   )}
+                                   ) : s.check_out_type === 'Automatic' ? (
+                                     <p className="text-[10px] font-medium text-amber-500/80 mt-1 max-w-[220px] leading-tight">System Generated (Auto Checkout)</p>
+                                   ) : null}
                                  </div>
                                  {s.check_out_lat && (
                                    <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 

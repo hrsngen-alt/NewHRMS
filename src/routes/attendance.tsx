@@ -282,32 +282,48 @@ function AttendancePage() {
     
     let lat, lng;
     try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) => {
-        navigator.geolocation.getCurrentPosition(res, rej, { 
-          enableHighAccuracy: true, 
-          timeout: 10000,
-          maximumAge: 0
-        });
-      }).catch(async (e) => {
-        if (e.code === 1) throw e;
-        return await new Promise<GeolocationPosition>((res2, rej2) => {
-          navigator.geolocation.getCurrentPosition(res2, rej2, { 
-            enableHighAccuracy: false, 
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        const pos = await new Promise<GeolocationPosition>((res, rej) => {
+          navigator.geolocation.getCurrentPosition(res, rej, { 
+            enableHighAccuracy: true, 
             timeout: 10000,
             maximumAge: 0
           });
+        }).catch(async (e) => {
+          if (e.code === 1) throw e;
+          return await new Promise<GeolocationPosition>((res2, rej2) => {
+            navigator.geolocation.getCurrentPosition(res2, rej2, { 
+              enableHighAccuracy: false, 
+              timeout: 10000,
+              maximumAge: 0
+            });
+          });
         });
-      });
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
-    } catch (e: any) {
-      let msg = "Location access is mandatory for attendance tracking.";
-      if (e.code === 1) msg = "Permission denied. Please allow location access.";
-      
-      if (type === "in") {
-        return toast.error(msg);
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
       } else {
-        toast.warning("Check-out location could not be fetched, proceeding with check-out.");
+        throw new Error("Geolocation not supported");
+      }
+    } catch (e: any) {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
+        if (data && data.latitude && data.longitude) {
+          lat = data.latitude;
+          lng = data.longitude;
+          toast.info("Using approximate network location.");
+        } else {
+          throw new Error("IP Geolocation failed");
+        }
+      } catch (ipError) {
+        let msg = "Location access is mandatory for attendance tracking.";
+        if (e?.code === 1) msg = "Permission denied. Please allow location access in your browser/device settings.";
+        
+        if (type === "in") {
+          return toast.error(msg);
+        } else {
+          toast.warning("Check-out location could not be fetched, proceeding with check-out.");
+        }
       }
     }
 
@@ -598,6 +614,16 @@ function AttendancePage() {
                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                             {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "ACTIVE"}
                           </span>
+                          {sorted[0]?.check_in_address && (
+                            <span className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[200px]" title={sorted[0].check_in_address}>
+                              In: {sorted[0].check_in_address}
+                            </span>
+                          )}
+                          {(sorted[sorted.length - 1]?.check_out_address || sorted[sorted.length - 1]?.check_out_type === 'Automatic') && (
+                            <span className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[200px]" title={sorted[sorted.length - 1]?.check_out_address || "System Generated"}>
+                              Out: {sorted[sorted.length - 1].check_out_address || "System Generated (Auto)"}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -725,6 +751,16 @@ function AttendancePage() {
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                         {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "ACTIVE"}
                       </p>
+                      {sorted[0]?.check_in_address && (
+                        <p className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[180px]">
+                          In: {sorted[0].check_in_address}
+                        </p>
+                      )}
+                      {(sorted[sorted.length - 1]?.check_out_address || sorted[sorted.length - 1]?.check_out_type === 'Automatic') && (
+                        <p className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[180px]">
+                          Out: {sorted[sorted.length - 1].check_out_address || "System Generated (Auto)"}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                       <div className="inline-flex items-center justify-center px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-black text-[9px] uppercase tracking-widest">
@@ -893,9 +929,11 @@ function AttendancePage() {
                                  <div className="space-y-1">
                                    <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(O)</p>
                                    <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
-                                   {s.check_out_address && (
+                                   {s.check_out_address ? (
                                      <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_out_address}</p>
-                                   )}
+                                   ) : s.check_out_type === 'Automatic' ? (
+                                     <p className="text-[10px] font-medium text-amber-500/80 mt-1 max-w-[220px] leading-tight">System Generated (Auto Checkout)</p>
+                                   ) : null}
                                  </div>
                                  {s.check_out_lat && (
                                    <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 

@@ -337,30 +337,46 @@ function Dashboard() {
     
     let lat, lng;
     try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { 
-        enableHighAccuracy: true,
-        timeout: 10000, 
-        maximumAge: 0 
-      })).catch(async (e) => {
-        if (e.code === 1) throw e;
-        return await new Promise<GeolocationPosition>((res2, rej2) => {
-          navigator.geolocation.getCurrentPosition(res2, rej2, { 
-            enableHighAccuracy: false, 
-            timeout: 10000,
-            maximumAge: 0
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { 
+          enableHighAccuracy: true,
+          timeout: 10000, 
+          maximumAge: 0 
+        })).catch(async (e) => {
+          if (e.code === 1) throw e;
+          return await new Promise<GeolocationPosition>((res2, rej2) => {
+            navigator.geolocation.getCurrentPosition(res2, rej2, { 
+              enableHighAccuracy: false, 
+              timeout: 10000,
+              maximumAge: 0
+            });
           });
         });
-      });
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
-    } catch (e) {
-      if (type === "in") {
-        if (!isMarketing) {
-          return toast.error("Location access is required for office check-ins.");
-        }
-        toast.warning("Approximate location captured for Field Work.");
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
       } else {
-        toast.warning("Check-out location could not be fetched, proceeding with check-out.");
+        throw new Error("Geolocation not supported");
+      }
+    } catch (e: any) {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
+        if (data && data.latitude && data.longitude) {
+          lat = data.latitude;
+          lng = data.longitude;
+          toast.info("Using approximate network location.");
+        } else {
+          throw new Error("IP Geolocation failed");
+        }
+      } catch (ipError) {
+        if (type === "in") {
+          if (!isMarketing) {
+            return toast.error("Location access is required for office check-ins.");
+          }
+          toast.warning("Approximate location captured for Field Work.");
+        } else {
+          toast.warning("Check-out location could not be fetched, proceeding with check-out.");
+        }
       }
     }
 
