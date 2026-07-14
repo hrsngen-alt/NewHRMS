@@ -213,7 +213,7 @@ function BugDetailsModal({ bug, onClose, team, employeeId, onUpdate }: any) {
   const handleUpdate = async () => {
     setSubmitting(true);
     try {
-      const { error } = await (supabase.from("bug_reports") as any).update({
+      const { error } = await supabase.from("bug_reports" as any).update({
         status, assigned_to: assigned === "unassigned" ? null : assigned
       }).eq("id", bug.id);
       if (error) throw error;
@@ -230,7 +230,7 @@ function BugDetailsModal({ bug, onClose, team, employeeId, onUpdate }: any) {
     if (!comment.trim()) return;
     setSubmitting(true);
     try {
-      const { error } = await (supabase.from("bug_comments") as any).insert({
+      const { error } = await supabase.from("bug_comments" as any).insert({
         bug_id: bug.id, employee_id: employeeId, comment
       });
       if (error) throw error;

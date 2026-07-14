@@ -264,7 +264,7 @@ export function TerminationPanel() {
                 
                 {/* Dates & Types */}
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-widest">Notice Date</Label>
                       <Input type="date" value={termDate} onChange={e => setTermDate(e.target.value)} className="h-11 rounded-xl" />
@@ -362,7 +362,7 @@ export function TerminationPanel() {
 
       {/* History Dashboard */}
       <div className="rounded-[32px] border-2 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
-        <div className="p-6 border-b bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-6 border-b bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-xl font-black flex items-center gap-2"><History className="size-5 text-primary" /> Termination Registry</h3>
             <p className="text-sm text-muted-foreground mt-1">Immutable ledger of all company-initiated terminations.</p>
