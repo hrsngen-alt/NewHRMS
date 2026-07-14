@@ -66,10 +66,17 @@ serve(async (req: Request) => {
         }
       }
 
+      // Process auto checkouts before querying database
+      try {
+        await supabase.rpc('process_auto_checkouts');
+      } catch (err) {
+        console.error("Error executing process_auto_checkouts RPC:", err);
+      }
+
       // Query Database
       let dbQuery = supabase
         .from("attendance")
-        .select("*, employees(full_name, employee_code, department)")
+        .select("*, employees(full_name, employee_code, department, attendance_policy_id)")
         .order("check_in", { ascending: false });
 
       if (!isAdmin && employeeId) {

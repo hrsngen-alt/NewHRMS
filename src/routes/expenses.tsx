@@ -202,6 +202,8 @@ function ExpensesPage() {
   const submitClaim = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!myEmployee) return toast.error("Profile not linked.");
+    if (myEmployee.status === "Terminated") return toast.error("Terminated employees cannot submit expense claims.");
+    if (myEmployee.status === "Resigned") return toast.error("Resigned employees cannot submit expense claims.");
     setBusy(true);
     const fd = new FormData(e.currentTarget);
     const file = fileRef.current?.files?.[0];

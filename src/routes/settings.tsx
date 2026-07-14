@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Calculator, MapPin, Save, ShieldCheck, QrCode, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, Calculator, MapPin, Save, ShieldCheck, QrCode, Plus, Trash2, AlertTriangle, Clock, Timer } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/settings")({ 
   component: () => (
@@ -45,8 +46,71 @@ function SettingsPage() {
     },
   });
 
+  const { data: policies = [], isLoading: loadingPolicies } = useQuery({
+    queryKey: ["attendance-policies"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance_policies" as any)
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const [formData, setFormData] = useState<any>({});
   const [newLoc, setNewLoc] = useState({ name: "", address: "", lat: "", lng: "" });
+  
+  const [newPolicy, setNewPolicy] = useState({
+    name: "",
+    auto_checkout_enabled: false,
+    auto_checkout_after_minutes: 120,
+    qr_attendance_enabled: true
+  });
+
+  const handleAddPolicy = async () => {
+    if (!newPolicy.name) return toast.error("Please provide a policy name.");
+    try {
+      const { error } = await supabase.from("attendance_policies" as any).insert({
+        name: newPolicy.name,
+        auto_checkout_enabled: newPolicy.auto_checkout_enabled,
+        auto_checkout_after_minutes: newPolicy.auto_checkout_enabled ? Number(newPolicy.auto_checkout_after_minutes) : 0,
+        qr_attendance_enabled: newPolicy.qr_attendance_enabled
+      });
+      if (error) throw error;
+      toast.success("Attendance policy added!");
+      setNewPolicy({ name: "", auto_checkout_enabled: false, auto_checkout_after_minutes: 120, qr_attendance_enabled: true });
+      qc.invalidateQueries({ queryKey: ["attendance-policies"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add policy");
+    }
+  };
+
+  const handleDeletePolicy = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this policy? Employees using this policy will fallback to default rules.")) return;
+    try {
+      const { error } = await supabase.from("attendance_policies" as any).delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Policy removed");
+      qc.invalidateQueries({ queryKey: ["attendance-policies"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete policy");
+    }
+  };
+
+  const handleUpdatePolicy = async (id: string, updates: any) => {
+    try {
+      const { error } = await supabase
+        .from("attendance_policies" as any)
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+      toast.success("Policy configuration updated!");
+      qc.invalidateQueries({ queryKey: ["attendance-policies"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update policy");
+    }
+  };
 
   useEffect(() => {
     if (settings) {
@@ -190,6 +254,9 @@ function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="location" className="rounded-xl font-bold gap-2 py-2.5 w-[calc(50%-4px)] md:w-auto md:flex-1 data-[state=active]:shadow-md">
             <MapPin className="size-4" /> Office Locations
+          </TabsTrigger>
+          <TabsTrigger value="policies" className="rounded-xl font-bold gap-2 py-2.5 w-[calc(50%-4px)] md:w-auto md:flex-1 data-[state=active]:shadow-md">
+            <Clock className="size-4" /> Attendance Policies
           </TabsTrigger>
           <TabsTrigger value="roles" className="rounded-xl font-bold gap-2 py-2.5 w-[calc(50%-4px)] md:w-auto md:flex-1 data-[state=active]:shadow-md">
             <ShieldCheck className="size-4" /> Access Controls
@@ -490,6 +557,155 @@ function SettingsPage() {
                   )}
                 </>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="policies" className="space-y-6">
+          <Card className="rounded-2xl border-2 border-primary/5 shadow-card overflow-hidden">
+            <CardHeader className="bg-muted/30 border-b">
+              <CardTitle>Configure Attendance Policies</CardTitle>
+              <CardDescription>Define check-in constraints and automatic check-out rules for different teams.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 space-y-8">
+              {/* Add New Policy Form */}
+              <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Create New Attendance Policy</h4>
+                <div className="grid gap-6 md:grid-cols-4 items-end">
+                  <div>
+                    <Label className="text-[10px] font-bold">Policy Name</Label>
+                    <Input 
+                      placeholder="e.g. Sales Team" 
+                      value={newPolicy.name} 
+                      onChange={(e) => setNewPolicy({...newPolicy, name: e.target.value})} 
+                      className="h-10 rounded-lg mt-1 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800" 
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 h-10">
+                    <Switch
+                      id="auto-checkout"
+                      checked={newPolicy.auto_checkout_enabled}
+                      onCheckedChange={(checked) => setNewPolicy({...newPolicy, auto_checkout_enabled: checked})}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="auto-checkout" className="text-xs font-bold cursor-pointer text-slate-800 dark:text-slate-200">Auto Check-Out</Label>
+                      <p className="text-[10px] text-muted-foreground font-medium">Auto-close session after time limit</p>
+                    </div>
+                  </div>
+                  {newPolicy.auto_checkout_enabled && (
+                    <div>
+                      <Label className="text-[10px] font-bold">Duration (Minutes)</Label>
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        value={newPolicy.auto_checkout_after_minutes} 
+                        onChange={(e) => setNewPolicy({...newPolicy, auto_checkout_after_minutes: Number(e.target.value)})} 
+                        className="h-10 rounded-lg mt-1 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800" 
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 h-10">
+                    <Switch
+                      id="qr-attendance"
+                      checked={newPolicy.qr_attendance_enabled}
+                      onCheckedChange={(checked) => setNewPolicy({...newPolicy, qr_attendance_enabled: checked})}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="qr-attendance" className="text-xs font-bold cursor-pointer text-slate-800 dark:text-slate-200">QR Scan Enabled</Label>
+                      <p className="text-[10px] text-muted-foreground font-medium">Allow punching via kiosk QR</p>
+                    </div>
+                  </div>
+                  <div className={newPolicy.auto_checkout_enabled ? "md:col-span-1" : "md:col-span-2"}>
+                    <Button onClick={handleAddPolicy} className="w-full h-10 rounded-xl gap-2 font-bold shadow-sm">
+                      <Plus className="size-4" /> Add Policy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Policies List */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Active Policies</h4>
+                <div className="grid gap-4">
+                  {loadingPolicies ? (
+                    <div className="text-center py-10 animate-pulse text-muted-foreground font-bold">Loading policies...</div>
+                  ) : (
+                    policies.map((policy: any) => (
+                      <div key={policy.id} className="p-5 rounded-xl border bg-muted/20 hover:border-primary/30 transition-all space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="size-10 rounded-lg bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary border border-slate-200 dark:border-slate-700">
+                              <Clock className="size-5" />
+                            </div>
+                            <div>
+                              <p className="font-black text-sm tracking-tight text-slate-900 dark:text-white">{policy.name} Policy</p>
+                              <p className="text-[9px] text-muted-foreground font-semibold">ID: {policy.id.slice(0, 8)}...</p>
+                            </div>
+                          </div>
+                          {/* Prevent deleting default Inhouse and Marketing policies */}
+                          {policy.name !== 'Inhouse' && policy.name !== 'Marketing' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDeletePolicy(policy.id)} 
+                              className="text-muted-foreground hover:text-rose-500 rounded-lg"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-3 pt-2 border-t border-dashed border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              id={`auto-co-${policy.id}`}
+                              checked={policy.auto_checkout_enabled}
+                              onCheckedChange={(checked) => handleUpdatePolicy(policy.id, { auto_checkout_enabled: checked })}
+                            />
+                            <div className="grid gap-1 leading-none">
+                              <Label htmlFor={`auto-co-${policy.id}`} className="text-xs font-bold cursor-pointer text-slate-800 dark:text-slate-200">Auto Check-Out</Label>
+                              <p className="text-[9px] text-muted-foreground font-medium">Auto close shift</p>
+                            </div>
+                          </div>
+
+                          {policy.auto_checkout_enabled && (
+                            <div className="flex items-center gap-2">
+                              <Label className="text-[10px] font-bold shrink-0">Duration (Mins)</Label>
+                              <Input 
+                                type="number" 
+                                min="1" 
+                                defaultValue={policy.auto_checkout_after_minutes} 
+                                onBlur={(e) => {
+                                  const val = Number(e.target.value);
+                                  if (val !== policy.auto_checkout_after_minutes) {
+                                    handleUpdatePolicy(policy.id, { auto_checkout_after_minutes: val });
+                                  }
+                                }}
+                                className="h-8 w-24 rounded-md bg-white dark:bg-slate-950 text-xs font-medium border border-slate-200 dark:border-slate-800" 
+                              />
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              id={`qr-scan-${policy.id}`}
+                              checked={policy.qr_attendance_enabled}
+                              onCheckedChange={(checked) => handleUpdatePolicy(policy.id, { qr_attendance_enabled: checked })}
+                            />
+                            <div className="grid gap-1 leading-none">
+                              <Label htmlFor={`qr-scan-${policy.id}`} className="text-xs font-bold cursor-pointer text-slate-800 dark:text-slate-200">QR Scan Punch</Label>
+                              <p className="text-[9px] text-muted-foreground font-medium">Punch via kiosk QR</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {policies.length === 0 && !loadingPolicies && (
+                    <div className="text-center py-10 border-2 border-dashed rounded-2xl text-muted-foreground italic">No attendance policies configured.</div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

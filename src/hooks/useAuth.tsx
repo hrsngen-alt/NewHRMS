@@ -106,22 +106,38 @@ async function syncUserRecords(user: User): Promise<string | null> {
 
     // 2. First check if employee is already linked to this user_id (fast path)
     const { data: alreadyLinked } = await (supabase.from("employees") as any)
-      .select("id, user_id, email, full_name")
+      .select("id, user_id, email, full_name, status")
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (alreadyLinked) {
+      if (alreadyLinked.status === "Terminated") {
+        await supabase.auth.signOut();
+        throw new Error("Your account has been terminated. Please contact HR.");
+      }
+      if (alreadyLinked.status === "Resigned") {
+        await supabase.auth.signOut();
+        throw new Error("Your account is deactivated due to resignation.");
+      }
       console.log("[Auth] Employee already linked:", alreadyLinked.id);
       return alreadyLinked.id;
     }
 
     // 3. Try to find employee by email (case-insensitive) and link them
     const { data: employee } = await (supabase.from("employees") as any)
-      .select("id, user_id, email, full_name")
+      .select("id, user_id, email, full_name, status")
       .ilike("email", email)
       .maybeSingle() as any;
 
     if (employee) {
+      if (employee.status === "Terminated") {
+        await supabase.auth.signOut();
+        throw new Error("Your account has been terminated. Please contact HR.");
+      }
+      if (employee.status === "Resigned") {
+        await supabase.auth.signOut();
+        throw new Error("Your account is deactivated due to resignation.");
+      }
       console.log("[Auth] Linking employee record for", email, "-> id:", employee.id);
       const updates: any = { user_id: user.id };
       // If the employee record has no name, use the one from Auth

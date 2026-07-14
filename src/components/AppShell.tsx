@@ -5,8 +5,9 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { 
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText, 
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug
 } from "lucide-react";
+import { BugReportWidget } from "./BugReportWidget";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ const nav: NavItem[] = [
   { to: "/profile", label: "My Profile", icon: User },
   { to: "/kiosk", label: "Kiosk Terminal", icon: QrCode, allowedRoles: ["admin"], external: true },
   { to: "/settings", label: "Settings", icon: Settings, allowedRoles: ["admin"] },
+  { to: "/bugs", label: "Bug Management", icon: Bug, allowedRoles: ["admin"] },
   { to: "/resignation", label: "Resignation", icon: LogOut },
 ];
 
@@ -936,6 +938,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
            {children ?? <Outlet />}
         </div>
       </main>
+      <BugReportWidget />
     </div>
   );
 }

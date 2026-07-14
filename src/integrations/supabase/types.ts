@@ -25,6 +25,16 @@ export type Database = {
           id: string
           notes: string | null
           status: string
+          check_in_lat: number | null
+          check_in_lng: number | null
+          check_out_lat: number | null
+          check_out_lng: number | null
+          metadata: Json | null
+          check_in_address: string | null
+          check_out_address: string | null
+          check_out_type: string | null
+          employee_name: string | null
+          department: string | null
         }
         Insert: {
           check_in?: string | null
@@ -36,6 +46,16 @@ export type Database = {
           id?: string
           notes?: string | null
           status?: string
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_out_lat?: number | null
+          check_out_lng?: number | null
+          metadata?: Json | null
+          check_in_address?: string | null
+          check_out_address?: string | null
+          check_out_type?: string | null
+          employee_name?: string | null
+          department?: string | null
         }
         Update: {
           check_in?: string | null
@@ -47,6 +67,16 @@ export type Database = {
           id?: string
           notes?: string | null
           status?: string
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_out_lat?: number | null
+          check_out_lng?: number | null
+          metadata?: Json | null
+          check_in_address?: string | null
+          check_out_address?: string | null
+          check_out_type?: string | null
+          employee_name?: string | null
+          department?: string | null
         }
         Relationships: [
           {
@@ -57,6 +87,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      attendance_policies: {
+        Row: {
+          id: string
+          name: string
+          auto_checkout_enabled: boolean
+          auto_checkout_after_minutes: number
+          qr_attendance_enabled: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          auto_checkout_enabled?: boolean
+          auto_checkout_after_minutes?: number
+          qr_attendance_enabled?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          auto_checkout_enabled?: boolean
+          auto_checkout_after_minutes?: number
+          qr_attendance_enabled?: boolean
+          created_at?: string
+        }
+        Relationships: []
       }
       employees: {
         Row: {
@@ -93,6 +150,7 @@ export type Database = {
           gratuity_amount: number | null
           bonus: number | null
           total_experience: number | null
+          attendance_policy_id: string | null
         }
         Insert: {
           aadhaar_number?: string | null
@@ -128,6 +186,7 @@ export type Database = {
           gratuity_amount?: number | null
           bonus?: number | null
           total_experience?: number | null
+          attendance_policy_id?: string | null
         }
         Update: {
           aadhaar_number?: string | null
@@ -163,8 +222,17 @@ export type Database = {
           gratuity_amount?: number | null
           bonus?: number | null
           total_experience?: number | null
+          attendance_policy_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_attendance_policy_id_fkey"
+            columns: ["attendance_policy_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_policies"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       employee_assets: {
         Row: {

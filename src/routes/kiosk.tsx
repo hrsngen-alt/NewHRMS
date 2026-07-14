@@ -68,13 +68,38 @@ function KioskPage() {
 
   const handlePunch = async (employeeId: string) => {
     try {
+      // 1. Fetch employee details
       const { data: employee, error: empErr } = await supabase
         .from("employees")
-        .select("id, full_name, designation")
+        .select("id, full_name, designation, department, attendance_policy_id, status")
         .eq("id", employeeId)
         .maybeSingle();
 
       if (empErr || !employee) throw new Error("Invalid Employee Identity");
+
+      if (employee.status === "Terminated") {
+        throw new Error("This employee has been terminated.");
+      }
+      if (employee.status === "Resigned") {
+        throw new Error("This employee has resigned.");
+      }
+
+      // 2. Fetch policies to resolve rules
+      const { data: policies } = await supabase
+        .from("attendance_policies" as any)
+        .select("*");
+      
+      const resolvedPolicy = (policies || []).find(p => p.id === employee.attendance_policy_id)
+        || (policies || []).find(p => p.name.toLowerCase() === employee.department?.toLowerCase())
+        || (policies || []).find(p => p.name.toLowerCase() === "inhouse");
+      
+      const isAutoCheckout = resolvedPolicy?.auto_checkout_enabled ?? false;
+      const policyMinutes = resolvedPolicy?.auto_checkout_after_minutes ?? 120;
+      const qrEnabled = resolvedPolicy?.qr_attendance_enabled ?? true;
+
+      if (!qrEnabled) {
+        throw new Error("QR attendance is disabled for your department/policy.");
+      }
 
       const today = new Date().toLocaleDateString('en-CA');
       const { data: latestRecord } = await supabase
@@ -89,25 +114,84 @@ function KioskPage() {
       const isCheckingOut = latestRecord && !latestRecord.check_out;
 
       if (!isCheckingOut) {
+        // Enforce single check-in constraint for non-auto-checkout policies (e.g. Inhouse)
+        if (!isAutoCheckout && latestRecord) {
+          throw new Error("You have already completed your attendance session for today.");
+        }
+
+        // Insert new Check-in session
         await (supabase.from("attendance") as any).insert({
           employee_id: employeeId,
           date: today,
           check_in: new Date().toISOString(),
           status: "present",
-          location_id: selectedLocation.id
+          check_in_lat: selectedLocation.lat || null,
+          check_in_lng: selectedLocation.lng || null,
+          check_in_address: selectedLocation.address || null,
+          employee_name: employee.full_name,
+          department: employee.department || "Staff",
+          check_out_type: "Manual",
+          metadata: { kiosk: true, userAgent: navigator.userAgent }
         });
+
         setScannedResult({ employee, type: 'in' });
         toast.success(`Welcome to ${selectedLocation.name}, ${employee.full_name}!`);
       } else {
         const start = new Date(latestRecord.check_in!);
-        const hours = Math.max(0, (Date.now() - start.getTime()) / 3_600_000);
-        await supabase.from("attendance").update({
-          check_out: new Date().toISOString(),
-          hours_worked: Number(hours.toFixed(2))
-        }).eq("id", latestRecord.id);
-        setScannedResult({ employee, type: 'out' });
-        toast.success(`Goodbye from ${selectedLocation.name}, ${employee.full_name}!`);
+        const diffMs = Date.now() - start.getTime();
+        const diffMins = diffMs / 60000;
+
+        if (isAutoCheckout && diffMins >= policyMinutes) {
+          // Exceeded auto-checkout limit: close the old one automatically, and insert a new check-in!
+          const hours = policyMinutes / 60.0;
+          await supabase.from("attendance").update({
+            check_out: new Date(start.getTime() + policyMinutes * 60000).toISOString(),
+            hours_worked: Number(hours.toFixed(2)),
+            check_out_type: "Automatic",
+            check_out_lat: selectedLocation.lat || null,
+            check_out_lng: selectedLocation.lng || null,
+            check_out_address: selectedLocation.address || null
+          }).eq("id", latestRecord.id);
+
+          // Insert a new Check-in session
+          await (supabase.from("attendance") as any).insert({
+            employee_id: employeeId,
+            date: today,
+            check_in: new Date().toISOString(),
+            status: "present",
+            check_in_lat: selectedLocation.lat || null,
+            check_in_lng: selectedLocation.lng || null,
+            check_in_address: selectedLocation.address || null,
+            employee_name: employee.full_name,
+            department: employee.department || "Staff",
+            check_out_type: "Manual",
+            metadata: { kiosk: true, userAgent: navigator.userAgent }
+          });
+
+          setScannedResult({ employee, type: 'in' });
+          toast.success(`Active session auto-closed. New session started!`);
+        } else {
+          // Normal manual check-out
+          const hours = Math.max(0, diffMs / 3_600_000);
+          await supabase.from("attendance").update({
+            check_out: new Date().toISOString(),
+            hours_worked: Number(hours.toFixed(2)),
+            check_out_lat: selectedLocation.lat || null,
+            check_out_lng: selectedLocation.lng || null,
+            check_out_address: selectedLocation.address || null,
+            check_out_type: "Manual"
+          }).eq("id", latestRecord.id);
+
+          setScannedResult({ employee, type: 'out' });
+          toast.success(`Goodbye from ${selectedLocation.name}, ${employee.full_name}!`);
+        }
       }
+
+      // Purge/Invalidate backend cache
+      await supabase.functions.invoke("attendance-cached", {
+        method: "POST",
+        body: { employee_id: employeeId }
+      });
 
       setTimeout(() => {
         setScannedResult(null);

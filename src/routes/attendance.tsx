@@ -14,7 +14,7 @@ import {
   CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, 
   Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X
 } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn, getDeviceInfo, fetchAddress } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -273,6 +273,12 @@ function AttendancePage() {
 
   const punch = async (type: "in" | "out") => {
     if (!myEmployee) return toast.error("No employee profile linked.");
+    if (myEmployee.status === "Terminated") {
+      return toast.error("Terminated employees cannot perform attendance actions.");
+    }
+    if (myEmployee.status === "Resigned") {
+      return toast.error("Resigned employees cannot perform attendance actions.");
+    }
     
     let lat, lng;
     try {
@@ -297,12 +303,46 @@ function AttendancePage() {
     }
 
     try {
+      // 1. Fetch policies to resolve the rules
+      const { data: policies } = await supabase
+        .from("attendance_policies" as any)
+        .select("*");
+      
+      const resolvedPolicy = (policies || []).find(p => p.id === myEmployee.attendance_policy_id)
+        || (policies || []).find(p => p.name.toLowerCase() === myEmployee.department?.toLowerCase())
+        || (policies || []).find(p => p.name.toLowerCase() === "inhouse");
+      
+      const isAutoCheckout = resolvedPolicy?.auto_checkout_enabled ?? false;
+      const policyMinutes = resolvedPolicy?.auto_checkout_after_minutes ?? 120;
+
+      // 2. Fetch address and device info
+      let address = "";
+      if (lat && lng) {
+        address = await fetchAddress(lat, lng);
+      }
+      const deviceInfo = getDeviceInfo();
+
       if (type === "in") {
+        // Enforce single check-in constraint for non-auto-checkout policies (e.g. Inhouse)
+        if (!isAutoCheckout && latestRecord) {
+          return toast.error("You have already completed your attendance session for today.");
+        }
+
+        // Insert check-in record
         await (supabase.from("attendance") as any).insert({ 
-          employee_id: myEmployee?.id, date: todayStr, check_in: new Date().toISOString(), 
-          status: "present", check_in_lat: lat || null, check_in_lng: lng || null,
-          metadata: isMarketing ? { mode: 'field' } : { mode: 'office' }
+          employee_id: myEmployee?.id, 
+          date: todayStr, 
+          check_in: new Date().toISOString(), 
+          status: "present", 
+          check_in_lat: lat || null, 
+          check_in_lng: lng || null,
+          check_in_address: address || null,
+          employee_name: myEmployee.full_name,
+          department: myEmployee.department || "Staff",
+          check_out_type: "Manual",
+          metadata: { mode: isMarketing ? 'field' : 'office', deviceInfo }
         });
+
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",
           body: { employee_id: myEmployee?.id }
@@ -310,16 +350,39 @@ function AttendancePage() {
         toast.success("Shift started!");
       } else {
         const start = new Date(latestRecord!.check_in!);
-        const hours = Math.max(0, (Date.now() - start.getTime()) / 3_600_000);
-        await (supabase.from("attendance") as any).update({ 
-          check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
-          check_out_lat: lat || null, check_out_lng: lng || null
-        }).eq("id", latestRecord!.id);
+        const diffMs = Date.now() - start.getTime();
+        const diffMins = diffMs / 60000;
+
+        if (isAutoCheckout && diffMins >= policyMinutes) {
+          // Closed automatically at duration limit
+          const hours = policyMinutes / 60.0;
+          await (supabase.from("attendance") as any).update({ 
+            check_out: new Date(start.getTime() + policyMinutes * 60000).toISOString(), 
+            hours_worked: Number(hours.toFixed(2)),
+            check_out_lat: lat || null, 
+            check_out_lng: lng || null,
+            check_out_address: address || null,
+            check_out_type: "Automatic"
+          }).eq("id", latestRecord!.id);
+          toast.success("Shift closed automatically after 2 hours limit.");
+        } else {
+          // Normal manual check-out
+          const hours = Math.max(0, diffMs / 3_600_000);
+          await (supabase.from("attendance") as any).update({ 
+            check_out: new Date().toISOString(), 
+            hours_worked: Number(hours.toFixed(2)),
+            check_out_lat: lat || null, 
+            check_out_lng: lng || null,
+            check_out_address: address || null,
+            check_out_type: "Manual"
+          }).eq("id", latestRecord!.id);
+          toast.success("Shift ended!");
+        }
+
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",
           body: { employee_id: myEmployee?.id }
         });
-        toast.success("Shift ended!");
       }
       qc.invalidateQueries({ queryKey: ["attendance"] });
     } catch (err: any) {
@@ -782,21 +845,24 @@ function AttendancePage() {
 
                       <div className="relative">
                         <div className="absolute -left-[25px] top-2 size-4 rounded-full bg-indigo-500 border-4 border-white dark:border-slate-900 z-10" />
-                        <div className="flex items-center justify-between gap-4">
-                           <div className="flex items-center gap-3">
+                        <div className="flex items-start justify-between gap-4">
+                           <div className="flex items-start gap-3">
                              <div className="space-y-1">
                                <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(I)</p>
                                <p className="text-xs font-bold text-muted-foreground">{checkIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                               {s.check_in_address && (
+                                 <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_in_address}</p>
+                               )}
                              </div>
                              {s.check_in_lat && (
                                <a href={`https://www.google.com/maps?q=${s.check_in_lat},${s.check_in_lng}`} target="_blank" rel="noreferrer" 
-                                  className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all border border-indigo-100 dark:border-indigo-500/20"
+                                  className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all border border-indigo-100 dark:border-indigo-500/20 shrink-0"
                                   title="Check-in Location">
                                  <MapPin className="size-3.5" />
                                </a>
                              )}
                            </div>
-                           <div className="px-4 py-1.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                           <div className="px-4 py-1.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0">
                              Checked In
                            </div>
                         </div>
@@ -812,24 +878,38 @@ function AttendancePage() {
                         {checkOut && (
                           <div className="mt-12 relative">
                             <div className="absolute -left-[25px] top-2 size-4 rounded-full bg-rose-500 border-4 border-white dark:border-slate-900 z-10" />
-                            <div className="flex items-center justify-between gap-4">
-                               <div className="flex items-center gap-3">
+                            <div className="flex items-start justify-between gap-4">
+                               <div className="flex items-start gap-3">
                                  <div className="space-y-1">
                                    <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(O)</p>
                                    <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                                   {s.check_out_address && (
+                                     <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_out_address}</p>
+                                   )}
                                  </div>
                                  {s.check_out_lat && (
                                    <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 
-                                      className="size-8 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all border border-rose-100 dark:border-rose-500/20"
+                                      className="size-8 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all border border-rose-100 dark:border-rose-500/20 shrink-0"
                                       title="Check-out Location">
                                      <MapPin className="size-3.5" />
                                    </a>
                                  )}
                                </div>
-                               <div className="px-4 py-1.5 rounded-full bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                 Checked Out
+                               <div className={cn(
+                                 "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0",
+                                 s.check_out_type === "Automatic"
+                                   ? "bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                   : "bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                               )}>
+                                 Checked Out ({s.check_out_type || "Manual"})
                                </div>
                             </div>
+                          </div>
+                        )}
+
+                        {s.metadata && typeof s.metadata === "object" && (s.metadata as any).deviceInfo && (
+                          <div className="text-[9px] font-mono font-bold text-muted-foreground mt-4 border-t pt-2 border-dashed border-slate-100 dark:border-slate-800">
+                            Device: {(s.metadata as any).deviceInfo.os || "Unknown OS"} ({(s.metadata as any).deviceInfo.browser || "Unknown Browser"})
                           </div>
                         )}
                       </div>

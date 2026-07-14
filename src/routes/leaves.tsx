@@ -53,6 +53,10 @@ function LeavesPage() {
     const targetEmployeeId = role === "admin" ? String(fd.get("employee_id") || myEmployee?.id) : myEmployee?.id;
     if (!targetEmployeeId || targetEmployeeId === "undefined" || targetEmployeeId === "null") return toast.error("No employee profile linked/selected.");
 
+    const { data: targetEmp } = await supabase.from("employees").select("status").eq("id", targetEmployeeId).maybeSingle();
+    if (targetEmp?.status === "Terminated") return toast.error("Terminated employees cannot apply for leaves.");
+    if (targetEmp?.status === "Resigned") return toast.error("Resigned employees cannot apply for leaves.");
+
     const start = String(fd.get("start_date"));
     const end = String(fd.get("end_date"));
     const days = Math.max(1, Math.round((+new Date(end) - +new Date(start)) / 86_400_000) + 1);

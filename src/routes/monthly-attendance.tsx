@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { 
   Clock, Play, Square, Search, Users, Calendar, Activity, 
   CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, 
-  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, AlertTriangle, FileSpreadsheet
+  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, AlertTriangle, FileSpreadsheet, Download
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -176,6 +176,87 @@ function AttendancePage() {
       toast.error("Failed to generate report: " + err.message);
     } finally {
       setDownloadingReport(false);
+      toast.dismiss(loadingToast);
+    }
+  };
+
+  const [downloadingDetailed, setDownloadingDetailed] = useState(false);
+
+  const downloadDetailedAttendanceReport = async () => {
+    setDownloadingDetailed(true);
+    const loadingToast = toast.loading("Compiling detailed attendance logs...");
+    try {
+      const year = Number(selYear);
+      const month = Number(selMonth);
+      const totalDays = new Date(year, month, 0).getDate();
+      const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
+      const endStr = `${year}-${String(month).padStart(2, "0")}-${totalDays}`;
+
+      // 1. Fetch active employees
+      let empQuery = supabase.from("employees").select("id, full_name, employee_code, department").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
+      if (isManager && myEmployee) {
+        empQuery = empQuery.eq("department", myEmployee.department);
+      }
+      const { data: employees, error: empErr } = await empQuery;
+      if (empErr) throw empErr;
+
+      if (!employees || employees.length === 0) {
+        toast.error("No active employees found.");
+        return;
+      }
+
+      // 2. Fetch all detailed logs for these employees
+      const employeeIds = employees.map(e => e.id);
+      const { data: logs, error: logErr } = await supabase
+        .from("attendance")
+        .select("*")
+        .in("employee_id", employeeIds)
+        .gte("date", startStr)
+        .lte("date", endStr)
+        .order("check_in", { ascending: true });
+      if (logErr) throw logErr;
+
+      // 3. Format rows
+      const reportRows = (logs || []).map((log) => {
+        const emp = employees.find(e => e.id === log.employee_id);
+        const checkInTime = log.check_in ? new Date(log.check_in).toLocaleString() : "—";
+        const checkOutTime = log.check_out ? new Date(log.check_out).toLocaleString() : "—";
+        
+        let deviceStr = "—";
+        if (log.metadata && typeof log.metadata === "object") {
+          const info = (log.metadata as any).deviceInfo;
+          if (info) deviceStr = `${info.os} (${info.browser})`;
+        }
+
+        return {
+          "Employee ID": emp?.employee_code || "—",
+          "Employee Name": log.employee_name || emp?.full_name || "—",
+          "Team/Department": log.department || emp?.department || "—",
+          "Date": log.date,
+          "Check-In Time": checkInTime,
+          "Check-Out Time": checkOutTime,
+          "Hours Worked": log.hours_worked !== null ? String(log.hours_worked) : "—",
+          "Check-Out Type": log.check_out_type || "—",
+          "Check-In Location (Lat/Lng)": log.check_in_lat && log.check_in_lng ? `${log.check_in_lat}, ${log.check_in_lng}` : "—",
+          "Check-In Address": log.check_in_address || "—",
+          "Check-Out Location (Lat/Lng)": log.check_out_lat && log.check_out_lng ? `${log.check_out_lat}, ${log.check_out_lng}` : "—",
+          "Check-Out Address": log.check_out_address || "—",
+          "Device Info": deviceStr
+        };
+      });
+
+      // 4. Excel export
+      const ws = XLSX.utils.json_to_sheet(reportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Detailed Logs");
+      
+      const periodStr = `${months[month - 1]}_${year}`;
+      XLSX.writeFile(wb, `Detailed_Attendance_Logs_${periodStr}.xlsx`);
+      toast.success("Detailed attendance logs downloaded!");
+    } catch (err: any) {
+      toast.error("Failed to generate detailed report: " + err.message);
+    } finally {
+      setDownloadingDetailed(false);
       toast.dismiss(loadingToast);
     }
   };
@@ -550,14 +631,24 @@ function AttendancePage() {
            </Button>
 
            <Button
-             variant="outline"
-             onClick={downloadMonthlyAttendanceReport}
-             disabled={downloadingReport}
-             className="h-12 w-full md:w-auto px-6 rounded-xl font-bold text-green-600 border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-500/10 flex items-center gap-2 shadow-sm"
-           >
-             <FileSpreadsheet className={cn("size-4", downloadingReport && "animate-spin")} />
-             Export Attendance Excel
-           </Button>
+              variant="outline"
+              onClick={downloadMonthlyAttendanceReport}
+              disabled={downloadingReport}
+              className="h-12 w-full md:w-auto px-6 rounded-xl font-bold text-green-600 border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-500/10 flex items-center gap-2 shadow-sm"
+            >
+              <FileSpreadsheet className={cn("size-4", downloadingReport && "animate-spin")} />
+              Export Summary Excel
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={downloadDetailedAttendanceReport}
+              disabled={downloadingDetailed}
+              className="h-12 w-full md:w-auto px-6 rounded-xl font-bold text-indigo-600 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 flex items-center gap-2 shadow-sm"
+            >
+              <Download className={cn("size-4", downloadingDetailed && "animate-spin")} />
+              Export Detailed Logs
+            </Button>
 
             <div className="flex flex-wrap items-center gap-4 w-full md:w-auto md:ml-auto justify-center md:justify-end text-[10px] font-black uppercase tracking-widest text-muted-foreground pt-2 md:pt-0">
                <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-green-500" /> Working Day</span>
@@ -970,21 +1061,24 @@ function AttendancePage() {
 
                       <div className="relative">
                         <div className="absolute -left-[25px] top-2 size-4 rounded-full bg-indigo-500 border-4 border-white dark:border-slate-900 z-10" />
-                        <div className="flex items-center justify-between gap-4">
-                           <div className="flex items-center gap-3">
+                        <div className="flex items-start justify-between gap-4">
+                           <div className="flex items-start gap-3">
                              <div className="space-y-1">
                                <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(I)</p>
                                <p className="text-xs font-bold text-muted-foreground">{checkIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                               {s.check_in_address && (
+                                 <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_in_address}</p>
+                               )}
                              </div>
                              {s.check_in_lat && (
                                <a href={`https://www.google.com/maps?q=${s.check_in_lat},${s.check_in_lng}`} target="_blank" rel="noreferrer" 
-                                  className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all border border-indigo-100 dark:border-indigo-500/20"
+                                  className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all border border-indigo-100 dark:border-indigo-500/20 shrink-0"
                                   title="Check-in Location">
                                  <MapPin className="size-3.5" />
                                </a>
                              )}
                            </div>
-                           <div className="px-4 py-1.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                           <div className="px-4 py-1.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0">
                              <div className="size-1.5 rounded-full bg-current animate-pulse" />
                              Checked In
                            </div>
@@ -1003,25 +1097,39 @@ function AttendancePage() {
                         {checkOut && (
                           <div className="mt-12 relative">
                             <div className="absolute -left-[25px] top-2 size-4 rounded-full bg-rose-500 border-4 border-white dark:border-slate-900 z-10" />
-                            <div className="flex items-center justify-between gap-4">
-                               <div className="flex items-center gap-3">
+                            <div className="flex items-start justify-between gap-4">
+                               <div className="flex items-start gap-3">
                                  <div className="space-y-1">
                                    <p className="text-sm font-black text-slate-900 dark:text-white">In/Out Entry {idx + 1}(O)</p>
                                    <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                                   {s.check_out_address && (
+                                     <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_out_address}</p>
+                                   )}
                                  </div>
                                  {s.check_out_lat && (
                                    <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 
-                                      className="size-8 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all border border-rose-100 dark:border-rose-500/20"
+                                      className="size-8 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all border border-rose-100 dark:border-rose-500/20 shrink-0"
                                       title="Check-out Location">
                                      <MapPin className="size-3.5" />
                                    </a>
                                  )}
                                </div>
-                               <div className="px-4 py-1.5 rounded-full bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                               <div className={cn(
+                                 "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0",
+                                 s.check_out_type === "Automatic"
+                                   ? "bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                   : "bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                               )}>
                                  <div className="size-1.5 rounded-full bg-current" />
-                                 Checked Out
+                                 Checked Out ({s.check_out_type || "Manual"})
                                </div>
                             </div>
+                          </div>
+                        )}
+
+                        {s.metadata && typeof s.metadata === "object" && (s.metadata as any).deviceInfo && (
+                          <div className="text-[9px] font-mono font-bold text-muted-foreground mt-4 border-t pt-2 border-dashed border-slate-100 dark:border-slate-800">
+                            Device: {(s.metadata as any).deviceInfo.os || "Unknown OS"} ({(s.metadata as any).deviceInfo.browser || "Unknown Browser"})
                           </div>
                         )}
                       </div>

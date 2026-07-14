@@ -1008,6 +1008,15 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
   const [pf, setPf] = useState(editingEmployee?.pf_amount ?? 0);
   const [esic, setEsic] = useState(editingEmployee?.esic_amount ?? 0);
   const [gratuity, setGratuity] = useState(editingEmployee?.gratuity_amount ?? 0);
+  const [policyId, setPolicyId] = useState<string>(editingEmployee?.attendance_policy_id ?? "default");
+
+  const { data: policies = [] } = useQuery({
+    queryKey: ["attendance-policies"],
+    queryFn: async () => {
+      const { data } = await supabase.from("attendance_policies" as any).select("id, name");
+      return data || [];
+    }
+  });
 
   useEffect(() => {
     setBasic(editingEmployee?.basic_salary ?? 0);
@@ -1016,6 +1025,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
     setPf(editingEmployee?.pf_amount ?? 0);
     setEsic(editingEmployee?.esic_amount ?? 0);
     setGratuity(editingEmployee?.gratuity_amount ?? 0);
+    setPolicyId(editingEmployee?.attendance_policy_id ?? "default");
   }, [editingEmployee]);
 
   const grossSalary = Number(basic || 0) + Number(hra || 0) + Number(bonus || 0);
@@ -1042,6 +1052,27 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
           />
         </div>
       ))}
+
+      <div className="col-span-1 sm:col-span-2 border-t pt-4 mt-2">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Attendance Settings</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Attendance Policy</Label>
+            <input type="hidden" name="attendance_policy_id" value={policyId === "default" ? "" : policyId} />
+            <Select value={policyId} onValueChange={setPolicyId}>
+              <SelectTrigger className="h-10 rounded-lg bg-muted/30 focus:bg-white border">
+                <SelectValue placeholder="Default (Based on Department)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default (Based on Department)</SelectItem>
+                {policies.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name} Policy</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
       
       <div className="col-span-1 sm:col-span-2 border-t pt-4 mt-2">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Salary Structure</h3>

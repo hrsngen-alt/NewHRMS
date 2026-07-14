@@ -11,11 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, Calendar, ClipboardList, CheckCircle2, XCircle, Clock, Search, Filter, Pencil, Eye, User, Mail, Phone, Building2, Fingerprint, FileIcon, ShieldCheck } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
-
+import { TerminationPanel } from "./-termination-panel";
+import { usePermissions } from "@/hooks/usePermissions";
 export const Route = createFileRoute("/resignation")({
   component: () => (
     <AppShell>
@@ -26,8 +28,10 @@ export const Route = createFileRoute("/resignation")({
 
 function ResignationPage() {
   const { user, role, employeeId } = useAuth();
+  const { hasPermission } = usePermissions();
   const qc = useQueryClient();
   const isAdmin = role === "admin";
+  const isTerminationAdmin = role === "admin" || hasPermission("Termination", "manage") || hasPermission("Termination", "view");
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
@@ -183,12 +187,21 @@ function ResignationPage() {
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Resignation Management</h1>
-          <p className="text-sm font-medium text-muted-foreground/60 mt-1">Manage employee offboarding and formal departure requests.</p>
+          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Offboarding</h1>
+          <p className="text-sm font-medium text-muted-foreground/60 mt-1">Manage employee resignations and company-initiated terminations.</p>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-12 gap-10">
+      <Tabs defaultValue="resignation" className="space-y-8">
+        <TabsList className="bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl">
+          <TabsTrigger value="resignation" className="rounded-lg font-bold">Resignations</TabsTrigger>
+          {isTerminationAdmin && (
+            <TabsTrigger value="termination" className="rounded-lg font-bold">Employee Termination</TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="resignation" className="space-y-10">
+          <div className="grid lg:grid-cols-12 gap-10">
         {!isAdmin && (
           <div className="lg:col-span-4 space-y-6">
             <Card className="rounded-[32px] border-2 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
@@ -594,6 +607,14 @@ function ResignationPage() {
           )}
         </DialogContent>
       </Dialog>
+        </TabsContent>
+        
+        {isTerminationAdmin && (
+          <TabsContent value="termination" className="space-y-10 mt-0">
+            <TerminationPanel />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

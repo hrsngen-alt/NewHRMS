@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
-import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download } from "lucide-react";
+import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download, LogOut, UserX } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, Area, CartesianGrid, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, Suspense, lazy } from "react";
@@ -245,18 +245,26 @@ function Dashboard() {
     queryKey: ["dashboard-stats", user?.id],
     staleTime: 1000 * 30,
     queryFn: async () => {
-      const [emp, att, lv, pay] = await Promise.all([
+      const [emp, att, lv, pay, onLeaveRes] = await Promise.all([
         supabase.from("employees").select("*"),
         supabase.from("attendance").select("*").eq("date", today),
         supabase.from("leaves").select("*").eq("status", "pending"),
         supabase.from("payslips").select("net_pay"),
+        supabase.from("leaves").select("employee_id").eq("status", "approved").lte("start_date", today).gte("end_date", today)
       ]);
       // Locations table is optional — don't block on it
       const { data: locData } = await supabase.from("company_locations" as any).select("*");
       const loc = { data: locData || [] };
 
+      const allEmps = emp.data ?? [];
+      const activeCount = allEmps.filter(e => e.status?.toLowerCase() === 'active').length;
+      const resignedCount = allEmps.filter(e => e.status?.toLowerCase() === 'resigned').length;
+      const terminatedCount = allEmps.filter(e => e.status?.toLowerCase() === 'terminated').length;
+      
+      const onLeaveTodayCount = new Set((onLeaveRes.data || []).map((l: any) => l.employee_id)).size;
+
       const deptMap: Record<string, number> = {};
-      (emp.data ?? []).forEach((e) => { const d = e.department || "Unassigned"; deptMap[d] = (deptMap[d] ?? 0) + 1; });
+      allEmps.forEach((e) => { const d = e.department || "Unassigned"; deptMap[d] = (deptMap[d] ?? 0) + 1; });
       const deptData = Object.entries(deptMap).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
 
       const totalNet = (pay.data ?? []).reduce((s, p) => s + Number(p.net_pay), 0);
@@ -271,7 +279,11 @@ function Dashboard() {
       const personalHours = (myHoursData ?? []).reduce((s, r) => s + Number(r.hours_worked || 0), 0).toFixed(1);
 
       return {
-        totalEmployees: emp.data?.length ?? 0,
+        totalEmployees: allEmps.length,
+        activeCount,
+        resignedCount,
+        terminatedCount,
+        onLeaveTodayCount,
         presentToday: uniquePresent,
         pendingLeaves: lv.data?.length ?? 0,
         totalPayroll: totalNet,
@@ -280,7 +292,7 @@ function Dashboard() {
         attTrend,
         locations: (loc as any).data || [],
         locationCount: (loc as any).data?.length ?? 0,
-        recentHires: (emp.data ?? []).slice(0, 3)
+        recentHires: allEmps.slice(0, 3)
       };
     },
     enabled: !!user,
@@ -494,6 +506,39 @@ function Dashboard() {
           <StatCard icon={Activity} label="Personal Performance" value={`${stats?.personalHours ?? 0}h`} trend="up" trendValue="+5.4%" colorClass="bg-amber-500" />
         )}
       </div>
+
+      {isAdmin && (
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 mt-6">
+          <div className="p-5 rounded-[24px] bg-indigo-50/80 dark:bg-indigo-950/20 border-2 border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">Active Staff</p>
+              <p className="text-3xl font-black text-slate-800 dark:text-slate-200">{stats?.activeCount ?? 0}</p>
+            </div>
+            <div className="size-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center"><Users className="size-6 text-indigo-600 dark:text-indigo-400" /></div>
+          </div>
+          <div className="p-5 rounded-[24px] bg-teal-50/80 dark:bg-teal-950/20 border-2 border-teal-100 dark:border-teal-900/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-teal-600 dark:text-teal-400 mb-1">On Leave Today</p>
+              <p className="text-3xl font-black text-slate-800 dark:text-slate-200">{stats?.onLeaveTodayCount ?? 0}</p>
+            </div>
+            <div className="size-12 bg-teal-100 dark:bg-teal-900/50 rounded-2xl flex items-center justify-center"><CalendarDays className="size-6 text-teal-600 dark:text-teal-400" /></div>
+          </div>
+          <div className="p-5 rounded-[24px] bg-amber-50/80 dark:bg-amber-950/20 border-2 border-amber-100 dark:border-amber-900/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">Resigned</p>
+              <p className="text-3xl font-black text-slate-800 dark:text-slate-200">{stats?.resignedCount ?? 0}</p>
+            </div>
+            <div className="size-12 bg-amber-100 dark:bg-amber-900/50 rounded-2xl flex items-center justify-center"><LogOut className="size-6 text-amber-600 dark:text-amber-400" /></div>
+          </div>
+          <div className="p-5 rounded-[24px] bg-red-50/80 dark:bg-red-950/20 border-2 border-red-100 dark:border-red-900/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 mb-1">Terminated</p>
+              <p className="text-3xl font-black text-slate-800 dark:text-slate-200">{stats?.terminatedCount ?? 0}</p>
+            </div>
+            <div className="size-12 bg-red-100 dark:bg-red-900/50 rounded-2xl flex items-center justify-center"><UserX className="size-6 text-red-600 dark:text-red-400" /></div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-12">
         {isAdmin ? (

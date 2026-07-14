@@ -30,6 +30,7 @@ import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as DevResetRouteImport } from './routes/dev-reset'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as BugsRouteImport } from './routes/bugs'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AnnouncementsRouteImport } from './routes/announcements'
 import { Route as AccessControlRouteImport } from './routes/access-control'
@@ -140,6 +141,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BugsRoute = BugsRouteImport.update({
+  id: '/bugs',
+  path: '/bugs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AttendanceRoute = AttendanceRouteImport.update({
   id: '/attendance',
   path: '/attendance',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/access-control': typeof AccessControlRoute
   '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRoute
+  '/bugs': typeof BugsRoute
   '/dashboard': typeof DashboardRoute
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/access-control': typeof AccessControlRoute
   '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRoute
+  '/bugs': typeof BugsRoute
   '/dashboard': typeof DashboardRoute
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/access-control': typeof AccessControlRoute
   '/announcements': typeof AnnouncementsRoute
   '/attendance': typeof AttendanceRoute
+  '/bugs': typeof BugsRoute
   '/dashboard': typeof DashboardRoute
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/access-control'
     | '/announcements'
     | '/attendance'
+    | '/bugs'
     | '/dashboard'
     | '/dev-reset'
     | '/directory'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/access-control'
     | '/announcements'
     | '/attendance'
+    | '/bugs'
     | '/dashboard'
     | '/dev-reset'
     | '/directory'
@@ -304,6 +315,7 @@ export interface FileRouteTypes {
     | '/access-control'
     | '/announcements'
     | '/attendance'
+    | '/bugs'
     | '/dashboard'
     | '/dev-reset'
     | '/directory'
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   AccessControlRoute: typeof AccessControlRoute
   AnnouncementsRoute: typeof AnnouncementsRoute
   AttendanceRoute: typeof AttendanceRoute
+  BugsRoute: typeof BugsRoute
   DashboardRoute: typeof DashboardRoute
   DevResetRoute: typeof DevResetRoute
   DirectoryRoute: typeof DirectoryRoute
@@ -504,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bugs': {
+      id: '/bugs'
+      path: '/bugs'
+      fullPath: '/bugs'
+      preLoaderRoute: typeof BugsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/attendance': {
       id: '/attendance'
       path: '/attendance'
@@ -540,6 +560,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccessControlRoute: AccessControlRoute,
   AnnouncementsRoute: AnnouncementsRoute,
   AttendanceRoute: AttendanceRoute,
+  BugsRoute: BugsRoute,
   DashboardRoute: DashboardRoute,
   DevResetRoute: DevResetRoute,
   DirectoryRoute: DirectoryRoute,
