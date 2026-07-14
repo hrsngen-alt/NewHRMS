@@ -114,10 +114,7 @@ function KioskPage() {
       const isCheckingOut = latestRecord && !latestRecord.check_out;
 
       if (!isCheckingOut) {
-        // Enforce single check-in constraint for non-auto-checkout policies (e.g. Inhouse)
-        if (!isAutoCheckout && latestRecord) {
-          throw new Error("You have already completed your attendance session for today.");
-        }
+
 
         // Insert new Check-in session
         await (supabase.from("attendance") as any).insert({

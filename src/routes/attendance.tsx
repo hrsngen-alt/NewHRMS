@@ -351,10 +351,7 @@ function AttendancePage() {
       const deviceInfo = getDeviceInfo();
 
       if (type === "in") {
-        // Enforce single check-in constraint for non-auto-checkout policies (e.g. Inhouse)
-        if (!isAutoCheckout && latestRecord) {
-          return toast.error("You have already completed your attendance session for today.");
-        }
+
 
         // Insert check-in record
         await (supabase.from("attendance") as any).insert({ 
