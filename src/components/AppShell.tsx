@@ -210,6 +210,21 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && user) {
+      const runCheckouts = async () => {
+        try {
+          await supabase.rpc('process_auto_checkouts');
+        } catch (e) {
+          console.error("Background auto-checkout error:", e);
+        }
+      };
+      runCheckouts(); // Run once immediately on mount
+      const interval = setInterval(runCheckouts, 60000); // Check every 1 minute
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleTouchStart = (e: TouchEvent) => {

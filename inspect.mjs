@@ -11,16 +11,27 @@ async function main() {
     .eq("email", "hardikparmar0306@gmail.com")
     .single();
 
-  console.log("Employee Policy:", employee?.attendance_policies);
-
-  const { data: attendance } = await supabase
+  console.log("Fetching attendance before RPC...");
+  const { data: attendanceBefore } = await supabase
     .from("attendance")
     .select("*")
     .eq("employee_id", employee?.id)
     .is("check_out", null)
     .order("created_at", { ascending: false })
     .limit(1);
+  console.log("Before:", attendanceBefore);
 
-  console.log("Latest Active Attendance:", attendance);
+  console.log("Running RPC process_auto_checkouts...");
+  const { error } = await supabase.rpc("process_auto_checkouts");
+  console.log("RPC Error:", error);
+
+  console.log("Fetching attendance after RPC...");
+  const { data: attendanceAfter } = await supabase
+    .from("attendance")
+    .select("*")
+    .eq("employee_id", employee?.id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  console.log("After:", attendanceAfter);
 }
 main().catch(console.error);

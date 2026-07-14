@@ -288,6 +288,15 @@ function AttendancePage() {
           timeout: 10000,
           maximumAge: 0
         });
+      }).catch(async (e) => {
+        if (e.code === 1) throw e;
+        return await new Promise<GeolocationPosition>((res2, rej2) => {
+          navigator.geolocation.getCurrentPosition(res2, rej2, { 
+            enableHighAccuracy: false, 
+            timeout: 10000,
+            maximumAge: 0
+          });
+        });
       });
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
@@ -305,12 +314,13 @@ function AttendancePage() {
     try {
       // 1. Fetch policies to resolve the rules
       const { data: policies } = await supabase
-        .from("attendance_policies" as any)
+        .from("attendance_policies")
         .select("*");
       
-      const resolvedPolicy = (policies || []).find(p => p.id === myEmployee.attendance_policy_id)
-        || (policies || []).find(p => p.name.toLowerCase() === myEmployee.department?.toLowerCase())
-        || (policies || []).find(p => p.name.toLowerCase() === "inhouse");
+      const policiesList = (policies as any[]) || [];
+      const resolvedPolicy = policiesList.find((p: any) => p.id === myEmployee.attendance_policy_id)
+        || policiesList.find((p: any) => p.name?.toLowerCase() === myEmployee.department?.toLowerCase())
+        || policiesList.find((p: any) => p.name?.toLowerCase() === "inhouse");
       
       const isAutoCheckout = resolvedPolicy?.auto_checkout_enabled ?? false;
       const policyMinutes = resolvedPolicy?.auto_checkout_after_minutes ?? 120;

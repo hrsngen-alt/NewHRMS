@@ -341,7 +341,16 @@ function Dashboard() {
         enableHighAccuracy: true,
         timeout: 10000, 
         maximumAge: 0 
-      }));
+      })).catch(async (e) => {
+        if (e.code === 1) throw e;
+        return await new Promise<GeolocationPosition>((res2, rej2) => {
+          navigator.geolocation.getCurrentPosition(res2, rej2, { 
+            enableHighAccuracy: false, 
+            timeout: 10000,
+            maximumAge: 0
+          });
+        });
+      });
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
     } catch (e) {
