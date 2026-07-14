@@ -279,11 +279,11 @@ function KioskPage() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.15),transparent)] pointer-events-none" />
       
       {/* Location Header */}
-      <div className="absolute top-8 left-8 flex items-center gap-4 z-20">
+      <div className="absolute top-4 left-4 md:top-8 md:left-8 flex items-center gap-3 md:gap-4 z-20">
          <div className="size-12 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center text-primary shadow-xl">
             <MapPin className="size-6" />
          </div>
-         <div>
+         <div className="hidden sm:block">
             <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Current Terminal</p>
             <p className="text-lg font-black text-white leading-none mt-1">{selectedLocation.name}</p>
          </div>
@@ -291,7 +291,7 @@ function KioskPage() {
            variant="ghost" 
            size="sm" 
            onClick={() => setSelectedLocation(null)}
-           className="text-slate-500 hover:text-white text-[10px] font-black uppercase tracking-widest ml-4 h-8 px-3 rounded-lg border border-white/5"
+           className="text-slate-500 hover:text-white text-[10px] font-black uppercase tracking-widest sm:ml-4 h-8 px-3 rounded-lg border border-white/5"
          >
            Switch
          </Button>
@@ -299,16 +299,16 @@ function KioskPage() {
 
       <div className="z-10 w-full max-w-2xl space-y-8 animate-in fade-in duration-1000">
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-2 md:mb-4 mt-16 md:mt-0">
             <Sparkles className="size-3" /> Digital Kiosk Terminal
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter leading-none">{companyName} Kiosk</h1>
-          <p className="text-slate-400 font-medium">Scan your Digital ID to record your session.</p>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-none">{companyName} Kiosk</h1>
+          <p className="text-slate-400 font-medium text-sm md:text-base">Scan your Digital ID to record your session.</p>
         </div>
 
         <div className="relative group">
            <div className={cn(
-             "rounded-[40px] border-8 border-slate-800 bg-slate-900 shadow-[0_0_100px_-20px_rgba(99,102,241,0.3)] overflow-hidden transition-all duration-500",
+             "rounded-[32px] md:rounded-[40px] border-[6px] md:border-8 border-slate-800 bg-slate-900 shadow-[0_0_60px_-20px_rgba(99,102,241,0.3)] md:shadow-[0_0_100px_-20px_rgba(99,102,241,0.3)] overflow-hidden transition-all duration-500",
              scannedResult ? "scale-95 opacity-40 blur-sm" : "scale-100 opacity-100"
            )}>
               <div id="reader" className="w-full aspect-square" />
