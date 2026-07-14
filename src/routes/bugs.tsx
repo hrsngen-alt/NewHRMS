@@ -110,42 +110,44 @@ function BugsDashboard() {
       </div>
 
       <Card className="rounded-[32px] shadow-xl overflow-hidden border-2">
-        <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative flex-1 max-w-sm">
+        <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b p-4 sm:p-6 flex flex-col justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+            <div className="relative flex-1 w-full sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input placeholder="Search ticket or title..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-11 rounded-xl" />
+              <Input placeholder="Search ticket or title..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-11 rounded-xl w-full" />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px] h-11 rounded-xl"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Status</SelectItem>
-                {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[150px] h-11 rounded-xl"><SelectValue placeholder="Priority" /></SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="Low">Low</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-                <SelectItem value="Critical">Critical</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="flex-1 sm:w-[150px] h-11 rounded-xl"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Status</SelectItem>
+                  {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="flex-1 sm:w-[150px] h-11 rounded-xl"><SelectValue placeholder="Priority" /></SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50/50 dark:bg-slate-900/20">
               <TableRow className="border-none">
-                <TableHead className="font-black uppercase text-[10px] tracking-widest pl-6 py-4">Ticket ID</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest">Reporter</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest">Title</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest">Priority</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest">Status</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest">Date</TableHead>
-                <TableHead className="text-right pr-6"></TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-widest pl-4 sm:pl-6 py-4 whitespace-nowrap">Ticket ID</TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-widest whitespace-nowrap">Reporter</TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-widest whitespace-nowrap">Title</TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-widest whitespace-nowrap">Priority</TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-widest whitespace-nowrap">Status</TableHead>
+                <TableHead className="font-black uppercase text-[10px] tracking-widest whitespace-nowrap">Date</TableHead>
+                <TableHead className="text-right pr-4 sm:pr-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -155,19 +157,21 @@ function BugsDashboard() {
                 <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic">No bugs found.</TableCell></TableRow>
               ) : filteredBugs.map((b: any) => (
                 <TableRow key={b.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => setSelectedBug(b)}>
-                  <TableCell className="pl-6 font-mono font-bold text-xs">{b.ticket_id}</TableCell>
-                  <TableCell>
+                  <TableCell className="pl-4 sm:pl-6 font-mono font-bold text-xs whitespace-nowrap">{b.ticket_id}</TableCell>
+                  <TableCell className="whitespace-nowrap min-w-[120px]">
                     <p className="font-bold text-sm">{b.employees?.full_name}</p>
                     <p className="text-[10px] text-muted-foreground uppercase">{b.employees?.department}</p>
                   </TableCell>
-                  <TableCell className="max-w-[250px]">
+                  <TableCell className="max-w-[200px] sm:max-w-[250px]">
                     <p className="font-bold text-sm truncate">{b.title}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{b.report_type} • {b.category}</p>
                   </TableCell>
-                  <TableCell><Badge className={cn("text-[9px] font-black uppercase border-none", getPriorityColor(b.priority))}>{b.priority}</Badge></TableCell>
-                  <TableCell><Badge className={cn("text-[10px] font-black uppercase border-none", getStatusColor(b.status))}>{b.status}</Badge></TableCell>
-                  <TableCell className="text-xs text-muted-foreground font-medium">{new Date(b.created_at).toLocaleDateString('en-GB')}</TableCell>
-                  <TableCell className="text-right pr-6">
+                  <TableCell className="whitespace-nowrap"><Badge className={cn("text-[9px] font-black uppercase border-none", getPriorityColor(b.priority))}>{b.priority}</Badge></TableCell>
+                  <TableCell className="whitespace-nowrap"><Badge className={cn("text-[10px] font-black uppercase border-none", getStatusColor(b.status))}>{b.status}</Badge></TableCell>
+                  <TableCell className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                    {new Date(b.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right pr-4 sm:pr-6 whitespace-nowrap">
                      <Button variant="ghost" size="sm" className="rounded-lg text-xs font-bold">Review</Button>
                   </TableCell>
                 </TableRow>
@@ -242,29 +246,29 @@ function BugDetailsModal({ bug, onClose, team, employeeId, onUpdate }: any) {
   return (
     <Dialog open={!!bug} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-5xl h-[90vh] p-0 flex flex-col rounded-[32px] overflow-hidden bg-slate-50 dark:bg-zinc-950">
-        <DialogHeader className="p-6 bg-white dark:bg-zinc-900 border-b shrink-0 flex flex-row items-center justify-between">
-          <div>
-            <DialogTitle className="text-2xl font-black flex items-center gap-3">
-              {bug.title}
-              <Badge variant="outline" className="font-mono text-xs border-primary/20 text-primary">{bug.ticket_id}</Badge>
+        <DialogHeader className="p-4 sm:p-6 bg-white dark:bg-zinc-900 border-b shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="w-full">
+            <DialogTitle className="text-lg sm:text-2xl font-black flex flex-wrap items-center gap-2 sm:gap-3">
+              <span className="truncate">{bug.title}</span>
+              <Badge variant="outline" className="font-mono text-xs border-primary/20 text-primary shrink-0">{bug.ticket_id}</Badge>
             </DialogTitle>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Reported by {bug.employees?.full_name} on {new Date(bug.created_at).toLocaleString()}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1.5 sm:mt-1">Reported by {bug.employees?.full_name} on {new Date(bug.created_at).toLocaleString()}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Select value={assigned} onValueChange={setAssigned}>
-              <SelectTrigger className="w-[180px] h-9 rounded-lg text-xs font-bold"><SelectValue placeholder="Assign To..." /></SelectTrigger>
+              <SelectTrigger className="flex-1 sm:w-[180px] h-9 rounded-lg text-xs font-bold"><SelectValue placeholder="Assign To..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="unassigned">Unassigned</SelectItem>
                 {team.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[140px] h-9 rounded-lg text-xs font-bold bg-white"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="flex-1 sm:w-[140px] h-9 rounded-lg text-xs font-bold bg-white dark:bg-zinc-950"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={handleUpdate} disabled={submitting} className="rounded-lg h-9 font-bold">Save Changes</Button>
+            <Button size="sm" onClick={handleUpdate} disabled={submitting} className="rounded-lg h-9 font-bold w-full sm:w-auto">Save</Button>
           </div>
         </DialogHeader>
 
