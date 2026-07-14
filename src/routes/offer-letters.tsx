@@ -13,12 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   FileCheck, Plus, Search, Download, Eye, Send, CheckCircle2,
   XCircle, Clock, FileText, Pencil, Trash2, Printer,
-  AlertCircle, LayoutTemplate, Calendar, RefreshCw, X
+  AlertCircle, LayoutTemplate, Calendar, RefreshCw, X, Check, ChevronsUpDown
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -439,6 +441,7 @@ function OfferLettersPage() {
 function GenerateModal({ offer, employees, templates, companyName, employeeId, onClose, onSaved }: any) {
   const [step, setStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEmpComboboxOpen, setIsEmpComboboxOpen] = useState(false);
   const [selectedEmpId, setSelectedEmpId] = useState(offer?.employee_id || "__none__");
   const [form, setForm] = useState<any>({
     candidate_name: offer?.candidate_name || "", candidate_email: offer?.candidate_email || "",
@@ -535,13 +538,51 @@ function GenerateModal({ offer, employees, templates, companyName, employeeId, o
             <div className="space-y-5">
               <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2 block">Auto-fill from existing employee (optional)</Label>
-                <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
-                  <SelectTrigger className="rounded-xl border-2 h-11"><SelectValue placeholder="Select employee to pre-fill details..." /></SelectTrigger>
-                  <SelectContent>
-                <SelectItem value="__none__">— Enter manually —</SelectItem>
-                    {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.full_name} ({e.employee_code})</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Popover open={isEmpComboboxOpen} onOpenChange={setIsEmpComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isEmpComboboxOpen}
+                      className="w-full h-11 rounded-xl justify-between border-2 bg-white dark:bg-slate-900 shadow-sm"
+                    >
+                      {selectedEmpId && selectedEmpId !== "__none__"
+                        ? employees.find((emp: any) => emp.id === selectedEmpId)?.full_name
+                        : "— Search and select employee —"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search by name, code or email..." />
+                      <CommandList>
+                        <CommandEmpty>No employee found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="none"
+                            onSelect={() => { setSelectedEmpId("__none__"); setIsEmpComboboxOpen(false); }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedEmpId === "__none__" ? "opacity-100" : "opacity-0")} />
+                            — Enter manually —
+                          </CommandItem>
+                          {employees.map((emp: any) => (
+                            <CommandItem
+                              key={emp.id}
+                              value={`${emp.full_name} ${emp.employee_code} ${emp.email}`}
+                              onSelect={() => {
+                                setSelectedEmpId(emp.id);
+                                setIsEmpComboboxOpen(false);
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", selectedEmpId === emp.id ? "opacity-100" : "opacity-0")} />
+                              {emp.full_name} <span className="text-muted-foreground text-xs ml-2">({emp.employee_code}) - {emp.email}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 {[

@@ -215,7 +215,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
     if (typeof window !== "undefined" && user) {
       const runCheckouts = async () => {
         try {
-          const { data } = await supabase.rpc('process_auto_checkouts');
+          const { data } = await (supabase as any).rpc('process_auto_checkouts');
           // After auto-checkout runs, invalidate all attendance-related caches
           // so Dashboard timer and Attendance page both reflect the updated state
           await Promise.all([
