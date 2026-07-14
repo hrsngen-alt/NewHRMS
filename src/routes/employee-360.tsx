@@ -22,15 +22,25 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+type Employee360Search = {
+  id?: string;
+}
+
 export const Route = createFileRoute("/employee-360")({
+  validateSearch: (search: Record<string, unknown>): Employee360Search => {
+    return {
+      id: search.id as string | undefined,
+    }
+  },
   component: () => <AppShell><Employee360Page /></AppShell>
 });
 
 function Employee360Page() {
   const queryClient = useQueryClient();
+  const search = Route.useSearch();
   const { role, user } = useAuth();
   const isAdmin = role === "admin" || role === "manager";
-  const [selectedEmpId, setSelectedEmpId] = useState<string>("");
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(search.id || "");
   const [isEmpComboboxOpen, setIsEmpComboboxOpen] = useState(false);
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ShieldAlert, ShieldCheck, Search, SearchX, AlertTriangle, History, XCircle, CheckCircle2, ChevronLeft, Building2, Users } from "lucide-react";
+import { ShieldAlert, ShieldCheck, Search, SearchX, AlertTriangle, History, XCircle, CheckCircle2, ChevronLeft, ChevronRight, Building2, Users, User } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "@tanstack/react-router";
@@ -35,6 +35,13 @@ function EmployeeAccessPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [accessFilter, setAccessFilter] = useState("all");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, accessFilter]);
 
   const [disableModal, setDisableModal] = useState<{ open: boolean, empId: string, name: string }>({ open: false, empId: "", name: "" });
   const [enableModal, setEnableModal] = useState<{ open: boolean, empId: string, name: string }>({ open: false, empId: "", name: "" });
@@ -89,6 +96,11 @@ function EmployeeAccessPage() {
     
     return matchesSearch && matchesStatus && matchesAccess;
   });
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const indexOfLast = currentPage * rowsPerPage;
+  const indexOfFirst = indexOfLast - rowsPerPage;
+  const currentRows = filtered.slice(indexOfFirst, indexOfLast);
 
   const handleDisable = async () => {
     if (!disableReason) return toast.error("Please select a reason");
@@ -240,7 +252,7 @@ function EmployeeAccessPage() {
                     <p className="font-medium text-sm">No employees match this criteria.</p>
                   </TableCell>
                 </TableRow>
-              ) : filtered.map((e: any) => (
+              ) : currentRows.map((e: any) => (
                 <TableRow key={e.id} className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/80 transition-colors border-slate-100 dark:border-slate-800">
                   <TableCell className="pl-6 py-4">
                     <div className="flex items-center gap-3">
@@ -277,6 +289,11 @@ function EmployeeAccessPage() {
                   </TableCell>
                   <TableCell className="pr-6 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link to="/employee-360" search={{ id: e.id }}>
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 rounded-lg border-primary/20 hover:bg-primary/5" title="View 360° Profile">
+                          <User className="size-4 text-primary" />
+                        </Button>
+                      </Link>
                       <Button size="sm" variant="outline" className="h-8 w-8 p-0 rounded-lg" onClick={() => setHistoryModal({ open: true, empId: e.id, name: e.full_name })} title="Access History">
                         <History className="size-4 text-muted-foreground" />
                       </Button>
@@ -298,6 +315,25 @@ function EmployeeAccessPage() {
             </TableBody>
           </Table>
         </div>
+        
+        {totalPages > 1 && (
+          <div className="p-4 border-t flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="text-sm text-muted-foreground font-medium">
+              Showing <span className="font-bold text-foreground">{indexOfFirst + 1}</span> to <span className="font-bold text-foreground">{Math.min(indexOfLast, filtered.length)}</span> of <span className="font-bold text-foreground">{filtered.length}</span> entries
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="rounded-xl h-9">
+                <ChevronLeft className="size-4 mr-1" /> Previous
+              </Button>
+              <div className="text-sm font-bold px-4">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="rounded-xl h-9">
+                Next <ChevronRight className="size-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Disable Modal */}
