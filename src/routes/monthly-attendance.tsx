@@ -1104,9 +1104,11 @@ function AttendancePage() {
                                    <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                                    {s.check_out_address ? (
                                      <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_out_address}</p>
-                                   ) : s.check_out_type === 'Automatic' ? (
+                                   ) : s.check_out_type === 'Manual' ? (
+                                     <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">Location Unavailable</p>
+                                   ) : (
                                      <p className="text-[10px] font-medium text-amber-500/80 mt-1 max-w-[220px] leading-tight">System Generated (Auto Checkout)</p>
-                                   ) : null}
+                                   )}
                                  </div>
                                  {s.check_out_lat && (
                                    <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 

@@ -30,6 +30,7 @@ function AttendancePage() {
   const [selMonth, setSelMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [selYear, setSelYear] = useState<string>(String(new Date().getFullYear()));
   const [selectedTimelineDate, setSelectedTimelineDate] = useState<string | null>(null);
+  const [isPunching, setIsPunching] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
   const { data: records = [], isLoading } = useQuery({
@@ -280,6 +281,7 @@ function AttendancePage() {
       return toast.error("Resigned employees cannot perform attendance actions.");
     }
     
+    setIsPunching(true);
     let lat, lng;
     try {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
@@ -410,9 +412,13 @@ function AttendancePage() {
           body: { employee_id: myEmployee?.id }
         });
       }
+      qc.invalidateQueries({ queryKey: ["my-attendance-today"] });
       qc.invalidateQueries({ queryKey: ["attendance"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     } catch (err: any) {
       toast.error("Failed to update attendance.");
+    } finally {
+      setIsPunching(false);
     }
   };
 
@@ -513,12 +519,25 @@ function AttendancePage() {
           </div>
           <div className="relative z-10 flex items-center gap-4 w-full md:w-auto">
             {isCheckedIn ? (
-              <Button onClick={() => punch("out")} size="lg" variant="destructive" className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-red-500/40 w-full md:w-auto">
-                <Square className="size-5 fill-current" /> Finish Session
+              <Button 
+                onClick={() => punch("out")} 
+                size="lg" 
+                variant="destructive" 
+                disabled={isPunching}
+                className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-red-500/40 w-full md:w-auto"
+              >
+                {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Square className="size-6 fill-current" />}
+                {isPunching ? "Checking out..." : "End Shift"}
               </Button>
             ) : (
-              <Button onClick={() => punch("in")} size="lg" className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-indigo-500/40 bg-indigo-500 hover:bg-indigo-600 w-full md:w-auto">
-                <Play className="size-5 fill-current" /> Start Session
+              <Button 
+                onClick={() => punch("in")} 
+                size="lg" 
+                disabled={isPunching}
+                className="h-16 px-10 rounded-2xl text-lg font-black gap-3 shadow-xl shadow-indigo-500/40 bg-indigo-500 hover:bg-indigo-600 w-full md:w-auto"
+              >
+                {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Play className="size-6 fill-current" />}
+                {isPunching ? "Checking in..." : "Check In"}
               </Button>
             )}
           </div>        </div>
@@ -614,14 +633,18 @@ function AttendancePage() {
                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                             {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "ACTIVE"}
                           </span>
-                          {sorted[0]?.check_in_address && (
+                          {sorted[0]?.check_in_address ? (
                             <span className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[200px]" title={sorted[0].check_in_address}>
                               In: {sorted[0].check_in_address}
                             </span>
+                          ) : (
+                            <span className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[200px]" title="Location Unavailable">
+                              In: Location Unavailable
+                            </span>
                           )}
-                          {(sorted[sorted.length - 1]?.check_out_address || sorted[sorted.length - 1]?.check_out_type === 'Automatic') && (
+                          {lastOut && (
                             <span className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[200px]" title={sorted[sorted.length - 1]?.check_out_address || "System Generated"}>
-                              Out: {sorted[sorted.length - 1].check_out_address || "System Generated (Auto)"}
+                              Out: {sorted[sorted.length - 1].check_out_address || (sorted[sorted.length - 1].check_out_type === 'Manual' ? "Location Unavailable" : "System Generated (Auto)")}
                             </span>
                           )}
                         </div>
@@ -751,14 +774,18 @@ function AttendancePage() {
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                         {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "ACTIVE"}
                       </p>
-                      {sorted[0]?.check_in_address && (
+                      {sorted[0]?.check_in_address ? (
                         <p className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[180px]">
                           In: {sorted[0].check_in_address}
                         </p>
-                      )}
-                      {(sorted[sorted.length - 1]?.check_out_address || sorted[sorted.length - 1]?.check_out_type === 'Automatic') && (
+                      ) : (
                         <p className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[180px]">
-                          Out: {sorted[sorted.length - 1].check_out_address || "System Generated (Auto)"}
+                          In: Location Unavailable
+                        </p>
+                      )}
+                      {lastOut && (
+                        <p className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[180px]">
+                          Out: {sorted[sorted.length - 1].check_out_address || (sorted[sorted.length - 1].check_out_type === 'Manual' ? "Location Unavailable" : "System Generated (Auto)")}
                         </p>
                       )}
                     </div>
@@ -931,9 +958,11 @@ function AttendancePage() {
                                    <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                                    {s.check_out_address ? (
                                      <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_out_address}</p>
-                                   ) : s.check_out_type === 'Automatic' ? (
+                                   ) : s.check_out_type === 'Manual' ? (
+                                     <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">Location Unavailable</p>
+                                   ) : (
                                      <p className="text-[10px] font-medium text-amber-500/80 mt-1 max-w-[220px] leading-tight">System Generated (Auto Checkout)</p>
-                                   ) : null}
+                                   )}
                                  </div>
                                  {s.check_out_lat && (
                                    <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 

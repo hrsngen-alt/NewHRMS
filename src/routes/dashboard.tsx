@@ -192,6 +192,7 @@ function Dashboard() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isPunching, setIsPunching] = useState(false);
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
@@ -335,6 +336,7 @@ function Dashboard() {
   const punch = async (type: "in" | "out") => {
     if (!myEmployee) return toast.error("Employee profile not linked.");
     
+    setIsPunching(true);
     let lat, lng;
     try {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
@@ -409,6 +411,8 @@ function Dashboard() {
       qc.invalidateQueries({ queryKey: ["attendance"] });
     } catch (err: any) {
       toast.error("Failed to update attendance.");
+    } finally {
+      setIsPunching(false);
     }
   };
 
@@ -505,16 +509,20 @@ function Dashboard() {
               <Button 
                 onClick={() => punch("out")} 
                 variant="destructive" 
+                disabled={isPunching}
                 className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-red-100 dark:shadow-none hover:bg-rose-600 transition-all cursor-pointer"
               >
-                <Square className="size-5 fill-current" /> End Session
+                {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Square className="size-5 fill-current" />} 
+                {isPunching ? "Checking out..." : "End Session"}
               </Button>
             ) : (
               <Button 
                 onClick={() => punch("in")} 
+                disabled={isPunching}
                 className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-indigo-100 dark:shadow-none hover:bg-indigo-600 transition-all cursor-pointer"
               >
-                <Play className="size-5 fill-current" /> Check In Now
+                {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Play className="size-5 fill-current" />}
+                {isPunching ? "Checking in..." : "Check In Now"}
               </Button>
             )}
           </div>
