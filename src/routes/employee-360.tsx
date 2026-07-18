@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  Briefcase, Mail, Phone, CalendarDays, Wallet, Clock, 
+import {
+  Briefcase, Mail, Phone, CalendarDays, Wallet, Clock,
   User, Award, Activity, FileText, Share2, Printer, Pencil, Plus, Trash2, Check, ChevronsUpDown,
   Laptop, FileCheck, Network, Cpu, TrendingUp, AlertTriangle, ChevronRight, XCircle, CheckCircle2, Sparkles
 } from "lucide-react";
@@ -220,7 +220,7 @@ function Employee360Page() {
               </a>
             </Button>
           )}
-          
+
           <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl shrink-0" title="Print Profile" disabled={!selectedEmpId}>
             <Printer className="size-5" />
           </Button>
@@ -242,7 +242,7 @@ function Employee360Page() {
         </div>
       ) : employee ? (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          
+
           {/* TOP FULL WIDTH SUMMARY CARD (Spans 12 cols but inside a layout) */}
           <div className="xl:col-span-12">
             <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-violet-900 rounded-3xl p-1 overflow-hidden shadow-2xl relative">
@@ -401,7 +401,7 @@ function Employee360Page() {
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="relative border-l-2 border-slate-100 dark:border-slate-800 ml-3 space-y-6">
-                      
+
                       {/* Synthesize Timeline from data */}
                       <div className="relative pl-6">
                         <div className="absolute -left-[9px] top-1 size-4 bg-white dark:bg-slate-950 border-2 border-indigo-500 rounded-full"></div>
@@ -517,8 +517,8 @@ function Employee360Page() {
                               </div>
                               <Badge className={
                                 a.status === 'present' ? "bg-green-100 text-green-700 hover:bg-green-100" :
-                                a.status === 'absent' ? "bg-rose-100 text-rose-700 hover:bg-rose-100" :
-                                "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                                  a.status === 'absent' ? "bg-rose-100 text-rose-700 hover:bg-rose-100" :
+                                    "bg-amber-100 text-amber-700 hover:bg-amber-100"
                               }>{a.status.toUpperCase()}</Badge>
                             </div>
                           ))}
@@ -544,8 +544,8 @@ function Employee360Page() {
                               </div>
                               <Badge className={
                                 l.status === 'approved' ? "bg-green-100 text-green-700 hover:bg-green-100" :
-                                l.status === 'rejected' ? "bg-rose-100 text-rose-700 hover:bg-rose-100" :
-                                "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                                  l.status === 'rejected' ? "bg-rose-100 text-rose-700 hover:bg-rose-100" :
+                                    "bg-amber-100 text-amber-700 hover:bg-amber-100"
                               }>{l.status.toUpperCase()}</Badge>
                             </div>
                           ))}
@@ -605,7 +605,7 @@ function Employee360Page() {
 
           {/* RIGHT COLUMN - INSIGHTS & ASSETS (Spans 4 cols) */}
           <div className="xl:col-span-4 space-y-6">
-            
+
             {/* AI Insights Panel */}
             <Card className="rounded-3xl shadow-sm border-2 overflow-hidden border-indigo-100 dark:border-indigo-900/30 bg-gradient-to-b from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-slate-950">
               <CardHeader className="border-b border-indigo-100/50 dark:border-indigo-900/50 pb-4">
@@ -646,7 +646,7 @@ function Employee360Page() {
                     </div>
                   </div>
                 </div>
-                <Button 
+                <Button
                   onClick={handleRefreshInsights}
                   disabled={isRefreshing}
                   className="w-full mt-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 gap-2 font-bold shadow-lg shadow-indigo-200 dark:shadow-none"
@@ -737,8 +737,8 @@ function Employee360Page() {
                         </div>
                         <div className="flex items-center gap-2">
                           {isAdmin ? (
-                            <Select 
-                              defaultValue={asset.status} 
+                            <Select
+                              defaultValue={asset.status}
                               onValueChange={async (val) => {
                                 const { error } = await supabase.from("employee_assets" as any).update({ status: val }).eq("id", asset.id);
                                 if (error) toast.error(error.message);
@@ -760,11 +760,11 @@ function Employee360Page() {
                               {asset.status}
                             </Badge>
                           )}
-                          
+
                           {isAdmin && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={async () => {
                                 if (!confirm("Remove this asset from the employee?")) return;

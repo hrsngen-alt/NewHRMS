@@ -443,6 +443,7 @@ function GenerateModal({ offer, employees, templates, companyName, employeeId, o
   const [isSaving, setIsSaving] = useState(false);
   const [isEmpComboboxOpen, setIsEmpComboboxOpen] = useState(false);
   const [selectedEmpId, setSelectedEmpId] = useState(offer?.employee_id || "__none__");
+  const [editedHtml, setEditedHtml] = useState<string | null>(offer?.rendered_html || null);
   const [form, setForm] = useState<any>({
     candidate_name: offer?.candidate_name || "", candidate_email: offer?.candidate_email || "",
     candidate_mobile: offer?.candidate_mobile || "", designation: offer?.designation || "",
@@ -479,7 +480,8 @@ function GenerateModal({ offer, employees, templates, companyName, employeeId, o
     setIsSaving(true);
     try {
       const tmpl = templates.find((t: any) => t.id === form.template_id);
-      const rendered_html = tmpl ? renderTemplate(tmpl.body_html, buildPlaceholders(form, companyName)) : "";
+      const base_html = tmpl ? renderTemplate(tmpl.body_html, buildPlaceholders(form, companyName)) : "";
+      const final_rendered_html = editedHtml !== null ? editedHtml : base_html;
       const payload = { 
         ...form, 
         annual_ctc: Number(form.annual_ctc)||0, 
@@ -498,7 +500,7 @@ function GenerateModal({ offer, employees, templates, companyName, employeeId, o
         joining_date: form.joining_date || null,
         expires_at: form.expires_at || null,
         status, 
-        rendered_html, 
+        rendered_html: final_rendered_html, 
         updated_by: employeeId 
       };
       if (offer?.id) {
@@ -677,11 +679,17 @@ function GenerateModal({ offer, employees, templates, companyName, employeeId, o
               </div>
               {form.template_id && templates.find((t: any) => t.id === form.template_id) && (
                 <div className="rounded-2xl border-2 border-slate-100 dark:border-slate-800 overflow-hidden">
-                  <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-b dark:border-slate-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Letter Preview</p>
+                  <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-b dark:border-slate-800 flex justify-between items-center">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Letter Preview (Click to Edit)</p>
+                    {editedHtml !== null && (
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] uppercase tracking-widest" onClick={() => setEditedHtml(null)}>Reset Edits</Button>
+                    )}
                   </div>
-                  <div className="p-4 max-h-64 overflow-y-auto text-sm bg-white dark:bg-slate-900"
-                    dangerouslySetInnerHTML={{ __html: renderTemplate(templates.find((t: any) => t.id === form.template_id)?.body_html || "", buildPlaceholders(form, companyName)) }} />
+                  <div className="p-4 max-h-64 overflow-y-auto text-sm bg-white dark:bg-slate-900 focus:outline-none"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => setEditedHtml(e.currentTarget.innerHTML)}
+                    dangerouslySetInnerHTML={{ __html: editedHtml !== null ? editedHtml : renderTemplate(templates.find((t: any) => t.id === form.template_id)?.body_html || "", buildPlaceholders(form, companyName)) }} />
                 </div>
               )}
             </div>
