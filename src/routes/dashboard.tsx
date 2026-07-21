@@ -11,7 +11,7 @@ import { useState, useEffect, Suspense, lazy, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { toast } from "sonner";
-import { cn } from "../lib/utils";
+import { cn, fetchAddress, getDeviceInfo } from "../lib/utils";
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -413,11 +413,21 @@ function Dashboard() {
     }
 
     try {
+      let address = "";
+      if (lat && lng) {
+        address = await fetchAddress(lat, lng);
+      }
+      const deviceInfo = getDeviceInfo();
+
       if (type === "in") {
         await (supabase.from("attendance") as any).insert({ 
           employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
           status: "present", check_in_lat: lat || null, check_in_lng: lng || null,
-          metadata: { punchSource: source, ...(isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }) }
+          check_in_address: address || null,
+          employee_name: myEmployee.full_name,
+          department: myEmployee.department || "Staff",
+          check_out_type: source,
+          metadata: { punchSource: source, deviceInfo, ...(isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }) }
         });
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",
@@ -429,6 +439,7 @@ function Dashboard() {
         await (supabase.from("attendance") as any).update({ 
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
           check_out_lat: lat || null, check_out_lng: lng || null,
+          check_out_address: address || null,
           check_out_type: source
         }).eq("id", latestSession!.id);
         await supabase.functions.invoke("attendance-cached", {
