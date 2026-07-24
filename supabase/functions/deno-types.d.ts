@@ -11,7 +11,7 @@ declare module "https://deno.land/std@0.168.0/http/server.ts" {
   ): void;
 }
 
-declare module "https://esm.sh/@supabase/supabase-js@2.21.0" {
+declare module "https://esm.sh/@supabase/supabase-js@2" {
   export function createClient(
     supabaseUrl: string,
     supabaseKey: string,
@@ -19,7 +19,13 @@ declare module "https://esm.sh/@supabase/supabase-js@2.21.0" {
   ): any;
 }
 
+declare module "npm:web-push@3.6.7" {
+  const webpush: any;
+  export default webpush;
+}
+
 declare module "npm:ioredis@5.4.1" {
   const Redis: any;
   export default Redis;
 }
+
