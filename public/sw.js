@@ -77,6 +77,9 @@ self.addEventListener('fetch', (event) => {
 // 4. Handle Notification click events (focus or open window)
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  
+  const targetUrl = event.notification.data?.url || '/';
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       if (clientList.length > 0) {
@@ -88,7 +91,30 @@ self.addEventListener('notificationclick', (event) => {
         }
         return client.focus();
       }
-      return self.clients.openWindow('/');
+      return self.clients.openWindow(targetUrl);
     })
   );
+});
+
+// 5. Handle Web Push events (Offline Notifications)
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const title = data.title || 'New Notification';
+    const options = {
+      body: data.body || 'You have a new notification.',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png', // Small monochrome icon for Android status bar ideally, but reusing 192 for now
+      data: data.data || { url: '/' },
+      vibrate: [100, 50, 100],
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  } catch (e) {
+    console.error('Error parsing push data:', e);
+  }
 });

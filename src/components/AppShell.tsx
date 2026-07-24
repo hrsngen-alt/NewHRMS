@@ -180,6 +180,23 @@ function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: st
 }
 
 import { SNLogo } from "@/components/SNLogo";
+import { Badge } from "@/components/ui/badge";
+
+// Utility to convert VAPID keys for push subscriptions
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 // Global lock state to persist across TanStack Router unmounts/remounts
 let isAppUnlockedGlobally = false;
@@ -452,12 +469,49 @@ export function AppShell({ children }: { children?: ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    // Request browser notification permission
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
-        Notification.requestPermission();
+    // Request browser notification permission and register for offline web push
+    const registerWebPush = async () => {
+      if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
+        let perm = Notification.permission;
+        if (perm === "default") {
+          perm = await Notification.requestPermission();
+        }
+        
+        if (perm === "granted") {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+              const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+              if (vapidPublicKey) {
+                // The VAPID public key must be defined in your .env file
+                const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+                subscription = await registration.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: convertedVapidKey
+                });
+              } else {
+                console.warn("VITE_VAPID_PUBLIC_KEY is not set. Offline push notifications won't work.");
+              }
+            }
+            
+            // Save subscription to DB
+            if (subscription && user?.id) {
+              const subJson = subscription.toJSON();
+              await supabase.from("push_subscriptions" as any).upsert({
+                user_id: user.id,
+                endpoint: subJson.endpoint,
+                p256dh: subJson.keys?.p256dh,
+                auth: subJson.keys?.auth
+              }, { onConflict: 'user_id, endpoint' });
+            }
+          } catch (e) {
+            console.error("Failed to register web push:", e);
+          }
+        }
       }
-    }
+    };
+    registerWebPush();
 
     // Subscribe to new notifications in real-time
     const channel = supabase
