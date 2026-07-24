@@ -109,6 +109,7 @@ self.addEventListener('push', (event) => {
       badge: '/icon-192.png', // Small monochrome icon for Android status bar ideally, but reusing 192 for now
       data: data.data || { url: '/' },
       vibrate: [100, 50, 100],
+      requireInteraction: true,
     };
 
     event.waitUntil(
