@@ -86,7 +86,7 @@ function ReportsPage() {
           <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">Analytics & Reports</h1>
           <p className="text-sm font-medium text-muted-foreground/60 mt-1">Exportable workforce insights and departmental performance metrics.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" className="gap-2 rounded-xl h-11 border-2" onClick={() => window.location.href = '/reports-doctor-visits'}>
             <MapPin className="size-4" /> Doctor Visits Report
           </Button>

@@ -168,109 +168,181 @@ function ApprovalsPage() {
             <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-xs">{pendingRequests.length}</span>
           </h2>
           <div className="rounded-2xl border bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-            <Table>
-              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Requested In</TableHead>
-                  <TableHead>Requested Out</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
-                ) : pendingRequests.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No pending requests.</TableCell></TableRow>
-                ) : (
-                  pendingRequests.map((req: any) => (
-                    <TableRow key={req.id}>
-                      <TableCell>
-                        <div className="font-bold">{req.employees?.full_name}</div>
-                        <div className="text-xs text-muted-foreground">{req.employees?.department}</div>
-                        {req.employees?.reporting_manager && (
-                          <div className="text-[10px] text-indigo-500 font-semibold uppercase mt-1">Manager: {req.employees?.reporting_manager}</div>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{format(new Date(req.request_date), 'dd MMM yyyy')}</TableCell>
-                      <TableCell>{req.check_in_time ? format(new Date(req.check_in_time), 'hh:mm a') : '-'}</TableCell>
-                      <TableCell>{req.check_out_time ? format(new Date(req.check_out_time), 'hh:mm a') : '-'}</TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={req.reason}>{req.reason}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
-                            className="h-8 gap-1"
-                            onClick={() => rejectMutation.mutate(req.id)}
-                            disabled={rejectMutation.isPending || approveMutation.isPending}
-                          >
-                            <X className="size-3.5" /> Reject
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            className="h-8 gap-1 bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => approveMutation.mutate(req.id)}
-                            disabled={rejectMutation.isPending || approveMutation.isPending}
-                          >
-                            <Check className="size-3.5" /> Approve
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Requested In</TableHead>
+                    <TableHead>Requested Out</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  ) : pendingRequests.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No pending requests.</TableCell></TableRow>
+                  ) : (
+                    pendingRequests.map((req: any) => (
+                      <TableRow key={req.id}>
+                        <TableCell>
+                          <div className="font-bold">{req.employees?.full_name}</div>
+                          <div className="text-xs text-muted-foreground">{req.employees?.department}</div>
+                          {req.employees?.reporting_manager && (
+                            <div className="text-[10px] text-indigo-500 font-semibold uppercase mt-1">Manager: {req.employees?.reporting_manager}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{format(new Date(req.request_date), 'dd MMM yyyy')}</TableCell>
+                        <TableCell>{req.check_in_time ? format(new Date(req.check_in_time), 'hh:mm a') : '-'}</TableCell>
+                        <TableCell>{req.check_out_time ? format(new Date(req.check_out_time), 'hh:mm a') : '-'}</TableCell>
+                        <TableCell className="max-w-[200px] truncate" title={req.reason}>{req.reason}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              className="h-8 gap-1"
+                              onClick={() => rejectMutation.mutate(req.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                            >
+                              <X className="size-3.5" /> Reject
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              className="h-8 gap-1 bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => approveMutation.mutate(req.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                            >
+                              <Check className="size-3.5" /> Approve
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Mobile View */}
+            <div className="block md:hidden divide-y divide-border">
+              {isLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : pendingRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No pending requests.</div>
+              ) : (
+                pendingRequests.map((req: any) => (
+                  <div key={req.id} className="p-4 space-y-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-bold text-sm">{req.employees?.full_name}</div>
+                        <div className="text-[10px] text-muted-foreground font-semibold uppercase">{req.employees?.department}</div>
+                      </div>
+                      <div className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full uppercase tracking-wider">Pending</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-muted-foreground">Date:</span> {format(new Date(req.request_date), 'dd MMM yyyy')}</div>
+                      <div><span className="text-muted-foreground">In:</span> {req.check_in_time ? format(new Date(req.check_in_time), 'hh:mm a') : '-'}</div>
+                      <div><span className="text-muted-foreground">Out:</span> {req.check_out_time ? format(new Date(req.check_out_time), 'hh:mm a') : '-'}</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg border">
+                      <span className="font-semibold text-foreground">Reason:</span> {req.reason}
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-red-600 gap-1 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={() => rejectMutation.mutate(req.id)} disabled={rejectMutation.isPending || approveMutation.isPending}>
+                        <X className="size-3.5" /> Reject
+                      </Button>
+                      <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-1" onClick={() => approveMutation.mutate(req.id)} disabled={rejectMutation.isPending || approveMutation.isPending}>
+                        <Check className="size-3.5" /> Approve
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
         <div className="pt-8">
           <h2 className="text-xl font-bold mb-4">Past Requests</h2>
           <div className="rounded-2xl border bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-            <Table>
-              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Requested In/Out</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pastRequests.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No past requests.</TableCell></TableRow>
-                ) : (
-                  pastRequests.map((req: any) => (
-                    <TableRow key={req.id}>
-                      <TableCell>
-                        <div className="font-bold">{req.employees?.full_name}</div>
-                        <div className="text-xs text-muted-foreground">{req.employees?.department}</div>
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{format(new Date(req.request_date), 'dd MMM yyyy')}</TableCell>
-                      <TableCell>
-                        <div className="text-xs text-muted-foreground">
-                          {req.check_in_time ? format(new Date(req.check_in_time), 'hh:mm a') : '-'}
-                          {' to '}
-                          {req.check_out_time ? format(new Date(req.check_out_time), 'hh:mm a') : '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={req.reason}>{req.reason}</TableCell>
-                      <TableCell>
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          req.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
-                        }`}>
-                          {req.status}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Requested In/Out</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pastRequests.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No past requests.</TableCell></TableRow>
+                  ) : (
+                    pastRequests.map((req: any) => (
+                      <TableRow key={req.id}>
+                        <TableCell>
+                          <div className="font-bold">{req.employees?.full_name}</div>
+                          <div className="text-xs text-muted-foreground">{req.employees?.department}</div>
+                        </TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{format(new Date(req.request_date), 'dd MMM yyyy')}</TableCell>
+                        <TableCell>
+                          <div className="text-xs text-muted-foreground">
+                            {req.check_in_time ? format(new Date(req.check_in_time), 'hh:mm a') : '-'}
+                            {' to '}
+                            {req.check_out_time ? format(new Date(req.check_out_time), 'hh:mm a') : '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate" title={req.reason}>{req.reason}</TableCell>
+                        <TableCell>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            req.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {req.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Mobile View */}
+            <div className="block md:hidden divide-y divide-border">
+              {pastRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No past requests.</div>
+              ) : (
+                pastRequests.map((req: any) => (
+                  <div key={req.id} className="p-4 space-y-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-bold text-sm">{req.employees?.full_name}</div>
+                        <div className="text-[10px] text-muted-foreground font-semibold uppercase">{req.employees?.department}</div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        req.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-muted-foreground">Date:</span> {format(new Date(req.request_date), 'dd MMM yyyy')}</div>
+                      <div><span className="text-muted-foreground">In:</span> {req.check_in_time ? format(new Date(req.check_in_time), 'hh:mm a') : '-'}</div>
+                      <div><span className="text-muted-foreground">Out:</span> {req.check_out_time ? format(new Date(req.check_out_time), 'hh:mm a') : '-'}</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg border">
+                      <span className="font-semibold text-foreground">Reason:</span> {req.reason}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
