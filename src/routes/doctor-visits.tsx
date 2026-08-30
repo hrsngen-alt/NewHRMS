@@ -51,7 +51,7 @@ function DoctorVisitsPage() {
     queryKey: ['my-doctor-visits', employee?.id],
     enabled: !!employee?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('doctor_visits')
         .select('*')
         .eq('employee_id', employee!.id)
@@ -89,7 +89,7 @@ function DoctorVisitsPage() {
 
   const checkInMutation = useMutation({
     mutationFn: async (visitData: any) => {
-      const { error } = await supabase.from('doctor_visits').insert([visitData]);
+      const { error } = await (supabase as any).from('doctor_visits').insert([visitData]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -105,7 +105,7 @@ function DoctorVisitsPage() {
 
   const checkOutMutation = useMutation({
     mutationFn: async ({ id, checkoutData }: { id: string; checkoutData: any }) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('doctor_visits')
         .update(checkoutData)
         .eq('id', id);

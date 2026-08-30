@@ -89,13 +89,13 @@ function KioskPage() {
       }
 
       // 2. Fetch policies to resolve rules
-      const { data: policies } = await supabase
-        .from("attendance_policies" as any)
+      const { data: policies } = await (supabase as any)
+        .from("attendance_policies")
         .select("*");
       
-      const resolvedPolicy = (policies || []).find(p => p.id === employee.attendance_policy_id)
-        || (policies || []).find(p => p.name.toLowerCase() === employee.department?.toLowerCase())
-        || (policies || []).find(p => p.name.toLowerCase() === "inhouse");
+      const resolvedPolicy = ((policies as any[]) || []).find((p: any) => p.id === employee.attendance_policy_id)
+        || ((policies as any[]) || []).find((p: any) => p.name.toLowerCase() === employee.department?.toLowerCase())
+        || ((policies as any[]) || []).find((p: any) => p.name.toLowerCase() === "inhouse");
       
       const isAutoCheckout = resolvedPolicy?.auto_checkout_enabled ?? false;
       const policyMinutes = resolvedPolicy?.auto_checkout_after_minutes ?? 120;

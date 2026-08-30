@@ -50,7 +50,7 @@ function DoctorVisitsReportPage() {
     queryKey: ['admin-doctor-visits'],
     enabled: isAdminOrHR,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('doctor_visits')
         .select(`
           *,
@@ -100,7 +100,7 @@ function DoctorVisitsReportPage() {
 
   const logExport = async (format: string, recordCount: number) => {
     try {
-      await supabase.from('audit_logs').insert({
+      await (supabase as any).from('audit_logs').insert({
         user_id: user?.id,
         action: 'EXPORT',
         entity: 'Doctor Visit Report',
