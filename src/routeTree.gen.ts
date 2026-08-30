@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SalaryStructureRouteImport } from './routes/salary-structure'
 import { Route as ResignationRouteImport } from './routes/resignation'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ReportsDoctorVisitsRouteImport } from './routes/reports-doctor-visits'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PerformanceRouteImport } from './routes/performance'
@@ -29,11 +30,13 @@ import { Route as EmployeesRouteImport } from './routes/employees'
 import { Route as EmployeeAccessRouteImport } from './routes/employee-access'
 import { Route as Employee360RouteImport } from './routes/employee-360'
 import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as DoctorVisitsRouteImport } from './routes/doctor-visits'
 import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as DevResetRouteImport } from './routes/dev-reset'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BugsRouteImport } from './routes/bugs'
 import { Route as AttendanceRouteImport } from './routes/attendance'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AnnouncementsRouteImport } from './routes/announcements'
 import { Route as AccessControlRouteImport } from './routes/access-control'
 import { Route as IndexRouteImport } from './routes/index'
@@ -56,6 +59,11 @@ const ResignationRoute = ResignationRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsDoctorVisitsRoute = ReportsDoctorVisitsRouteImport.update({
+  id: '/reports-doctor-visits',
+  path: '/reports-doctor-visits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -138,6 +146,11 @@ const DocumentsRoute = DocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DoctorVisitsRoute = DoctorVisitsRouteImport.update({
+  id: '/doctor-visits',
+  path: '/doctor-visits',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DirectoryRoute = DirectoryRouteImport.update({
   id: '/directory',
   path: '/directory',
@@ -163,6 +176,11 @@ const AttendanceRoute = AttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnnouncementsRoute = AnnouncementsRouteImport.update({
   id: '/announcements',
   path: '/announcements',
@@ -183,11 +201,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/access-control': typeof AccessControlRoute
   '/announcements': typeof AnnouncementsRoute
+  '/approvals': typeof ApprovalsRoute
   '/attendance': typeof AttendanceRoute
   '/bugs': typeof BugsRoute
   '/dashboard': typeof DashboardRoute
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
+  '/doctor-visits': typeof DoctorVisitsRoute
   '/documents': typeof DocumentsRoute
   '/employee-360': typeof Employee360Route
   '/employee-access': typeof EmployeeAccessRoute
@@ -204,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/performance': typeof PerformanceRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/reports-doctor-visits': typeof ReportsDoctorVisitsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resignation': typeof ResignationRoute
   '/salary-structure': typeof SalaryStructureRoute
@@ -213,11 +234,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/access-control': typeof AccessControlRoute
   '/announcements': typeof AnnouncementsRoute
+  '/approvals': typeof ApprovalsRoute
   '/attendance': typeof AttendanceRoute
   '/bugs': typeof BugsRoute
   '/dashboard': typeof DashboardRoute
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
+  '/doctor-visits': typeof DoctorVisitsRoute
   '/documents': typeof DocumentsRoute
   '/employee-360': typeof Employee360Route
   '/employee-access': typeof EmployeeAccessRoute
@@ -234,6 +257,7 @@ export interface FileRoutesByTo {
   '/performance': typeof PerformanceRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/reports-doctor-visits': typeof ReportsDoctorVisitsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resignation': typeof ResignationRoute
   '/salary-structure': typeof SalaryStructureRoute
@@ -244,11 +268,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/access-control': typeof AccessControlRoute
   '/announcements': typeof AnnouncementsRoute
+  '/approvals': typeof ApprovalsRoute
   '/attendance': typeof AttendanceRoute
   '/bugs': typeof BugsRoute
   '/dashboard': typeof DashboardRoute
   '/dev-reset': typeof DevResetRoute
   '/directory': typeof DirectoryRoute
+  '/doctor-visits': typeof DoctorVisitsRoute
   '/documents': typeof DocumentsRoute
   '/employee-360': typeof Employee360Route
   '/employee-access': typeof EmployeeAccessRoute
@@ -265,6 +291,7 @@ export interface FileRoutesById {
   '/performance': typeof PerformanceRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/reports-doctor-visits': typeof ReportsDoctorVisitsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resignation': typeof ResignationRoute
   '/salary-structure': typeof SalaryStructureRoute
@@ -276,11 +303,13 @@ export interface FileRouteTypes {
     | '/'
     | '/access-control'
     | '/announcements'
+    | '/approvals'
     | '/attendance'
     | '/bugs'
     | '/dashboard'
     | '/dev-reset'
     | '/directory'
+    | '/doctor-visits'
     | '/documents'
     | '/employee-360'
     | '/employee-access'
@@ -297,6 +326,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/profile'
     | '/reports'
+    | '/reports-doctor-visits'
     | '/reset-password'
     | '/resignation'
     | '/salary-structure'
@@ -306,11 +336,13 @@ export interface FileRouteTypes {
     | '/'
     | '/access-control'
     | '/announcements'
+    | '/approvals'
     | '/attendance'
     | '/bugs'
     | '/dashboard'
     | '/dev-reset'
     | '/directory'
+    | '/doctor-visits'
     | '/documents'
     | '/employee-360'
     | '/employee-access'
@@ -327,6 +359,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/profile'
     | '/reports'
+    | '/reports-doctor-visits'
     | '/reset-password'
     | '/resignation'
     | '/salary-structure'
@@ -336,11 +369,13 @@ export interface FileRouteTypes {
     | '/'
     | '/access-control'
     | '/announcements'
+    | '/approvals'
     | '/attendance'
     | '/bugs'
     | '/dashboard'
     | '/dev-reset'
     | '/directory'
+    | '/doctor-visits'
     | '/documents'
     | '/employee-360'
     | '/employee-access'
@@ -357,6 +392,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/profile'
     | '/reports'
+    | '/reports-doctor-visits'
     | '/reset-password'
     | '/resignation'
     | '/salary-structure'
@@ -367,11 +403,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccessControlRoute: typeof AccessControlRoute
   AnnouncementsRoute: typeof AnnouncementsRoute
+  ApprovalsRoute: typeof ApprovalsRoute
   AttendanceRoute: typeof AttendanceRoute
   BugsRoute: typeof BugsRoute
   DashboardRoute: typeof DashboardRoute
   DevResetRoute: typeof DevResetRoute
   DirectoryRoute: typeof DirectoryRoute
+  DoctorVisitsRoute: typeof DoctorVisitsRoute
   DocumentsRoute: typeof DocumentsRoute
   Employee360Route: typeof Employee360Route
   EmployeeAccessRoute: typeof EmployeeAccessRoute
@@ -388,6 +426,7 @@ export interface RootRouteChildren {
   PerformanceRoute: typeof PerformanceRoute
   ProfileRoute: typeof ProfileRoute
   ReportsRoute: typeof ReportsRoute
+  ReportsDoctorVisitsRoute: typeof ReportsDoctorVisitsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ResignationRoute: typeof ResignationRoute
   SalaryStructureRoute: typeof SalaryStructureRoute
@@ -422,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports-doctor-visits': {
+      id: '/reports-doctor-visits'
+      path: '/reports-doctor-visits'
+      fullPath: '/reports-doctor-visits'
+      preLoaderRoute: typeof ReportsDoctorVisitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -536,6 +582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/doctor-visits': {
+      id: '/doctor-visits'
+      path: '/doctor-visits'
+      fullPath: '/doctor-visits'
+      preLoaderRoute: typeof DoctorVisitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/directory': {
       id: '/directory'
       path: '/directory'
@@ -571,6 +624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/announcements': {
       id: '/announcements'
       path: '/announcements'
@@ -599,11 +659,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccessControlRoute: AccessControlRoute,
   AnnouncementsRoute: AnnouncementsRoute,
+  ApprovalsRoute: ApprovalsRoute,
   AttendanceRoute: AttendanceRoute,
   BugsRoute: BugsRoute,
   DashboardRoute: DashboardRoute,
   DevResetRoute: DevResetRoute,
   DirectoryRoute: DirectoryRoute,
+  DoctorVisitsRoute: DoctorVisitsRoute,
   DocumentsRoute: DocumentsRoute,
   Employee360Route: Employee360Route,
   EmployeeAccessRoute: EmployeeAccessRoute,
@@ -620,6 +682,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerformanceRoute: PerformanceRoute,
   ProfileRoute: ProfileRoute,
   ReportsRoute: ReportsRoute,
+  ReportsDoctorVisitsRoute: ReportsDoctorVisitsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ResignationRoute: ResignationRoute,
   SalaryStructureRoute: SalaryStructureRoute,

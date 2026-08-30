@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileDown, Printer, Calendar, Users, Wallet, TrendingUp, Filter, AlertTriangle } from "lucide-react";
+import { FileDown, Printer, Calendar, Users, Wallet, TrendingUp, Filter, AlertTriangle, MapPin } from "lucide-react";
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
@@ -87,6 +87,9 @@ function ReportsPage() {
           <p className="text-sm font-medium text-muted-foreground/60 mt-1">Exportable workforce insights and departmental performance metrics.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2 rounded-xl h-11 border-2" onClick={() => window.location.href = '/reports-doctor-visits'}>
+            <MapPin className="size-4" /> Doctor Visits Report
+          </Button>
           <Button variant="outline" className="gap-2 rounded-xl h-11 border-2">
             <Filter className="size-4" /> Filter
           </Button>

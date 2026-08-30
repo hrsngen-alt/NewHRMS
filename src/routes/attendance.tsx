@@ -16,8 +16,10 @@ import {
 } from "lucide-react";
 import { cn, getDeviceInfo, fetchAddress } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -35,6 +37,7 @@ function AttendancePage() {
   const [isPunching, setIsPunching] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isManualPunchOpen, setIsManualPunchOpen] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
@@ -80,6 +83,66 @@ function AttendancePage() {
     },
     enabled: !!user && (isAdmin || !!myEmployee),
   });
+
+  const { data: manualRequests = [], isLoading: isLoadingManual } = useQuery({
+    queryKey: ["manual-attendance-requests", myEmployee?.id, selMonth, selYear],
+    queryFn: async () => {
+      if (!myEmployee) return [];
+      
+      const { data, error } = await (supabase as any)
+        .from("manual_attendance_requests")
+        .select("*")
+        .eq("employee_id", myEmployee.id);
+        
+      if (error) return [];
+      
+      // Filter manually to the selected month/year
+      return data.filter((req: any) => {
+        const d = new Date(req.request_date);
+        const currentMonth = Number(selMonth === "all" ? new Date().getMonth() + 1 : selMonth);
+        const currentYear = Number(selYear === "all" ? new Date().getFullYear() : selYear);
+        return (d.getMonth() + 1) === currentMonth && d.getFullYear() === currentYear;
+      });
+    },
+    enabled: !!myEmployee?.id,
+  });
+
+  const manualRequestCount = manualRequests.length;
+  const canRequestManual = manualRequestCount < 2;
+
+  const handleManualPunchSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!myEmployee) return;
+    setIsPunching(true);
+    const fd = new FormData(e.currentTarget);
+    const date = String(fd.get("date"));
+    const inTime = String(fd.get("checkIn"));
+    const outTime = String(fd.get("checkOut"));
+    const reason = String(fd.get("reason"));
+    
+    try {
+      const checkInDateTime = inTime ? new Date(`${date}T${inTime}`).toISOString() : null;
+      const checkOutDateTime = outTime ? new Date(`${date}T${outTime}`).toISOString() : null;
+
+      const { error } = await (supabase as any).from("manual_attendance_requests").insert({
+        employee_id: myEmployee.id,
+        request_date: date,
+        check_in_time: checkInDateTime,
+        check_out_time: checkOutDateTime,
+        reason: reason
+      });
+
+      if (error) throw error;
+      
+      toast.success("Manual attendance request submitted. Pending approval.");
+      setIsManualPunchOpen(false);
+      qc.invalidateQueries({ queryKey: ["manual-attendance-requests"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit request.");
+    } finally {
+      setIsPunching(false);
+    }
+  };
 
   const { data: dbHolidays = [] } = useQuery({
     queryKey: ["holidays-all"],
@@ -605,7 +668,59 @@ function AttendancePage() {
             >
               <Scan className="size-6" /> Scan Office QR
             </Button>
-          </div>        </div>
+            {canRequestManual && (
+              <Button
+                onClick={() => setIsManualPunchOpen(true)}
+                size="lg"
+                variant="secondary"
+                className="h-16 px-6 rounded-2xl text-lg font-black gap-3 w-full md:w-auto"
+              >
+                <Timer className="size-6" /> Manual Punch
+              </Button>
+            )}
+          </div>
+          
+          <Dialog open={isManualPunchOpen} onOpenChange={setIsManualPunchOpen}>
+            <DialogContent className="max-w-md rounded-[2rem] border-2 border-primary/5 shadow-2xl p-0 overflow-hidden">
+              <div className="p-8 pb-4">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black tracking-tight">Request Manual Punch</DialogTitle>
+                </DialogHeader>
+                <p className="text-xs text-muted-foreground font-medium mt-2">
+                  You have used {manualRequestCount} of 2 manual punches this month.
+                </p>
+              </div>
+              <form onSubmit={handleManualPunchSubmit} className="flex flex-col flex-1">
+                <div className="px-8 pb-6 space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Date</label>
+                    <Input name="date" type="date" required className="h-12 rounded-xl border-2" max={new Date().toISOString().split('T')[0]} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Check-in Time</label>
+                      <Input name="checkIn" type="time" className="h-12 rounded-xl border-2" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Check-out Time</label>
+                      <Input name="checkOut" type="time" className="h-12 rounded-xl border-2" />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground font-semibold">Note: Leave time blank if not applicable (e.g. forgot check-out only).</p>
+                  <div className="space-y-1.5 pt-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Reason</label>
+                    <Textarea name="reason" required placeholder="Reason for missing regular punch..." className="rounded-xl border-2 min-h-[80px]" />
+                  </div>
+                </div>
+                <div className="px-8 py-5 border-t bg-muted/10">
+                  <Button type="submit" disabled={isPunching} className="w-full h-12 rounded-xl font-black">
+                    {isPunching ? "Submitting..." : "Submit Request"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       )}
 
       {/* Summary Table */}

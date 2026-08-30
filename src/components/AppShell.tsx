@@ -5,7 +5,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import {
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText,
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug, FileCheck
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug, FileCheck, MapPin, ShieldCheck
 } from "lucide-react";
 import { BugReportWidget } from "./BugReportWidget";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ const nav: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings, allowedRoles: ["admin"] },
   { to: "/kiosk", label: "Kiosk Terminal", icon: QrCode, allowedRoles: ["admin"], external: true },
   { to: "/bugs", label: "Bug Management", icon: Bug, allowedRoles: ["admin"] },
+  { to: "/approvals", label: "Approvals", icon: ShieldCheck, allowedRoles: ["admin", "manager"] },
 ];
 
 const essNav: NavItem[] = [
@@ -56,6 +57,7 @@ const essNav: NavItem[] = [
   { to: "/directory", label: "Team Directory", icon: Search },
   { to: "/documents", label: "Policy Hub", icon: FolderOpen },
   { to: "/expenses", label: "Expense Claims", icon: Receipt },
+  { to: "/doctor-visits", label: "Doctor Visits", icon: MapPin },
 ];
 
 const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requireWiderScope?: boolean }> = {
@@ -75,6 +77,7 @@ const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requir
   "/directory": { module: "Employee Directory", action: "view" },
   "/bugs": { module: "Bug Management", action: "view" },
   "/offer-letters": { module: "Offer Letters", action: "manage" },
+  "/approvals": { module: "Attendance", action: "manage" },
 };
 
 function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: string | null, location: any, onNavClick?: () => void, sidebarCollapsed?: boolean }) {
