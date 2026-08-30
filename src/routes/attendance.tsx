@@ -121,8 +121,22 @@ function AttendancePage() {
     const reason = String(fd.get("reason"));
     
     try {
-      const checkInDateTime = inTime ? new Date(`${date}T${inTime}`).toISOString() : null;
-      const checkOutDateTime = outTime ? new Date(`${date}T${outTime}`).toISOString() : null;
+      const parseTime = (timeStr: string, dateStr: string) => {
+        if (!timeStr || timeStr === "null") return null;
+        const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (match) {
+          let hours = parseInt(match[1], 10);
+          const mins = match[2];
+          const ampm = match[3]?.toUpperCase();
+          if (ampm === 'PM' && hours < 12) hours += 12;
+          if (ampm === 'AM' && hours === 12) hours = 0;
+          return new Date(`${dateStr}T${hours.toString().padStart(2, '0')}:${mins}:00`).toISOString();
+        }
+        return new Date(`${dateStr}T${timeStr}`).toISOString();
+      };
+
+      const checkInDateTime = parseTime(inTime, date);
+      const checkOutDateTime = parseTime(outTime, date);
 
       const { error } = await (supabase as any).from("manual_attendance_requests").insert({
         employee_id: myEmployee.id,
@@ -694,16 +708,16 @@ function AttendancePage() {
                 <div className="px-8 pb-6 space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Date</label>
-                    <Input name="date" type="date" required className="h-12 rounded-xl border-2" max={new Date().toISOString().split('T')[0]} />
+                    <Input name="date" type="date" required className="h-12 rounded-xl border-2" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Check-in Time</label>
-                      <Input name="checkIn" type="time" className="h-12 rounded-xl border-2" />
+                      <Input name="checkIn" type="text" placeholder="e.g. 09:30 AM" className="h-12 rounded-xl border-2" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Check-out Time</label>
-                      <Input name="checkOut" type="time" className="h-12 rounded-xl border-2" />
+                      <Input name="checkOut" type="text" placeholder="e.g. 06:30 PM" className="h-12 rounded-xl border-2" />
                     </div>
                   </div>
                   <p className="text-[9px] text-muted-foreground font-semibold">Note: Leave time blank if not applicable (e.g. forgot check-out only).</p>
