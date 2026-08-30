@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Check, X, Clock, ShieldCheck } from 'lucide-react';
+import { Check, X, Clock, ShieldCheck, Search } from 'lucide-react';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const Route = createFileRoute('/approvals')({
   component: () => (
@@ -20,6 +23,10 @@ export const Route = createFileRoute('/approvals')({
 function ApprovalsPage() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [department, setDepartment] = useState("all");
+  const [month, setMonth] = useState("all");
+  const [date, setDate] = useState("");
 
   const isManagerOrAdmin = role === 'admin' || role === 'manager' || role === 'hr';
 
@@ -77,12 +84,25 @@ function ApprovalsPage() {
     return <div className="p-8 text-center text-red-500 font-bold">Access Denied. Only Managers and Admins can view this page.</div>;
   }
 
-  const pendingRequests = requests.filter((r: any) => r.status === 'Pending');
-  const pastRequests = requests.filter((r: any) => r.status !== 'Pending');
+  const departments = Array.from(new Set(requests.map((r: any) => r.employees?.department).filter(Boolean)));
+
+  const filteredRequests = requests.filter((req: any) => {
+    if (search && !req.employees?.full_name?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (department !== 'all' && req.employees?.department !== department) return false;
+    if (month !== 'all') {
+      const reqMonth = new Date(req.request_date).getMonth().toString();
+      if (reqMonth !== month) return false;
+    }
+    if (date && !req.request_date.startsWith(date)) return false;
+    return true;
+  });
+
+  const pendingRequests = filteredRequests.filter((r: any) => r.status === 'Pending');
+  const pastRequests = filteredRequests.filter((r: any) => r.status !== 'Pending');
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-6 border-slate-100 dark:border-slate-800">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
             <ShieldCheck className="size-8 text-indigo-500" />
@@ -90,6 +110,55 @@ function ApprovalsPage() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Review and manage manual check-in/check-out requests.</p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search employee..." 
+            className="pl-9 bg-white dark:bg-slate-900 shadow-sm"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={department} onValueChange={setDepartment}>
+          <SelectTrigger className="bg-white dark:bg-slate-900 shadow-sm">
+            <SelectValue placeholder="All Departments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {departments.map((d: any) => (
+              <SelectItem key={d} value={d}>{d}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={month} onValueChange={setMonth}>
+          <SelectTrigger className="bg-white dark:bg-slate-900 shadow-sm">
+            <SelectValue placeholder="All Months" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            <SelectItem value="0">January</SelectItem>
+            <SelectItem value="1">February</SelectItem>
+            <SelectItem value="2">March</SelectItem>
+            <SelectItem value="3">April</SelectItem>
+            <SelectItem value="4">May</SelectItem>
+            <SelectItem value="5">June</SelectItem>
+            <SelectItem value="6">July</SelectItem>
+            <SelectItem value="7">August</SelectItem>
+            <SelectItem value="8">September</SelectItem>
+            <SelectItem value="9">October</SelectItem>
+            <SelectItem value="10">November</SelectItem>
+            <SelectItem value="11">December</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input 
+          type="date" 
+          className="bg-white dark:bg-slate-900 shadow-sm"
+          value={date}
+          onChange={e => setDate(e.target.value)}
+        />
       </div>
 
       <div className="space-y-6">
