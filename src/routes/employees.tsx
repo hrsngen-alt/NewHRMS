@@ -506,6 +506,7 @@ function EmployeesPage() {
                         <div className="grid grid-cols-1 gap-3 text-sm ml-4">
                           <DetailItem label="Email" value={viewingEmployee.email} />
                           <DetailItem label="Phone" value={viewingEmployee.phone} isPhone employeeName={viewingEmployee.full_name} />
+                          <DetailItem label="Date of Birth" value={viewingEmployee.date_of_birth} />
                           <DetailItem label="PAN" value={viewingEmployee.pan_number} />
                           <DetailItem label="Aadhaar" value={viewingEmployee.aadhaar_number} />
                           <DetailItem label="UAN" value={viewingEmployee.uan_number} />
@@ -1034,6 +1035,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
     ["full_name", "Full Name", true], ["email", "Work Email", true],
     ["phone", "Phone Number"], ["department", "Department"],
     ["designation", "Designation"], ["joining_date", "Joining Date", false, "date"],
+    ["date_of_birth", "Date of Birth", false, "date"],
     ["pan_number", "PAN Card"], ["aadhaar_number", "Aadhaar Number"],
     ["uan_number", "UAN Number"], ["reporting_manager", "Reporting Manager"],
     ["bank_name", "Bank Name"], ["bank_account", "Account Number"],

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
-import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download, LogOut, UserX, Scan } from "lucide-react";
+import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download, LogOut, UserX, Scan, PartyPopper } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, Area, CartesianGrid, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, Suspense, lazy, useRef } from "react";
@@ -17,6 +17,38 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export const Route = createFileRoute("/dashboard")({ component: () => <AppShell><Dashboard /></AppShell> });
+
+function BirthdayWishesCard({ birthdays }: { birthdays: any[] }) {
+  if (!birthdays || birthdays.length === 0) return null;
+  return (
+    <div className="rounded-3xl border bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500 p-8 shadow-card flex flex-col md:flex-row items-center gap-6 relative overflow-hidden group">
+       <div className="absolute top-0 right-0 size-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+       <div className="size-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm shrink-0 border border-white/30">
+          <PartyPopper className="size-8 text-white animate-bounce" />
+       </div>
+       <div className="flex-1 text-white z-10">
+          <h2 className="text-3xl font-black tracking-tight mb-4">Happy Birthday! 🎉</h2>
+          <div className="flex flex-wrap gap-4">
+            {birthdays.map(b => (
+              <div key={b.id} className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 shadow-lg transition-transform hover:scale-105">
+                 {b.photo_url ? (
+                    <img src={b.photo_url} alt={b.full_name} className="size-12 rounded-full object-cover border-2 border-white/50" />
+                 ) : (
+                    <div className="size-12 rounded-full bg-white/20 flex items-center justify-center font-black text-lg border-2 border-white/50">
+                      {b.full_name?.charAt(0)}
+                    </div>
+                 )}
+                 <div>
+                   <p className="font-bold text-base">{b.full_name}</p>
+                   <p className="text-[10px] text-white/80 font-black uppercase tracking-widest">{b.department || 'Team Member'}</p>
+                 </div>
+              </div>
+            ))}
+          </div>
+       </div>
+    </div>
+  );
+}
 
 function StatCard({ icon: Icon, label, value, trend, trendValue, colorClass }: any) {
   return (
@@ -345,6 +377,15 @@ function Dashboard() {
     enabled: !!myEmployee,
   });
 
+  const { data: birthdays } = useQuery({
+    queryKey: ["todays-birthdays"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_todays_birthdays");
+      if (error) return [];
+      return data || [];
+    }
+  });
+
   const latestSession = myAttendance?.[0];
   const isCheckedIn = !!(latestSession && !latestSession.check_out);
   const [elapsed, setElapsed] = useState("00:00:00");
@@ -576,6 +617,10 @@ function Dashboard() {
             </Button>
           </div>
         </div>
+      )}
+
+      {birthdays && birthdays.length > 0 && (
+        <BirthdayWishesCard birthdays={birthdays} />
       )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
