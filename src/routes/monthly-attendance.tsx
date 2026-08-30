@@ -150,7 +150,7 @@ function AttendancePage() {
 
         const paid = totalDays - absentCount - (halfCount * 0.5);
 
-        return {
+        const rowData: any = {
           "Employee ID": emp.employee_code,
           "Employee Name": emp.full_name,
           "Department": emp.department || "—",
@@ -162,6 +162,30 @@ function AttendancePage() {
           "Late Marks": lateCount,
           "OT Hours": Number(otCount.toFixed(1)),
         };
+
+        // Add day-wise data
+        for (let d = 1; d <= totalDays; d++) {
+          const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const dObj = new Date(year, month - 1, d);
+          const isSunday = dObj.getDay() === 0;
+          const attRec = empAtt.find((a) => a.date === dateStr);
+          const isHoliday = holidays.some((h: any) => h.date === dateStr);
+          const isLeave = empLeaves.some((l) => dateStr >= l.start_date && dateStr <= l.end_date);
+
+          if (attRec) {
+            rowData[`Day ${d}`] = attRec.hours_worked !== null ? `${attRec.hours_worked} hrs` : "Present";
+          } else if (isHoliday) {
+            rowData[`Day ${d}`] = "H"; // Holiday
+          } else if (isSunday) {
+            rowData[`Day ${d}`] = "W"; // Weekend
+          } else if (isLeave) {
+            rowData[`Day ${d}`] = "L"; // Leave
+          } else {
+            rowData[`Day ${d}`] = "A"; // Absent
+          }
+        }
+
+        return rowData;
       });
 
       // 6. Generate Excel workbook
