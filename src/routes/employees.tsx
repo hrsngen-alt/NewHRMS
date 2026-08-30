@@ -617,7 +617,7 @@ function EmployeesPage() {
                       <TabsTrigger value="documents">Documents</TabsTrigger>
                     </TabsList>
                     <TabsContent value="details">
-                      <EmployeeForm onSubmit={onSubmit} busy={busy} setOpen={setOpen} editingEmployee={editingEmployee} />
+                      <EmployeeForm onSubmit={onSubmit} busy={busy} setOpen={setOpen} editingEmployee={editingEmployee} allEmployees={employees} />
                     </TabsContent>
                     <TabsContent value="documents" className="space-y-4">
                       <div className="flex items-center justify-between">
@@ -659,7 +659,7 @@ function EmployeesPage() {
                     </TabsContent>
                   </Tabs>
                 ) : (
-                  <EmployeeForm onSubmit={onSubmit} busy={busy} setOpen={setOpen} editingEmployee={null} />
+                  <EmployeeForm onSubmit={onSubmit} busy={busy} setOpen={setOpen} editingEmployee={null} allEmployees={employees} />
                 )}
               </DialogContent>
             </Dialog>
@@ -1002,7 +1002,7 @@ function DetailItem({ label, value, badge, isPhone, employeeName }: { label: str
   );
 }
 
-function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
+function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee, allEmployees = [] }: any) {
   const [basic, setBasic] = useState(editingEmployee?.basic_salary ?? 0);
   const [hra, setHra] = useState(editingEmployee?.hra ?? 0);
   const [bonus, setBonus] = useState(editingEmployee?.bonus ?? 0);
@@ -1010,6 +1010,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
   const [esic, setEsic] = useState(editingEmployee?.esic_amount ?? 0);
   const [gratuity, setGratuity] = useState(editingEmployee?.gratuity_amount ?? 0);
   const [policyId, setPolicyId] = useState<string>(editingEmployee?.attendance_policy_id ?? "default");
+  const [manager, setManager] = useState(editingEmployee?.reporting_manager ?? "None");
 
   const { data: policies = [] } = useQuery({
     queryKey: ["attendance-policies"],
@@ -1027,6 +1028,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
     setEsic(editingEmployee?.esic_amount ?? 0);
     setGratuity(editingEmployee?.gratuity_amount ?? 0);
     setPolicyId(editingEmployee?.attendance_policy_id ?? "default");
+    setManager(editingEmployee?.reporting_manager ?? "None");
   }, [editingEmployee]);
 
   const grossSalary = Number(basic || 0) + Number(hra || 0) + Number(bonus || 0);
@@ -1047,11 +1049,28 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee }: any) {
       {personalFields.map(([name, label, req, type]) => (
         <div key={name as string} className={name === "full_name" || name === "email" ? "col-span-1 sm:col-span-2" : ""}>
           <Label htmlFor={name as string} className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">{label as string}</Label>
-          <Input 
-            id={name as string} name={name as string} type={(type as string) || "text"} 
-            required={Boolean(req)} className="bg-muted/30 focus:bg-white" 
-            defaultValue={editingEmployee ? editingEmployee[name as string] : ""}
-          />
+          {name === "reporting_manager" ? (
+            <>
+              <input type="hidden" name="reporting_manager" value={manager === "None" ? "" : manager} />
+              <Select value={manager} onValueChange={setManager}>
+                <SelectTrigger className="bg-muted/30 focus:bg-white h-10 border rounded-md">
+                  <SelectValue placeholder="Select Manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="None">None</SelectItem>
+                  {allEmployees.map((emp: any) => (
+                    <SelectItem key={emp.id} value={emp.full_name}>{emp.full_name} ({emp.department})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <Input 
+              id={name as string} name={name as string} type={(type as string) || "text"} 
+              required={Boolean(req)} className="bg-muted/30 focus:bg-white" 
+              defaultValue={editingEmployee ? editingEmployee[name as string] : ""}
+            />
+          )}
         </div>
       ))}
 
