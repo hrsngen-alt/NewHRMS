@@ -2,8 +2,8 @@ import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
-import { 
-  LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText, 
+import {
+  LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText,
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
   Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug, FileCheck
 } from "lucide-react";
@@ -83,7 +83,7 @@ function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: st
   const isRouteAllowed = (navItem: NavItem) => {
     const requirement = ROUTE_PERMISSIONS[navItem.to];
     if (!requirement) return true; // public/self-service routes
-    
+
     const permitted = hasPermission(requirement.module, requirement.action);
     if (!permitted) return false;
 
@@ -124,7 +124,7 @@ function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: st
           const active = location.pathname.startsWith(n.to);
           const content = (
             <>
-              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110 shrink-0", active ? "text-white" : "text-muted-foreground/40 md:group-hover:text-sidebar-accent-foreground")} /> 
+              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110 shrink-0", active ? "text-white" : "text-muted-foreground/40 md:group-hover:text-sidebar-accent-foreground")} />
               {!sidebarCollapsed && n.label}
             </>
           );
@@ -146,8 +146,8 @@ function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: st
               className={cn(
                 "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
                 sidebarCollapsed ? "justify-center px-2" : "",
-                active 
-                  ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                active
+                  ? "bg-primary text-white shadow-lg shadow-primary/30"
                   : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-sidebar-accent-foreground"
               )}>
               {content}
@@ -165,11 +165,11 @@ function NavContent({ role, location, onNavClick, sidebarCollapsed }: { role: st
               className={cn(
                 "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 group",
                 sidebarCollapsed ? "justify-center px-2" : "",
-                active 
-                  ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                active
+                  ? "bg-primary text-white shadow-lg shadow-primary/30"
                   : "text-foreground hover:bg-primary/10 hover:text-primary md:text-sidebar-foreground md:hover:bg-sidebar-accent md:hover:text-sidebar-accent-foreground"
               )}>
-              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110 shrink-0", active ? "text-white" : "text-muted-foreground/40 md:group-hover:text-sidebar-accent-foreground")} /> 
+              <n.icon className={cn("size-5 transition-transform duration-300 group-hover:scale-110 shrink-0", active ? "text-white" : "text-muted-foreground/40 md:group-hover:text-sidebar-accent-foreground")} />
               {!sidebarCollapsed && n.label}
             </Link>
           );
@@ -256,7 +256,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
     const handleTouchStart = (e: TouchEvent) => {
       if (mobileOpen) return;
-      
+
       const target = e.target as HTMLElement;
       if (target.closest?.('[role="dialog"]') || target.closest?.('[data-radix-portal]')) {
         return;
@@ -339,7 +339,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const [isAuthenticatingBiometrics, setIsAuthenticatingBiometrics] = useState(false);
 
   // Helper to check if biometrics is enabled
-  const isBiometricsEnabled = typeof window !== "undefined" && 
+  const isBiometricsEnabled = typeof window !== "undefined" &&
     localStorage.getItem("pwa_passcode_enabled") === "true" &&
     localStorage.getItem("pwa_biometrics_enabled") === "true";
 
@@ -411,7 +411,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
   // Handle dialpad press
   const handleKeyPress = async (num: string) => {
     if (pinInput.length >= 4) return;
-    
+
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(20);
     }
@@ -476,7 +476,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         if (perm === "default") {
           perm = await Notification.requestPermission();
         }
-        
+
         if (perm === "granted") {
           try {
             const registration = await navigator.serviceWorker.ready;
@@ -494,7 +494,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                 console.warn("VITE_VAPID_PUBLIC_KEY is not set. Offline push notifications won't work.");
               }
             }
-            
+
             // Save subscription to DB
             if (subscription && user?.id) {
               const subJson = subscription.toJSON();
@@ -747,15 +747,15 @@ export function AppShell({ children }: { children?: ReactNode }) {
                     key={index}
                     className={cn(
                       "size-3.5 rounded-full border-2 border-primary/40 transition-all duration-300",
-                      active 
-                        ? "bg-primary scale-110 shadow-lg shadow-primary/50 border-primary" 
+                      active
+                        ? "bg-primary scale-110 shadow-lg shadow-primary/50 border-primary"
                         : "bg-transparent"
                     )}
                   />
                 );
               })}
             </div>
-            
+
             {/* Signout button for landscape */}
             <button
               onClick={handleSignOut}
@@ -777,7 +777,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
                   {num}
                 </button>
               ))}
-              
+
               {/* Biometric trigger */}
               {isBiometricsEnabled ? (
                 <button
@@ -822,27 +822,27 @@ export function AppShell({ children }: { children?: ReactNode }) {
     <div className="flex h-screen bg-background font-sans transition-colors duration-300 overflow-hidden">
       {/* Pull to Refresh Indicator */}
       {(pullDistance > 0 || isRefreshing) && (
-        <div 
+        <div
           className="fixed left-0 right-0 z-[100] flex justify-center pointer-events-none transition-all duration-200"
-          style={{ 
+          style={{
             top: isRefreshing ? '20px' : `${Math.max(-40, pullDistance - 40)}px`,
             opacity: isRefreshing ? 1 : Math.min(1, pullDistance / 60)
           }}
         >
           <div className="size-10 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl flex items-center justify-center animate-in fade-in zoom-in-75">
-            <svg 
+            <svg
               className={cn(
-                "size-5 text-primary", 
+                "size-5 text-primary",
                 isRefreshing ? "animate-spin" : ""
               )}
               style={{
                 transform: isRefreshing ? undefined : `rotate(${pullDistance * 4}deg)`
               }}
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="3" 
-              strokeLinecap="round" 
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.72 2.78L21 8" />
@@ -859,13 +859,13 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <Link to="/dashboard" className="mb-10 flex items-center justify-center px-2 shrink-0">
           <SNLogo className="h-16 w-auto" />
         </Link>
-        
+
         <NavContent role={role} location={location} sidebarCollapsed={false} />
 
         <div className="space-y-4 border-t border-sidebar-border/50 pt-8 mt-6">
           <Link to="/profile" className="flex items-center gap-3 px-2 group hover:opacity-80 transition-opacity">
             <div className="size-10 rounded-full bg-sidebar-accent flex items-center justify-center text-sidebar-accent-foreground font-black border-2 border-primary/20 shadow-inner group-hover:border-primary/50 transition-colors shrink-0">
-               {user.email?.charAt(0).toUpperCase()}
+              {user.email?.charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col min-w-0">
               <div className="truncate text-sm font-black text-sidebar-accent-foreground group-hover:text-primary transition-colors">{user.email?.split('@')[0]}</div>
@@ -881,41 +881,41 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <main className="flex-1 h-full overflow-y-auto overflow-x-hidden flex flex-col">
         <header className="flex items-center justify-between border-b bg-card/40 px-4 md:px-8 py-5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
           <div className="flex items-center gap-4">
-             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-               <SheetTrigger asChild>
-                 <Button variant="outline" size="icon" className="md:hidden rounded-xl border-2 shadow-sm">
-                   <Menu className="size-5" />
-                 </Button>
-               </SheetTrigger>
-               <SheetContent side="left" className="w-[300px] p-6 flex flex-col">
-                 <SheetHeader className="text-left mb-6">
-                   <SheetTitle className="flex items-center">
-                     <SNLogo className="h-10 w-auto" />
-                   </SheetTitle>
-                 </SheetHeader>
-                 <NavContent role={role} location={location} onNavClick={() => setMobileOpen(false)} />
-                 <div className="mt-auto pt-6 border-t">
-                    <button onClick={() => { handleSignOut(); setMobileOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
-                      <LogOut className="size-5" /> Sign out
-                    </button>
-                 </div>
-               </SheetContent>
-             </Sheet>
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="md:hidden rounded-xl border-2 shadow-sm">
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] p-6 flex flex-col">
+                <SheetHeader className="text-left mb-6">
+                  <SheetTitle className="flex items-center">
+                    <SNLogo className="h-10 w-auto" />
+                  </SheetTitle>
+                </SheetHeader>
+                <NavContent role={role} location={location} onNavClick={() => setMobileOpen(false)} />
+                <div className="mt-auto pt-6 border-t">
+                  <button onClick={() => { handleSignOut(); setMobileOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
+                    <LogOut className="size-5" /> Sign out
+                  </button>
+                </div>
+              </SheetContent>
+            </Sheet>
 
-             {/* Desktop Sidebar Collapse Toggle Button */}
-             <Button 
-               onClick={toggleSidebarCollapse}
-               variant="outline" 
-               size="icon" 
-               className="hidden md:flex rounded-xl border-2 shadow-sm hover:bg-slate-50 transition-colors"
-             >
-               <Menu className="size-5" />
-             </Button>
+            {/* Desktop Sidebar Collapse Toggle Button */}
+            <Button
+              onClick={toggleSidebarCollapse}
+              variant="outline"
+              size="icon"
+              className="hidden md:flex rounded-xl border-2 shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              <Menu className="size-5" />
+            </Button>
 
-             <div className="hidden md:flex items-center gap-6">
-                <div className="h-4 w-px bg-border" />
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{location.pathname.replace('/', '').replace('-', ' ') || 'Dashboard'}</div>
-             </div>
+            <div className="hidden md:flex items-center gap-6">
+              <div className="h-4 w-px bg-border" />
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{location.pathname.replace('/', '').replace('-', ' ') || 'Dashboard'}</div>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -935,87 +935,87 @@ export function AppShell({ children }: { children?: ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2 shadow-elegant border-2 border-primary/5">
                 <DropdownMenuLabel className="font-black text-xs uppercase tracking-widest px-3 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      Notifications
-                      {unreadCount > 0 && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{unreadCount} New</span>}
-                    </div>
-                    {notifications.length > 0 && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); clearAll(); }} 
-                        className="text-[9px] font-black text-rose-500 hover:text-rose-600 transition-colors bg-rose-50 px-2 py-1 rounded-lg"
-                      >
-                        Clear All
-                      </button>
-                    )}
+                  <div className="flex items-center gap-2">
+                    Notifications
+                    {unreadCount > 0 && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{unreadCount} New</span>}
+                  </div>
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); clearAll(); }}
+                      className="text-[9px] font-black text-rose-500 hover:text-rose-600 transition-colors bg-rose-50 px-2 py-1 rounded-lg"
+                    >
+                      Clear All
+                    </button>
+                  )}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-96 overflow-y-auto space-y-1 p-1">
                   {notifications.length === 0 ? (
                     <div className="py-8 text-center text-xs text-muted-foreground font-medium">No recent notifications.</div>
-                   ) : notifications.map((n: any) => (
-                    <DropdownMenuItem 
-                      key={n.id} 
+                  ) : notifications.map((n: any) => (
+                    <DropdownMenuItem
+                      key={n.id}
                       onClick={() => handleNotificationClick(n)}
                       className="rounded-xl p-3 flex gap-3 cursor-pointer focus:bg-primary/5 group/item relative"
                     >
-                       <div className={cn(
-                         "size-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
-                         n.type === 'success' ? "bg-green-100 text-green-600" :
-                         n.type === 'warning' ? "bg-amber-100 text-amber-600" :
-                         n.type === 'error' ? "bg-rose-100 text-rose-600" : "bg-blue-100 text-blue-600"
-                       )}>
-                         {n.type === 'success' ? <CheckCircle2 className="size-4" /> :
+                      <div className={cn(
+                        "size-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
+                        n.type === 'success' ? "bg-green-100 text-green-600" :
+                          n.type === 'warning' ? "bg-amber-100 text-amber-600" :
+                            n.type === 'error' ? "bg-rose-100 text-rose-600" : "bg-blue-100 text-blue-600"
+                      )}>
+                        {n.type === 'success' ? <CheckCircle2 className="size-4" /> :
                           n.type === 'warning' ? <AlertTriangle className="size-4" /> :
-                          n.type === 'error' ? <AlertCircle className="size-4" /> : <Info className="size-4" />}
-                       </div>
-                       <div className="flex flex-col gap-0.5 min-w-0 pr-4 text-left">
-                          <p className={cn("text-xs font-bold leading-none truncate", !n.is_read && "text-primary")}>{n.title}</p>
-                          <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
-                          <p className="text-[8px] font-black uppercase text-muted-foreground/40 mt-1">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                       </div>
-                       <button 
-                         onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
-                         className="absolute top-2 right-2 size-5 rounded-md flex items-center justify-center text-muted-foreground hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all"
-                       >
-                          <X className="size-3" />
-                       </button>
+                            n.type === 'error' ? <AlertCircle className="size-4" /> : <Info className="size-4" />}
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-w-0 pr-4 text-left">
+                        <p className={cn("text-xs font-bold leading-none truncate", !n.is_read && "text-primary")}>{n.title}</p>
+                        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
+                        <p className="text-[8px] font-black uppercase text-muted-foreground/40 mt-1">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
+                        className="absolute top-2 right-2 size-5 rounded-md flex items-center justify-center text-muted-foreground hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all"
+                      >
+                        <X className="size-3" />
+                      </button>
                     </DropdownMenuItem>
                   ))}
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="justify-center text-[10px] font-black uppercase tracking-widest text-primary cursor-pointer rounded-xl">
-                   View All Activity
+                  View All Activity
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
             <div className="h-9 w-px bg-border mx-2" />
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               onClick={toggleTheme}
               className="rounded-xl border-2 hover:bg-primary/10 hover:text-primary transition-all shadow-sm group"
               title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
             >
-               {theme === 'light' ? (
-                 <Moon className="size-4 transition-transform group-hover:rotate-12" />
-               ) : (
-                 <Sun className="size-4 transition-transform group-hover:rotate-45" />
-               )}
+              {theme === 'light' ? (
+                <Moon className="size-4 transition-transform group-hover:rotate-12" />
+              ) : (
+                <Sun className="size-4 transition-transform group-hover:rotate-45" />
+              )}
             </Button>
             {role === "admin" && (
               <>
                 <div className="h-9 w-px bg-border mx-2" />
                 <Button variant="outline" size="icon" className="rounded-full border-2 hover:bg-primary/10 hover:text-primary transition-all shadow-sm" asChild>
-                   <Link to="/settings"><Settings className="size-4" /></Link>
+                  <Link to="/settings"><Settings className="size-4" /></Link>
                 </Button>
               </>
             )}
           </div>
         </header>
-        
+
         <div className="p-8 max-w-[1600px] mx-auto w-full flex-1">
-           {children ?? <Outlet />}
+          {children ?? <Outlet />}
         </div>
       </main>
       <BugReportWidget />
