@@ -18,34 +18,44 @@ import 'leaflet/dist/leaflet.css';
 
 export const Route = createFileRoute("/dashboard")({ component: () => <AppShell><Dashboard /></AppShell> });
 
-function BirthdayWishesCard({ birthdays }: { birthdays: any[] }) {
+function BirthdayWishesCard({ birthdays, myEmployeeId }: { birthdays: any[], myEmployeeId?: string }) {
   if (!birthdays || birthdays.length === 0) return null;
+  const isMyBirthday = birthdays.some((b: any) => b.id === myEmployeeId);
   return (
     <div className="rounded-3xl border bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500 p-8 shadow-card flex flex-col md:flex-row items-center gap-6 relative overflow-hidden group">
-       <div className="absolute top-0 right-0 size-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-       <div className="size-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm shrink-0 border border-white/30">
-          <PartyPopper className="size-8 text-white animate-bounce" />
-       </div>
-       <div className="flex-1 text-white z-10">
-          <h2 className="text-3xl font-black tracking-tight mb-4">Happy Birthday! 🎉</h2>
-          <div className="flex flex-wrap gap-4">
-            {birthdays.map(b => (
-              <div key={b.id} className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 shadow-lg transition-transform hover:scale-105">
-                 {b.photo_url ? (
-                    <img src={b.photo_url} alt={b.full_name} className="size-12 rounded-full object-cover border-2 border-white/50" />
-                 ) : (
-                    <div className="size-12 rounded-full bg-white/20 flex items-center justify-center font-black text-lg border-2 border-white/50">
-                      {b.full_name?.charAt(0)}
-                    </div>
-                 )}
-                 <div>
-                   <p className="font-bold text-base">{b.full_name}</p>
-                   <p className="text-[10px] text-white/80 font-black uppercase tracking-widest">{b.department || 'Team Member'}</p>
-                 </div>
+      <div className="absolute top-0 right-0 size-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+      <div className="size-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm shrink-0 border border-white/30">
+        <PartyPopper className="size-8 text-white animate-bounce" />
+      </div>
+      <div className="flex-1 text-white z-10">
+        <h2 className="text-3xl font-black tracking-tight mb-1">Happy Birthday! 🎉</h2>
+        {isMyBirthday ? (
+          <p className="text-white/90 font-medium mb-5 text-sm md:text-base max-w-xl leading-relaxed">
+            Wishing you a fantastic day filled with joy, laughter, and lots of cake! 🎂✨ Thank you for being such an amazing part of our team.
+          </p>
+        ) : (
+          <p className="text-white/90 font-medium mb-5 text-sm md:text-base max-w-xl leading-relaxed">
+            Join us in wishing a very Happy Birthday to our amazing team member{birthdays.length > 1 ? 's' : ''}! 🎂✨
+          </p>
+        )}
+        <div className="flex flex-wrap gap-4">
+          {birthdays.map(b => (
+            <div key={b.id} className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 shadow-lg transition-transform hover:scale-105">
+              {b.photo_url ? (
+                <img src={b.photo_url} alt={b.full_name} className="size-12 rounded-full object-cover border-2 border-white/50" />
+              ) : (
+                <div className="size-12 rounded-full bg-white/20 flex items-center justify-center font-black text-lg border-2 border-white/50">
+                  {b.full_name?.charAt(0)}
+                </div>
+              )}
+              <div>
+                <p className="font-bold text-base">{b.full_name}</p>
+                <p className="text-[10px] text-white/80 font-black uppercase tracking-widest">{b.department || 'Team Member'}</p>
               </div>
-            ))}
-          </div>
-       </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -76,7 +86,7 @@ function StatCard({ icon: Icon, label, value, trend, trendValue, colorClass }: a
 function OfficeMap({ locations }: { locations: any[] }) {
   const [mounted, setMounted] = useState(false);
   const [instanceKey, setInstanceKey] = useState(0);
-  
+
   useEffect(() => {
     // Small delay to ensure previous instances are cleaned up by React
     const timer = setTimeout(() => {
@@ -103,11 +113,11 @@ function OfficeMap({ locations }: { locations: any[] }) {
 
   if (!mounted) return (
     <div className="h-full w-full bg-slate-50 flex items-center justify-center animate-pulse rounded-xl">
-       <Loader2 className="size-6 text-primary animate-spin" />
+      <Loader2 className="size-6 text-primary animate-spin" />
     </div>
   );
 
-  const center: [number, number] = [22.3094, 72.1362]; 
+  const center: [number, number] = [22.3094, 72.1362];
 
   return (
     <div className="h-full w-full rounded-xl overflow-hidden border relative z-0">
@@ -117,11 +127,11 @@ function OfficeMap({ locations }: { locations: any[] }) {
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No branch locations found</p>
         </div>
       ) : (
-        <MapContainer 
+        <MapContainer
           key={`office-map-${instanceKey}`}
-          center={center} 
-          zoom={7} 
-          style={{ height: '100%', width: '100%' }} 
+          center={center}
+          zoom={7}
+          style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={false}
         >
           <TileLayer
@@ -170,7 +180,7 @@ function LiveActivity({ isAdmin, today }: { isAdmin: boolean; today: string }) {
           .select("*, employees(full_name)")
           .eq("id", payload.new.id)
           .single();
-        
+
         if (newRecord) {
           setActivities(prev => [newRecord, ...prev.slice(0, 4)]);
           qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
@@ -257,7 +267,7 @@ function Dashboard() {
     }
   }
 
-  function onScanFailure(error: any) {}
+  function onScanFailure(error: any) { }
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
@@ -287,7 +297,7 @@ function Dashboard() {
       }
     } else if (isIOSDevice) {
       toast.info(
-        "To install: Tap the Share button at the bottom of Safari, then select 'Add to Home Screen'.", 
+        "To install: Tap the Share button at the bottom of Safari, then select 'Add to Home Screen'.",
         { duration: 6000 }
       );
     } else {
@@ -326,12 +336,12 @@ function Dashboard() {
       const activeCount = allEmps.filter(e => e.status?.toLowerCase() === 'active').length;
       const resignedCount = allEmps.filter(e => e.status?.toLowerCase() === 'resigned').length;
       const terminatedCount = allEmps.filter(e => e.status?.toLowerCase() === 'terminated').length;
-      
+
       const onLeaveTodayCount = new Set((onLeaveRes.data || []).map((l: any) => l.employee_id)).size;
 
       const deptMap: Record<string, number> = {};
       allEmps.forEach((e) => { const d = e.department || "Unassigned"; deptMap[d] = (deptMap[d] ?? 0) + 1; });
-      const deptData = Object.entries(deptMap).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
+      const deptData = Object.entries(deptMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
       const totalNet = (pay.data ?? []).reduce((s, p) => s + Number(p.net_pay), 0);
       const uniquePresent = new Set((att.data ?? []).filter(a => a.status === "present").map(a => a.employee_id)).size;
@@ -377,10 +387,10 @@ function Dashboard() {
     enabled: !!myEmployee,
   });
 
-  const { data: birthdays } = useQuery({
+  const { data: birthdays = [] } = useQuery<any[]>({
     queryKey: ["todays-birthdays"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_todays_birthdays");
+      const { data, error } = await (supabase as any).rpc("get_todays_birthdays");
       if (error) return [];
       return data || [];
     }
@@ -409,14 +419,14 @@ function Dashboard() {
 
   const punch = async (type: "in" | "out", source: "Manual" | "QR" = "Manual") => {
     if (!myEmployee) return toast.error("Employee profile not linked.");
-    
+
     setIsPunching(true);
     let lat, lng;
     try {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
-        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { 
+        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {
           enableHighAccuracy: false,  // Use WiFi/network — avoids kCLErrorLocationUnknown
-          timeout: 8000, 
+          timeout: 8000,
           maximumAge: 60000  // Accept cached position up to 1 min old
         }));
         lat = pos.coords.latitude;
@@ -461,8 +471,8 @@ function Dashboard() {
       const deviceInfo = getDeviceInfo();
 
       if (type === "in") {
-        await (supabase.from("attendance") as any).insert({ 
-          employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(), 
+        await (supabase.from("attendance") as any).insert({
+          employee_id: myEmployee.id, date: today, check_in: new Date().toISOString(),
           status: "present", check_in_lat: lat || null, check_in_lng: lng || null,
           check_in_address: address || null,
           employee_name: myEmployee.full_name,
@@ -477,7 +487,7 @@ function Dashboard() {
         toast.success(isMarketing ? "Field Work Check-in Successful!" : "Checked in successfully!");
       } else {
         const hours = Math.max(0, (Date.now() - new Date(latestSession!.check_in!).getTime()) / 3600000);
-        await (supabase.from("attendance") as any).update({ 
+        await (supabase.from("attendance") as any).update({
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
           check_out_lat: lat || null, check_out_lng: lng || null,
           check_out_address: address || null,
@@ -527,8 +537,8 @@ function Dashboard() {
       {myEmployee && (
         <div className={cn(
           "rounded-3xl border p-6 md:p-8 transition-all relative overflow-hidden group shadow-card flex flex-col md:flex-row md:items-center justify-between gap-6",
-          isCheckedIn 
-            ? "bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/20" 
+          isCheckedIn
+            ? "bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/20"
             : "bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border-indigo-500/20"
         )}>
           {/* Decorative background blob */}
@@ -536,12 +546,12 @@ function Dashboard() {
             "absolute -right-16 -bottom-16 size-48 rounded-full opacity-20 blur-3xl pointer-events-none transition-transform group-hover:scale-110",
             isCheckedIn ? "bg-emerald-500" : "bg-indigo-500"
           )} />
-          
+
           <div className="flex items-start gap-4 z-10">
             <div className={cn(
               "inline-flex size-14 items-center justify-center rounded-2xl shrink-0 shadow-sm transition-all",
-              isCheckedIn 
-                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+              isCheckedIn
+                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                 : "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400"
             )}>
               {isCheckedIn ? (
@@ -554,8 +564,8 @@ function Dashboard() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className={cn(
                   "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
-                  isCheckedIn 
-                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200" 
+                  isCheckedIn
+                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                 )}>
                   <span className={cn("size-1.5 rounded-full", isCheckedIn ? "bg-emerald-500 animate-ping" : "bg-slate-400")} />
@@ -571,7 +581,7 @@ function Dashboard() {
                 {isCheckedIn ? "Active Work Session" : "Ready to start your shift?"}
               </h2>
               <p className="text-sm text-muted-foreground font-medium max-w-xl leading-relaxed">
-                {isCheckedIn 
+                {isCheckedIn
                   ? `You checked in today at ${latestSession?.check_in ? new Date(latestSession.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}. Have a productive day!`
                   : "Register your attendance now to log your hours. Location access is required."}
               </p>
@@ -587,20 +597,20 @@ function Dashboard() {
                 </span>
               </div>
             )}
-            
+
             {isCheckedIn ? (
-              <Button 
-                onClick={() => punch("out")} 
-                variant="destructive" 
+              <Button
+                onClick={() => punch("out")}
+                variant="destructive"
                 disabled={isPunching}
                 className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-red-100 dark:shadow-none hover:bg-rose-600 transition-all cursor-pointer w-full md:w-auto"
               >
-                {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Square className="size-5 fill-current" />} 
+                {isPunching ? <div className="size-5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Square className="size-5 fill-current" />}
                 {isPunching ? "Checking out..." : "End Session"}
               </Button>
             ) : (
-              <Button 
-                onClick={() => punch("in")} 
+              <Button
+                onClick={() => punch("in")}
                 disabled={isPunching}
                 className="h-14 px-8 rounded-2xl gap-3 text-base font-black shadow-lg shadow-indigo-100 dark:shadow-none hover:bg-indigo-600 transition-all cursor-pointer w-full md:w-auto"
               >
@@ -619,8 +629,8 @@ function Dashboard() {
         </div>
       )}
 
-      {birthdays && birthdays.length > 0 && (
-        <BirthdayWishesCard birthdays={birthdays} />
+      {birthdays.length > 0 && (
+        <BirthdayWishesCard birthdays={birthdays} myEmployeeId={myEmployee?.id} />
       )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -681,14 +691,14 @@ function Dashboard() {
                 <AreaChart data={stats?.attTrend ?? []}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
                   <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
                   <YAxis hide domain={[0, 100]} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-elegant)', padding: '12px' }}
                     itemStyle={{ fontWeight: 800, color: 'var(--primary)' }}
                   />
@@ -700,72 +710,72 @@ function Dashboard() {
         ) : (
           <div className="lg:col-span-12">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-2xl border bg-card p-6 shadow-card flex flex-col justify-between transition-all hover:shadow-elegant group min-h-[300px]">
-                  <div>
-                    <h3 className="font-bold text-lg tracking-tight flex items-center gap-2.5">
-                      <Clock className="size-5 text-primary" /> Today's Session Logs
-                    </h3>
-                    <p className="text-xs text-muted-foreground font-medium mt-1">Your check-in and check-out logs for today</p>
-                  </div>
-                  
-                  <div className="flex-1 mt-4 overflow-y-auto max-h-[160px] custom-scrollbar space-y-2.5 pr-1">
-                    {!myAttendance || myAttendance.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-4 text-muted-foreground">
-                        <Activity className="size-8 opacity-20 mb-2" />
-                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">No logs for today</p>
-                      </div>
-                    ) : (
-                      myAttendance.map((log: any) => (
-                        <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs">
-                          <div className="space-y-1">
-                            <span className={cn(
-                              "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
-                              log.check_out 
-                                ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                                : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                            )}>
-                              {log.check_out ? "Completed" : "In Progress"}
-                            </span>
-                            <div className="flex items-center gap-2 text-muted-foreground font-medium mt-1">
-                              <span>In: {new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              {log.check_out && (
-                                <>
-                                  <span>•</span>
-                                  <span>Out: {new Date(log.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-foreground">
-                              {log.hours_worked ? `${log.hours_worked} hrs` : (log.check_out ? 'Calculated' : 'Active')}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground font-medium capitalize mt-0.5">
-                              {log.metadata?.mode || 'Office'}
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+              <div className="rounded-2xl border bg-card p-6 shadow-card flex flex-col justify-between transition-all hover:shadow-elegant group min-h-[300px]">
+                <div>
+                  <h3 className="font-bold text-lg tracking-tight flex items-center gap-2.5">
+                    <Clock className="size-5 text-primary" /> Today's Session Logs
+                  </h3>
+                  <p className="text-xs text-muted-foreground font-medium mt-1">Your check-in and check-out logs for today</p>
                 </div>
 
-                <Link to="/profile" className="rounded-[32px] border bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-8 shadow-elegant flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 size-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-                  <div className="flex items-center justify-between text-white/80 relative z-10">
-                    <Award className="size-8" />
-                    <div className="px-3 py-1 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-black uppercase tracking-widest backdrop-blur-md border border-white/10">
-                        Digital ID
+                <div className="flex-1 mt-4 overflow-y-auto max-h-[160px] custom-scrollbar space-y-2.5 pr-1">
+                  {!myAttendance || myAttendance.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-4 text-muted-foreground">
+                      <Activity className="size-8 opacity-20 mb-2" />
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">No logs for today</p>
                     </div>
+                  ) : (
+                    myAttendance.map((log: any) => (
+                      <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs">
+                        <div className="space-y-1">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                            log.check_out
+                              ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                              : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                          )}>
+                            {log.check_out ? "Completed" : "In Progress"}
+                          </span>
+                          <div className="flex items-center gap-2 text-muted-foreground font-medium mt-1">
+                            <span>In: {new Date(log.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {log.check_out && (
+                              <>
+                                <span>•</span>
+                                <span>Out: {new Date(log.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-foreground">
+                            {log.hours_worked ? `${log.hours_worked} hrs` : (log.check_out ? 'Calculated' : 'Active')}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-medium capitalize mt-0.5">
+                            {log.metadata?.mode || 'Office'}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <Link to="/profile" className="rounded-[32px] border bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-8 shadow-elegant flex flex-col justify-between transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden">
+                <div className="absolute top-0 right-0 size-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+                <div className="flex items-center justify-between text-white/80 relative z-10">
+                  <Award className="size-8" />
+                  <div className="px-3 py-1 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-black uppercase tracking-widest backdrop-blur-md border border-white/10">
+                    Digital ID
                   </div>
-                  <div className="mt-12 relative z-10">
-                    <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Identity Pass</p>
-                    <p className="text-3xl font-black text-white tracking-tight leading-tight mt-2">Show My SN Gene ID</p>
-                    <div className="mt-6 flex items-center gap-3 text-sm font-bold text-white/80 group-hover:text-white transition-colors">
-                        Scan for Office Entry <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
-                    </div>
+                </div>
+                <div className="mt-12 relative z-10">
+                  <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Identity Pass</p>
+                  <p className="text-3xl font-black text-white tracking-tight leading-tight mt-2">Show My SN Gene ID</p>
+                  <div className="mt-6 flex items-center gap-3 text-sm font-bold text-white/80 group-hover:text-white transition-colors">
+                    Scan for Office Entry <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
                   </div>
-                </Link>
+                </div>
+              </Link>
             </div>
           </div>
         )}
@@ -783,7 +793,7 @@ function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
                   <YAxis hide />
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ fill: 'rgba(0,0,0,0.02)' }}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-elegant)' }}
                   />
@@ -803,9 +813,9 @@ function Dashboard() {
             <h3 className="font-bold text-xl tracking-tight">Global Office Presence</h3>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{stats?.locationCount ?? 0} active branches</p>
           </div>
-          
+
           <div className="flex-1 rounded-xl overflow-hidden relative border shadow-inner">
-             <OfficeMap locations={stats?.locations ?? []} />
+            <OfficeMap locations={stats?.locations ?? []} />
           </div>
         </div>
       </div>
