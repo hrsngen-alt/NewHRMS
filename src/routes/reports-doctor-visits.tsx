@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Download, FileDown, Search, Map, MapPin, ArrowLeft, Navigation } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
@@ -89,6 +90,21 @@ function DoctorVisitsReportPage() {
       return true;
     });
   }, [visits, dateFrom, dateTo, department, status, searchTerm]);
+
+  // Grouped by Employee for Accordion View
+  const groupedByEmployee = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    filteredData.forEach((v: any) => {
+      const empId = v.employees?.id || 'unknown';
+      if (!groups[empId]) groups[empId] = [];
+      groups[empId].push(v);
+    });
+    return Object.values(groups).sort((a, b) => {
+      const nameA = a[0]?.employees?.full_name || '';
+      const nameB = b[0]?.employees?.full_name || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [filteredData]);
 
   // Summaries
   const totalVisits = filteredData.length;
@@ -281,51 +297,78 @@ function DoctorVisitsReportPage() {
         </Card>
       )}
 
-      {/* Table */}
-      <Card className="shadow-sm overflow-hidden">
-        <div className="overflow-x-auto max-h-[500px]">
-          <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10 shadow-sm">
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Employee</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Hospital/Clinic</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead className="text-right">Location</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
-              ) : filteredData.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No records found for current filters.</TableCell></TableRow>
-              ) : (
-                filteredData.map((v: any) => (
-                  <TableRow key={v.id}>
-                    <TableCell className="whitespace-nowrap">{format(new Date(v.visit_date), 'dd MMM yyyy')}</TableCell>
-                    <TableCell className="font-medium">{v.employees?.full_name}</TableCell>
-                    <TableCell>{v.employees?.department}</TableCell>
-                    <TableCell className="font-medium">{v.doctor_name}</TableCell>
-                    <TableCell>{v.hospital_name}</TableCell>
-                    <TableCell>
-                      <span className={`text-xs px-2 py-1 rounded-full font-bold ${v.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {v.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>{v.visit_duration ? `${v.visit_duration}m` : '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50" onClick={() => setSelectedVisitForMap(v)}>
-                        <MapPin className="size-3.5" /> View Map
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+      {/* Table / Accordion View */}
+      <Card className="shadow-sm overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Employee-wise Visits</h2>
+        </div>
+        <div className="p-2 md:p-4 max-h-[600px] overflow-y-auto">
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+          ) : groupedByEmployee.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No records found for current filters.</div>
+          ) : (
+            <Accordion type="multiple" className="w-full space-y-4">
+              {groupedByEmployee.map((empVisits: any[]) => {
+                const emp = empVisits[0]?.employees;
+                const empName = emp?.full_name || 'Unknown Employee';
+                const empId = emp?.id || 'unknown';
+                return (
+                  <AccordionItem key={empId} value={empId} className="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 overflow-hidden shadow-sm">
+                    <AccordionTrigger className="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-all hover:no-underline">
+                      <div className="flex items-center justify-between w-full pr-4">
+                        <div className="flex flex-col items-start text-left">
+                          <span className="font-bold text-base text-slate-900 dark:text-white">{empName}</span>
+                          <span className="text-xs text-muted-foreground">{emp?.department || 'No Dept'}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full">
+                            {empVisits.length} Visits
+                          </span>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-0 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader className="bg-slate-50 dark:bg-slate-900">
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Doctor</TableHead>
+                              <TableHead>Hospital/Clinic</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Duration</TableHead>
+                              <TableHead className="text-right">Location</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {empVisits.map((v: any) => (
+                              <TableRow key={v.id}>
+                                <TableCell className="whitespace-nowrap font-medium">{format(new Date(v.visit_date), 'dd MMM yyyy')}</TableCell>
+                                <TableCell className="font-medium text-slate-700 dark:text-slate-300">{v.doctor_name}</TableCell>
+                                <TableCell>{v.hospital_name}</TableCell>
+                                <TableCell>
+                                  <span className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-black ${v.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'}`}>
+                                    {v.status}
+                                  </span>
+                                </TableCell>
+                                <TableCell>{v.visit_duration ? `${v.visit_duration}m` : '-'}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button size="sm" variant="ghost" className="gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 h-8" onClick={() => setSelectedVisitForMap(v)}>
+                                    <MapPin className="size-3.5" /> Map
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
         </div>
       </Card>
 

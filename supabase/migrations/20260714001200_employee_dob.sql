@@ -25,8 +25,8 @@ AS $$
   WHERE 
     status = 'active'
     AND date_of_birth IS NOT NULL
-    AND EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM CURRENT_DATE)
-    AND EXTRACT(DAY FROM date_of_birth) = EXTRACT(DAY FROM CURRENT_DATE);
+    AND EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM (now() AT TIME ZONE 'Asia/Kolkata'))
+    AND EXTRACT(DAY FROM date_of_birth) = EXTRACT(DAY FROM (now() AT TIME ZONE 'Asia/Kolkata'));
 $$;
 
 -- Grant access so authenticated users can call it

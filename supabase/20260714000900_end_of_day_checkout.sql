@@ -25,8 +25,8 @@ BEGIN
     JOIN public.employees e ON a.employee_id = e.id
     WHERE a.check_out IS NULL
   LOOP
-    -- Calculate 11:59 PM of the day the employee checked in
-    checkout_time := date_trunc('day', rec.check_in) + interval '23 hours 59 minutes';
+    -- Calculate 11:59 PM of the day the employee checked in, relative to India Standard Time (IST)
+    checkout_time := (date_trunc('day', rec.check_in AT TIME ZONE 'Asia/Kolkata') + interval '23 hours 59 minutes') AT TIME ZONE 'Asia/Kolkata';
     
     -- If the current time has passed the calculated 11:59 PM checkout time, process it
     IF now() >= checkout_time THEN

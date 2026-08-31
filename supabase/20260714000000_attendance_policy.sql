@@ -76,9 +76,13 @@ BEGIN
     WHERE a.check_out IS NULL
   LOOP
     -- Default/fallback check:
-    -- If a policy has auto_checkout_enabled OR if the department is 'Marketing' (and no explicit policy is assigned)
-    IF rec.auto_checkout_enabled = TRUE THEN
-      policy_minutes := COALESCE(rec.auto_checkout_after_minutes, 120);
+    -- Respect the policy if one is assigned, otherwise fallback to department rules
+    IF rec.auto_checkout_enabled IS NOT NULL THEN
+      IF rec.auto_checkout_enabled = TRUE THEN
+        policy_minutes := COALESCE(rec.auto_checkout_after_minutes, 120);
+      ELSE
+        policy_minutes := 0;
+      END IF;
     ELSIF LOWER(rec.department) = 'marketing' THEN
       policy_minutes := 120;
     ELSE

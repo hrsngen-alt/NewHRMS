@@ -8,7 +8,7 @@ async function main() {
   const { data: employee } = await supabase
     .from("employees")
     .select("*, attendance_policies(*)")
-    .eq("email", "hardikparmar0306@gmail.com")
+    .ilike("full_name", "%admin12%")
     .single();
 
   console.log("Fetching attendance before RPC...");
@@ -16,14 +16,16 @@ async function main() {
     .from("attendance")
     .select("*")
     .eq("employee_id", employee?.id)
-    .is("check_out", null)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(3);
   console.log("Before:", attendanceBefore);
 
   console.log("Running RPC process_auto_checkouts...");
-  const { error } = await supabase.rpc("process_auto_checkouts");
-  console.log("RPC Error:", error);
+  await supabase.rpc("process_auto_checkouts");
+
+  console.log("Running RPC end_of_day_auto_checkout...");
+  const { error } = await supabase.rpc("end_of_day_auto_checkout");
+  console.log("RPC Error (end_of_day):", error);
 
   console.log("Fetching attendance after RPC...");
   const { data: attendanceAfter } = await supabase
@@ -31,7 +33,7 @@ async function main() {
     .select("*")
     .eq("employee_id", employee?.id)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(3);
   console.log("After:", attendanceAfter);
 }
 main().catch(console.error);

@@ -69,8 +69,9 @@ serve(async (req: Request) => {
       // Process auto checkouts before querying database
       try {
         await supabase.rpc('process_auto_checkouts');
+        await supabase.rpc('end_of_day_auto_checkout');
       } catch (err) {
-        console.error("Error executing process_auto_checkouts RPC:", err);
+        console.error("Error executing auto checkouts RPC:", err);
       }
 
       // Query Database

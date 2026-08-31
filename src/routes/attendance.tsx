@@ -855,7 +855,10 @@ function AttendancePage() {
                           )}
                           {lastOut && (
                             <span className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[200px]" title={sorted[sorted.length - 1]?.check_out_address || "System Generated"}>
-                              Out: {sorted[sorted.length - 1].check_out_address || (sorted[sorted.length - 1].check_out_type === 'Manual' ? "Location Unavailable" : "System Generated (Auto)")}
+                              Out: {sorted[sorted.length - 1].check_out_address || (
+                                sorted[sorted.length - 1].check_out_type === 'Forget Check Out' ? "Forgot to Checkout" :
+                                sorted[sorted.length - 1].check_out_type === 'Manual' ? "Location Unavailable" : "System Generated (Auto)"
+                              )}
                             </span>
                           )}
                         </div>
@@ -996,7 +999,10 @@ function AttendancePage() {
                       )}
                       {lastOut && (
                         <p className="text-[9px] font-semibold text-muted-foreground/70 truncate max-w-[180px]">
-                          Out: {sorted[sorted.length - 1].check_out_address || (sorted[sorted.length - 1].check_out_type === 'Manual' ? "Location Unavailable" : "System Generated (Auto)")}
+                          Out: {sorted[sorted.length - 1].check_out_address || (
+                            sorted[sorted.length - 1].check_out_type === 'Forget Check Out' ? "Forgot to Checkout" :
+                            sorted[sorted.length - 1].check_out_type === 'Manual' ? "Location Unavailable" : "System Generated (Auto)"
+                          )}
                         </p>
                       )}
                     </div>
@@ -1169,6 +1175,8 @@ function AttendancePage() {
                                    <p className="text-xs font-bold text-muted-foreground">{checkOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                                    {s.check_out_address ? (
                                      <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_out_address}</p>
+                                   ) : s.check_out_type === 'Forget Check Out' ? (
+                                     <p className="text-[10px] font-medium text-rose-500/80 mt-1 max-w-[220px] leading-tight">System Generated (Forgot Checkout)</p>
                                    ) : s.check_out_type === 'Manual' ? (
                                      <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">Location Unavailable</p>
                                    ) : (
