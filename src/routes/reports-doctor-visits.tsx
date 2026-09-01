@@ -26,6 +26,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+function formatDuration(minutes: number) {
+  if (!minutes) return '-';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0) {
+    return mins > 0 ? `${hours} hr ${mins} min` : `${hours} hr`;
+  }
+  return `${mins} min`;
+}
+
 export const Route = createFileRoute('/reports-doctor-visits')({
   component: () => (
     <AppShell>
@@ -41,6 +51,7 @@ function DoctorVisitsReportPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [department, setDepartment] = useState('All');
+  const [employeeId, setEmployeeId] = useState('All');
   const [status, setStatus] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [showMap, setShowMap] = useState(false);
@@ -55,7 +66,7 @@ function DoctorVisitsReportPage() {
         .from('doctor_visits')
         .select(`
           *,
-          employees (id, full_name, department, designation)
+          employees (id, full_name, department, designation, reporting_manager)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -73,6 +84,9 @@ function DoctorVisitsReportPage() {
       // Dept filter
       if (department !== 'All' && v.employees?.department !== department) return false;
       
+      // Employee filter
+      if (employeeId !== 'All' && v.employees?.id !== employeeId) return false;
+      
       // Status filter
       if (status !== 'All' && v.status !== status) return false;
       
@@ -89,7 +103,21 @@ function DoctorVisitsReportPage() {
       
       return true;
     });
-  }, [visits, dateFrom, dateTo, department, status, searchTerm]);
+  }, [visits, dateFrom, dateTo, department, employeeId, status, searchTerm]);
+
+  // Extract unique employees for the dropdown
+  const uniqueEmployees = useMemo(() => {
+    const emps: Record<string, string> = {};
+    visits.forEach((v: any) => {
+      // Only show employees in Marketing department (or you can adjust this if they meant something else, but "all marketing employee list show that box" implies filtering to Marketing, or maybe just all employees if the dept filter is already there)
+      if (v.employees?.id) {
+        emps[v.employees.id] = v.employees.full_name;
+      }
+    });
+    return Object.entries(emps)
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [visits]);
 
   // Grouped by Employee for Accordion View
   const groupedByEmployee = useMemo(() => {
@@ -112,7 +140,7 @@ function DoctorVisitsReportPage() {
   const completedVisits = filteredData.filter((v: any) => v.status === 'Completed').length;
   const checkedInVisits = filteredData.filter((v: any) => v.status === 'Checked In').length;
   const uniqueDoctors = new Set(filteredData.map((v: any) => v.doctor_name)).size;
-  const uniqueEmployees = new Set(filteredData.map((v: any) => v.employee_id)).size;
+  const uniqueEmployeesCount = new Set(filteredData.map((v: any) => v.employee_id)).size;
 
   const logExport = async (format: string, recordCount: number) => {
     try {
@@ -214,7 +242,7 @@ function DoctorVisitsReportPage() {
 
       {/* Filters */}
       <Card className="shadow-sm">
-        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold">Search (Emp/Doc/Hosp)</label>
             <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -227,6 +255,18 @@ function DoctorVisitsReportPage() {
                 <SelectItem value="All">All Departments</SelectItem>
                 <SelectItem value="Marketing">Marketing</SelectItem>
                 <SelectItem value="Sales">Sales</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold">Employee</label>
+            <Select value={employeeId} onValueChange={setEmployeeId}>
+              <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Employees</SelectItem>
+                {uniqueEmployees.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -260,7 +300,7 @@ function DoctorVisitsReportPage() {
         <SummaryCard title="Completed" value={completedVisits} />
         <SummaryCard title="Checked In" value={checkedInVisits} />
         <SummaryCard title="Doctors" value={uniqueDoctors} />
-        <SummaryCard title="Employees" value={uniqueEmployees} />
+        <SummaryCard title="Employees" value={uniqueEmployeesCount} />
       </div>
 
       {/* Map View */}
@@ -336,6 +376,8 @@ function DoctorVisitsReportPage() {
                               <TableHead>Date</TableHead>
                               <TableHead>Doctor</TableHead>
                               <TableHead>Hospital/Clinic</TableHead>
+                              <TableHead>Check In</TableHead>
+                              <TableHead>Check Out</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Duration</TableHead>
                               <TableHead className="text-right">Location</TableHead>
@@ -347,12 +389,14 @@ function DoctorVisitsReportPage() {
                                 <TableCell className="whitespace-nowrap font-medium">{format(new Date(v.visit_date), 'dd MMM yyyy')}</TableCell>
                                 <TableCell className="font-medium text-slate-700 dark:text-slate-300">{v.doctor_name}</TableCell>
                                 <TableCell>{v.hospital_name}</TableCell>
+                                <TableCell className="whitespace-nowrap">{v.check_in_time ? format(new Date(v.check_in_time), 'hh:mm a') : '-'}</TableCell>
+                                <TableCell className="whitespace-nowrap">{v.check_out_time ? format(new Date(v.check_out_time), 'hh:mm a') : '-'}</TableCell>
                                 <TableCell>
                                   <span className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-full font-black ${v.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'}`}>
                                     {v.status}
                                   </span>
                                 </TableCell>
-                                <TableCell>{v.visit_duration ? `${v.visit_duration}m` : '-'}</TableCell>
+                                <TableCell>{formatDuration(v.visit_duration)}</TableCell>
                                 <TableCell className="text-right">
                                   <Button size="sm" variant="ghost" className="gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 h-8" onClick={() => setSelectedVisitForMap(v)}>
                                     <MapPin className="size-3.5" /> Map

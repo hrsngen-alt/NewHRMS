@@ -75,7 +75,6 @@ BEGIN
     LEFT JOIN public.attendance_policies p ON e.attendance_policy_id = p.id
     WHERE a.check_out IS NULL
   LOOP
-    -- Default/fallback check:
     -- Respect the policy if one is assigned, otherwise fallback to department rules
     IF rec.auto_checkout_enabled IS NOT NULL THEN
       IF rec.auto_checkout_enabled = TRUE THEN
@@ -84,7 +83,17 @@ BEGIN
         policy_minutes := 0;
       END IF;
     ELSIF LOWER(rec.department) = 'marketing' THEN
-      policy_minutes := 120;
+      -- Dynamically check the 'Marketing' policy settings instead of hardcoding 120
+      SELECT auto_checkout_after_minutes, auto_checkout_enabled 
+      INTO policy_minutes, rec.auto_checkout_enabled 
+      FROM public.attendance_policies 
+      WHERE name = 'Marketing' LIMIT 1;
+      
+      IF rec.auto_checkout_enabled = TRUE THEN
+        policy_minutes := COALESCE(policy_minutes, 120);
+      ELSE
+        policy_minutes := 0;
+      END IF;
     ELSE
       policy_minutes := 0;
     END IF;
