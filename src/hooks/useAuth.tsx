@@ -154,28 +154,12 @@ async function syncUserRecords(user: User): Promise<string | null> {
       await (supabase.from("employees") as any).update(updates).eq("id", employee.id);
       return employee.id;
     } else {
-      console.log("[Auth] No employee record found. Creating new employee record for", email);
-      const { data: newEmp, error: insertErr } = await (supabase.from("employees") as any)
-        .insert({
-          user_id: user.id,
-          full_name: fullName,
-          email: email.toLowerCase(),
-          status: 'active',
-          joining_date: new Date().toISOString().split('T')[0],
-          basic_salary: 0,
-          hra: 0,
-          conveyance: 0,
-          medical: 0,
-          special_allowance: 0
-        })
-        .select("id")
-        .maybeSingle() as any;
-
-      if (insertErr) {
-        console.error("[Auth] Failed to create new employee record:", insertErr);
-      } else if (newEmp) {
-        console.log("[Auth] Created new employee record id:", newEmp.id);
-        return newEmp.id;
+      if (isAdminEmail) {
+        console.log("[Auth] Admin email not found in employees table. Continuing as admin without employee record.");
+      } else {
+        console.log("[Auth] Unauthorized email attempted login:", email);
+        await supabase.auth.signOut();
+        throw new Error("Access Denied: Your email is not registered in the system. Please contact HR.");
       }
     }
 
