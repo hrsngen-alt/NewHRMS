@@ -639,6 +639,7 @@ function ExpensesPage() {
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
+                              <div className="flex flex-col items-center">
                                 <span className={cn(
                                   "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
                                   c.status === 'approved' ? "bg-green-100 text-green-700" :
