@@ -66,6 +66,8 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
       updatePayload.rejection_reason = rejectionReason;
     }
 
+    updatePayload.approved_by = myName || "Admin";
+
     const { error } = await supabase.from("leaves" as any).update(updatePayload).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success(`Leave ${action}d successfully`);
@@ -116,11 +118,17 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
                     <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize whitespace-nowrap ${l.manager_status === 'approved' ? 'bg-green-100 text-green-700' : l.manager_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                       {l.manager_status || 'pending'}
                     </span>
+                    {l.manager_status && l.manager_status !== 'pending' && l.approved_by && (
+                      <div className="text-[10px] text-muted-foreground mt-1">by {l.approved_by}</div>
+                    )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize whitespace-nowrap ${l.hr_status === 'approved' ? 'bg-green-100 text-green-700' : l.hr_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                       {l.hr_status || 'pending'}
                     </span>
+                    {l.hr_status && l.hr_status !== 'pending' && l.approved_by && role === "admin" && (
+                      <div className="text-[10px] text-muted-foreground mt-1">by {l.approved_by}</div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right pr-6 whitespace-nowrap">
                     {(l.status === "pending" || l.status === "approved" || role === "admin") && (
@@ -176,6 +184,9 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold capitalize mt-0.5 ${l.manager_status === 'approved' ? 'bg-green-100 text-green-700' : l.manager_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                     {l.manager_status || 'pending'}
                   </span>
+                  {l.manager_status && l.manager_status !== 'pending' && l.approved_by && (
+                    <div className="text-[10px] text-muted-foreground mt-0.5 text-slate-500">by {l.approved_by}</div>
+                  )}
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground block">HR Status</span>

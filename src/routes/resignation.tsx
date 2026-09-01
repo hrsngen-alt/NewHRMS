@@ -17,6 +17,7 @@ import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { TerminationPanel } from "./-termination-panel";
+import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { usePermissions } from "@/hooks/usePermissions";
 export const Route = createFileRoute("/resignation")({
   component: () => (
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/resignation")({
 
 function ResignationPage() {
   const { user, role, employeeId } = useAuth();
+  const { myEmployee } = useMyEmployee();
   const { hasPermission } = usePermissions();
   const qc = useQueryClient();
   const isAdmin = role === "admin";
@@ -106,7 +108,7 @@ function ResignationPage() {
     try {
       const updates: any = { 
         status, 
-        approved_by: user?.id 
+        approved_by: myEmployee?.full_name || "Admin" 
       };
 
       if (status === "approved") {
@@ -311,15 +313,16 @@ function ResignationPage() {
                          <p className="text-xs text-muted-foreground truncate" title={r.reason}>{r.reason}</p>
                       </TableCell>
                       <TableCell className="text-center">
-                         <Badge className={cn(
-                           "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
-                           r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
-                           r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
-                           r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
-                           r.status === 'withdrawn' && "bg-slate-100 text-slate-600 border-slate-200",
+                         <Badge className={cn("capitalize px-3 py-1", 
+                           r.status === "approved" ? "bg-green-100 text-green-700" : 
+                           r.status === "rejected" ? "bg-red-100 text-red-700" : 
+                           "bg-amber-100 text-amber-700"
                          )}>
                            {r.status}
                          </Badge>
+                         {r.status !== 'pending' && r.approved_by && (
+                           <div className="text-[10px] text-muted-foreground mt-1">by {r.approved_by}</div>
+                         )}
                       </TableCell>
                       <TableCell className="text-right pr-6">
                         {isAdmin ? (
@@ -398,15 +401,18 @@ function ResignationPage() {
                         <p className="text-[10px] font-mono text-muted-foreground">ID: {r.id.slice(0, 8)}...</p>
                       </div>
                     )}
-                    <Badge className={cn(
-                      "rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider",
-                      r.status === 'pending' && "bg-amber-50 text-amber-600 border-amber-100",
-                      r.status === 'approved' && "bg-green-50 text-green-600 border-green-100",
-                      r.status === 'rejected' && "bg-red-50 text-red-600 border-red-100",
-                      r.status === 'withdrawn' && "bg-slate-100 text-slate-600 border-slate-200",
-                    )}>
-                      {r.status}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge className={cn("capitalize", 
+                        r.status === "approved" ? "bg-emerald-100 text-emerald-700" : 
+                        r.status === "rejected" ? "bg-rose-100 text-rose-700" : 
+                        "bg-amber-100 text-amber-700"
+                      )}>
+                        {r.status}
+                      </Badge>
+                      {r.status !== 'pending' && r.approved_by && (
+                        <div className="text-[10px] text-muted-foreground">by {r.approved_by}</div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Date details */}

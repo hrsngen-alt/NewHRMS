@@ -281,7 +281,8 @@ function ExpensesPage() {
 
     const { error } = await supabase.from("expense_claims" as any).update({
       status,
-      admin_notes: notes || null
+      admin_notes: notes || null,
+      approved_by: myEmployee?.full_name || "Admin"
     }).eq("id", id);
 
     if (error) toast.error(error.message);
@@ -638,7 +639,6 @@ function ExpensesPage() {
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
-                              <div className="flex flex-col items-center">
                                 <span className={cn(
                                   "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
                                   c.status === 'approved' ? "bg-green-100 text-green-700" :
@@ -646,6 +646,9 @@ function ExpensesPage() {
                                   )}>
                                   {c.status}
                                 </span>
+                                {c.status !== 'pending' && c.approved_by && (
+                                  <div className="text-[10px] text-muted-foreground mt-1">by {c.approved_by}</div>
+                                )}
                                 {c.admin_notes && (
                                   <p className="text-[8px] font-bold text-muted-foreground italic mt-1 max-w-[100px] truncate" title={c.admin_notes}>
                                     "{c.admin_notes}"
@@ -750,6 +753,9 @@ function ExpensesPage() {
                             )}>
                               {c.status}
                             </span>
+                            {c.status !== 'pending' && c.approved_by && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5 text-right">by {c.approved_by}</div>
+                            )}
                             {c.admin_notes && (
                               <p className="text-[8px] font-bold text-muted-foreground italic mt-0.5 max-w-[150px] truncate" title={c.admin_notes}>
                                 "{c.admin_notes}"
@@ -935,6 +941,9 @@ function ExpensesPage() {
                           c.status === 'rejected' ? <XCircle className="size-3 mr-1.5" /> : <Clock className="size-3 mr-1.5" />}
                         {c.status}
                       </span>
+                      {c.status !== 'pending' && c.approved_by && (
+                        <div className="text-[10px] text-muted-foreground mt-1">by {c.approved_by}</div>
+                      )}
                       {c.admin_notes && (
                         <p className="text-[9px] font-bold text-muted-foreground italic max-w-[120px] truncate" title={c.admin_notes}>
                           "{c.admin_notes}"
@@ -1132,6 +1141,9 @@ function ExpensesPage() {
                         )}>
                           {c.status}
                         </span>
+                        {c.status !== 'pending' && c.approved_by && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5 text-left">by {c.approved_by}</div>
+                        )}
                         {c.admin_notes && (
                           <p className="text-[8px] font-bold text-muted-foreground italic max-w-[120px] truncate" title={c.admin_notes}>
                             "{c.admin_notes}"
