@@ -424,11 +424,25 @@ function Dashboard() {
     let lat, lng;
     try {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
-        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {
-          enableHighAccuracy: false,  // Use WiFi/network — avoids kCLErrorLocationUnknown
-          timeout: 8000,
-          maximumAge: 60000  // Accept cached position up to 1 min old
-        }));
+        let pos: GeolocationPosition;
+        try {
+          // First attempt: High accuracy GPS
+          pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }));
+        } catch (err: any) {
+          // code 1 = Permission Denied. Bubble this up immediately so we don't delay the error.
+          if (err?.code === 1) throw err;
+          
+          // Fallback attempt: Low accuracy (WiFi/IP)
+          pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {
+            enableHighAccuracy: false,
+            timeout: 8000,
+            maximumAge: 60000
+          }));
+        }
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
       } else {
