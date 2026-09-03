@@ -45,15 +45,6 @@ export async function fetchAddress(lat: number, lng: number): Promise<string> {
     });
     if (!res.ok) throw new Error("API error");
     const data = await res.json();
-    if (data.address) {
-      const parts = [
-        data.address.road || data.address.suburb,
-        data.address.city || data.address.town || data.address.village,
-        data.address.state,
-        data.address.postcode
-      ].filter(Boolean);
-      return parts.length > 0 ? parts.join(", ") : data.display_name || "Location resolved";
-    }
     return data.display_name || "Location resolved";
   } catch (error) {
     console.error("Reverse geocoding error:", error);
