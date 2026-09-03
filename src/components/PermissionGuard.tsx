@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 
 interface PermissionGuardProps {
-  allowedRoles?: ("admin" | "manager" | "employee")[];
+  allowedRoles?: ("admin" | "manager" | "employee" | "hr")[];
   module?: string;
   action?: string;
   children: React.ReactNode;

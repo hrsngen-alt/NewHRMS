@@ -350,7 +350,7 @@ export function BugReportWidget() {
 
       const ticketId = `BUG-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
 
-      const { error: insertError, data: bugRow } = await (supabase.from("bug_reports") as any).insert({
+      const { error: insertError, data: bugRow } = await (supabase as any).from("bug_reports").insert({
         ticket_id: ticketId,
         employee_id: myEmployee.id,
         report_type: type,
@@ -374,7 +374,7 @@ export function BugReportWidget() {
 
       // Insert files as an initial comment containing attachments
       if (uploadedUrls.length > 0 && bugRow) {
-        await (supabase.from("bug_comments") as any).insert({
+        await (supabase as any).from("bug_comments").insert({
           bug_id: bugRow.id,
           employee_id: myEmployee.id,
           comment: "Attached initial bug report media and files.",
