@@ -21,9 +21,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Centralized admin list
 const ADMIN_EMAILS = [
-  "admin@pulsehr.com",
   "admin@admin.com",
   "admin1@admin.com",
   "hr@pulsehr.com",
