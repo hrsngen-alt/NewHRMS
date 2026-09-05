@@ -103,7 +103,7 @@ export function TeamApprovalsTab({ role, myEmployeeId, myUserId, myName }: { rol
       
       {/* Inner Navigation */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white dark:bg-slate-900 p-2 rounded-2xl border shadow-sm">
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
+        <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
           <button 
             onClick={() => setActiveTab("pending")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${activeTab === "pending" ? "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"}`}
