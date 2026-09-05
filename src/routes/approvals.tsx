@@ -240,6 +240,9 @@ function ApprovalsPage() {
                       <div>
                         <div className="font-bold text-sm">{req.employees?.full_name}</div>
                         <div className="text-[10px] text-muted-foreground font-semibold uppercase">{req.employees?.department}</div>
+                        {req.employees?.reporting_manager && (
+                          <div className="text-[10px] text-indigo-500 font-semibold uppercase mt-1">Manager: {req.employees?.reporting_manager}</div>
+                        )}
                       </div>
                       <div className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full uppercase tracking-wider">Pending</div>
                     </div>
@@ -324,6 +327,9 @@ function ApprovalsPage() {
                       <div>
                         <div className="font-bold text-sm">{req.employees?.full_name}</div>
                         <div className="text-[10px] text-muted-foreground font-semibold uppercase">{req.employees?.department}</div>
+                        {req.employees?.reporting_manager && (
+                          <div className="text-[10px] text-indigo-500 font-semibold uppercase mt-1">Manager: {req.employees?.reporting_manager}</div>
+                        )}
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         req.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
