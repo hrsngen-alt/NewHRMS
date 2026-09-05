@@ -48,8 +48,8 @@ function DoctorVisitsReportPage() {
   const { role, user } = useAuth();
   const isAdminOrHR = role === 'admin' || role === 'manager'; // Treating manager as HR in this context
 
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [department, setDepartment] = useState('All');
   const [employeeId, setEmployeeId] = useState('All');
   const [status, setStatus] = useState('All');
@@ -78,8 +78,7 @@ function DoctorVisitsReportPage() {
   const filteredData = useMemo(() => {
     return visits.filter((v: any) => {
       // Date filter
-      if (dateFrom && v.visit_date < dateFrom) return false;
-      if (dateTo && v.visit_date > dateTo) return false;
+      if (selectedDate && v.visit_date !== selectedDate) return false;
       
       // Dept filter
       if (department !== 'All' && v.employees?.department !== department) return false;
@@ -103,7 +102,7 @@ function DoctorVisitsReportPage() {
       
       return true;
     });
-  }, [visits, dateFrom, dateTo, department, employeeId, status, searchTerm]);
+  }, [visits, selectedDate, department, employeeId, status, searchTerm]);
 
   // Extract unique employees for the dropdown
   const uniqueEmployees = useMemo(() => {
@@ -151,7 +150,7 @@ function DoctorVisitsReportPage() {
         details: {
           format,
           recordCount,
-          filters: { dateFrom, dateTo, department, status, searchTerm }
+          filters: { selectedDate, department, status, searchTerm }
         }
       });
     } catch (e) {
@@ -217,6 +216,10 @@ function DoctorVisitsReportPage() {
     return <div className="p-8 text-center text-red-500">Access Denied</div>;
   }
 
+  const isToday = selectedDate === todayStr;
+  const displayDateStr = selectedDate ? format(new Date(selectedDate), 'd MMMM yyyy') : '';
+  const reportTitle = isToday ? `📅 ${displayDateStr} — Today's Report` : `📅 ${displayDateStr} — Report`;
+
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <Button variant="ghost" className="gap-2 -ml-3 text-muted-foreground hover:text-foreground" onClick={() => window.history.back()}>
@@ -224,8 +227,17 @@ function DoctorVisitsReportPage() {
       </Button>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Doctor Visit Report</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Monitor field visits and export data</p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{reportTitle}</h1>
+          <div className="mt-3 flex items-center gap-2">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Select Date:</label>
+            <Input 
+              type="date" 
+              value={selectedDate} 
+              max={todayStr}
+              onChange={(e) => setSelectedDate(e.target.value)} 
+              className="w-auto h-9"
+            />
+          </div>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" className="gap-2" onClick={() => setShowMap(!showMap)}>
@@ -242,7 +254,7 @@ function DoctorVisitsReportPage() {
 
       {/* Filters */}
       <Card className="shadow-sm">
-        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold">Search (Emp/Doc/Hosp)</label>
             <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -281,14 +293,6 @@ function DoctorVisitsReportPage() {
                 <SelectItem value="Cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold">From Date</label>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold">To Date</label>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
         </CardContent>
       </Card>
