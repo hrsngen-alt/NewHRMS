@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import Redis from "npm:ioredis@5.4.1"
 
 const corsHeaders = {
@@ -9,7 +9,7 @@ const corsHeaders = {
 }
 
 const redisUrl = Deno.env.get("REDIS_URL");
-let redis: Redis | null = null;
+let redis: any = null;
 const isRedisConfigured = redisUrl && redisUrl !== "rediss://default:password@your-redis-cloud-endpoint:port";
 
 if (isRedisConfigured) {
