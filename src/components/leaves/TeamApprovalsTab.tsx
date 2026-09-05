@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { format, isWithinInterval, parseISO } from "date-fns";
 
-export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string, myEmployeeId?: string, myName?: string }) {
+export function TeamApprovalsTab({ role, myEmployeeId, myUserId, myName }: { role: string, myEmployeeId?: string, myUserId?: string, myName?: string }) {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [rejectionDialog, setRejectionDialog] = useState<{ open: boolean, leaveId: string | null }>({ open: false, leaveId: null });
@@ -82,8 +82,8 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
       updatePayload.rejection_reason = rejectionReason;
     }
 
-    if (myEmployeeId) {
-      updatePayload.approved_by = myEmployeeId;
+    if (myUserId) {
+      updatePayload.approved_by = myUserId;
     } else {
       updatePayload.approved_by = null; // Admin without linked employee
     }
@@ -268,7 +268,7 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
                       </span>
                       {(l.status === 'approved' || l.status === 'rejected') && (
                         <div className="text-[10px] text-muted-foreground mt-1">
-                          by <span className="font-bold">{l.approved_by === myEmployeeId ? myName : (l.approved_by?.length > 20 ? 'Manager/Admin' : (l.approved_by || 'Admin'))}</span>
+                          by <span className="font-bold">{l.approved_by === myUserId ? myName : (l.approved_by?.length > 20 ? 'Manager/Admin' : (l.approved_by || 'Admin'))}</span>
                           <br />on {format(new Date(l.updated_at || l.created_at), 'dd MMM yyyy')}
                         </div>
                       )}
@@ -310,7 +310,7 @@ export function TeamApprovalsTab({ role, myEmployeeId, myName }: { role: string,
                     <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 mt-2">
                       <span className="text-[10px] text-muted-foreground">Processed By:</span>
                       <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
-                        {l.approved_by === myEmployeeId ? myName : (l.approved_by?.length > 20 ? 'Manager/Admin' : (l.approved_by || 'Admin'))} on {format(new Date(l.updated_at || l.created_at), 'dd MMM yyyy')}
+                        {l.approved_by === myUserId ? myName : (l.approved_by?.length > 20 ? 'Manager/Admin' : (l.approved_by || 'Admin'))} on {format(new Date(l.updated_at || l.created_at), 'dd MMM yyyy')}
                       </span>
                     </div>
                   )}

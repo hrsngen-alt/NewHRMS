@@ -220,6 +220,7 @@ function LeavesPage() {
             <TeamApprovalsTab 
               role={role!} 
               myEmployeeId={myEmployee?.id} 
+              myUserId={user?.id}
               myName={myEmployee?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0]} 
             />
           </TabsContent>
