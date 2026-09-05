@@ -55,7 +55,7 @@ function AccessControlCenter() {
   const { data: employees = EMPTY_ARRAY, isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-for-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, full_name, email, department, designation, employee_code").eq("status", "active").order("full_name");
+      const { data, error } = await supabase.from("employees").select("id, full_name, email, department, designation, employee_code").order("full_name");
       if (error) throw error;
       return data || [];
     }

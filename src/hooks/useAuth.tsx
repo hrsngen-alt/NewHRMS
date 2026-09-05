@@ -22,6 +22,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const ADMIN_EMAILS = [
+  "admin@pulsehr.com",
   "admin@admin.com",
   "admin1@admin.com",
   "hr@pulsehr.com",
@@ -102,6 +103,8 @@ async function syncUserRecords(user: User): Promise<string | null> {
       }, { onConflict: 'id' });
     }
 
+    let linkedEmpId = null;
+
     // 2. First check if employee is already linked to this user_id (fast path)
     const { data: alreadyLinked } = await (supabase.from("employees") as any)
       .select("id, user_id, email, full_name, status, login_enabled")
@@ -122,42 +125,42 @@ async function syncUserRecords(user: User): Promise<string | null> {
         throw new Error("Your access has been disabled by HR.");
       }
       console.log("[Auth] Employee already linked:", alreadyLinked.id);
-      return alreadyLinked.id;
-    }
-
-    // 3. Try to find employee by email (case-insensitive) and link them
-    const { data: employee } = await (supabase.from("employees") as any)
-      .select("id, user_id, email, full_name, status, login_enabled")
-      .ilike("email", email)
-      .maybeSingle() as any;
-
-    if (employee) {
-      if (employee.status === "Terminated") {
-        await supabase.auth.signOut();
-        throw new Error("Your account has been terminated. Please contact HR.");
-      }
-      if (employee.status === "Resigned") {
-        await supabase.auth.signOut();
-        throw new Error("Your account is deactivated due to resignation.");
-      }
-      if (employee.login_enabled === false) {
-        await supabase.auth.signOut();
-        throw new Error("Your access has been disabled by HR.");
-      }
-      console.log("[Auth] Linking employee record for", email, "-> id:", employee.id);
-      const updates: any = { user_id: user.id };
-      // If the employee record has no name, use the one from Auth
-      if (!employee.full_name) updates.full_name = fullName;
-
-      await (supabase.from("employees") as any).update(updates).eq("id", employee.id);
-      return employee.id;
+      linkedEmpId = alreadyLinked.id;
     } else {
-      if (isAdminEmail) {
-        console.log("[Auth] Admin email not found in employees table. Continuing as admin without employee record.");
+      // 3. Try to find employee by email (case-insensitive) and link them
+      const { data: employee } = await (supabase.from("employees") as any)
+        .select("id, user_id, email, full_name, status, login_enabled")
+        .ilike("email", email)
+        .maybeSingle() as any;
+
+      if (employee) {
+        if (employee.status === "Terminated") {
+          await supabase.auth.signOut();
+          throw new Error("Your account has been terminated. Please contact HR.");
+        }
+        if (employee.status === "Resigned") {
+          await supabase.auth.signOut();
+          throw new Error("Your account is deactivated due to resignation.");
+        }
+        if (employee.login_enabled === false) {
+          await supabase.auth.signOut();
+          throw new Error("Your access has been disabled by HR.");
+        }
+        console.log("[Auth] Linking employee record for", email, "-> id:", employee.id);
+        const updates: any = { user_id: user.id };
+        // If the employee record has no name, use the one from Auth
+        if (!employee.full_name) updates.full_name = fullName;
+
+        await (supabase.from("employees") as any).update(updates).eq("id", employee.id);
+        linkedEmpId = employee.id;
       } else {
-        console.log("[Auth] Unauthorized email attempted login:", email);
-        await supabase.auth.signOut();
-        throw new Error("Access Denied: Your email is not registered in the system. Please contact HR.");
+        if (isAdminEmail) {
+          console.log("[Auth] Admin email not found in employees table. Continuing as admin without employee record.");
+        } else {
+          console.log("[Auth] Unauthorized email attempted login:", email);
+          await supabase.auth.signOut();
+          throw new Error("Access Denied: Your email is not registered in the system. Please contact HR.");
+        }
       }
     }
 
@@ -179,7 +182,7 @@ async function syncUserRecords(user: User): Promise<string | null> {
     }
 
     console.log("[Auth] Sync complete for:", email, "Role:", isAdminEmail ? "admin" : "employee");
-    return null;
+    return linkedEmpId;
   } catch (err) {
     console.error("[Auth] Sync failed:", err);
     return null;
