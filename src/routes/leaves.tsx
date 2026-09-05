@@ -217,7 +217,11 @@ function LeavesPage() {
 
         {(isManager || isAdmin) && (
           <TabsContent value="team-approvals" className="m-0 focus-visible:outline-none">
-            <TeamApprovalsTab role={role!} myEmployeeId={myEmployee?.id} myName={myEmployee?.full_name} />
+            <TeamApprovalsTab 
+              role={role!} 
+              myEmployeeId={myEmployee?.id} 
+              myName={myEmployee?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0]} 
+            />
           </TabsContent>
         )}
 
