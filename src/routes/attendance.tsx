@@ -466,17 +466,16 @@ function AttendancePage() {
             lat = ipData.latitude;
             lng = ipData.longitude;
             toast.info("Using approximate network location.");
-          } else {
-            // IP also failed — proceed without location, don't block the user
-            toast.warning("Location unavailable. Proceeding with check-in.");
           }
         } catch {
-          // All location methods failed — proceed without location
-          if (type === "in") {
-            toast.warning("Could not determine location. Check-in proceeding without coordinates.");
-          }
+          // IP fallback failed silently, handle below
         }
       }
+    }
+
+    if (!lat || !lng) {
+      setIsPunching(false);
+      return toast.error("Location access is strictly required to check in or out. Please enable location permissions.");
     }
 
     try {

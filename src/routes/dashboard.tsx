@@ -466,15 +466,16 @@ function Dashboard() {
             lat = ipData.latitude;
             lng = ipData.longitude;
             toast.info("Using approximate network location.");
-          } else {
-            toast.warning("Location unavailable. Proceeding without coordinates.");
           }
         } catch {
-          if (type === "in") {
-            toast.warning("Could not determine location. Check-in proceeding without coordinates.");
-          }
+          // IP fallback failed silently, handle below
         }
       }
+    }
+
+    if (!lat || !lng) {
+      setIsPunching(false);
+      return toast.error("Location access is strictly required to check in or out. Please enable location permissions.");
     }
 
     try {
