@@ -61,18 +61,65 @@ function DoctorVisitsPage() {
     },
   });
 
-  const getCoordinates = (): Promise<GeolocationPosition> => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported by your browser'));
-      } else {
+  const getCoordinates = async (): Promise<{ lat: number; lon: number; accuracy: number }> => {
+    if (!navigator.geolocation) {
+      throw new Error('Geolocation is not supported by your browser');
+    }
+
+    let lat: number | null = null;
+    let lon: number | null = null;
+    let accuracy = 0;
+
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 0,
         });
+      });
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      accuracy = pos.coords.accuracy;
+    } catch (err: any) {
+      if (err?.code === 1) throw err; // Permission denied
+
+      try {
+        // Fallback to low accuracy
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 8000,
+            maximumAge: 60000,
+          });
+        });
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+        accuracy = pos.coords.accuracy;
+      } catch (lowAccErr: any) {
+        if (lowAccErr?.code === 1) throw lowAccErr;
+
+        // Try IP fallback
+        try {
+          const ipRes = await fetch("https://ipapi.co/json/");
+          const ipData = await ipRes.json();
+          if (ipData?.latitude && ipData?.longitude) {
+            lat = ipData.latitude;
+            lon = ipData.longitude;
+            accuracy = 5000; // Approximate accuracy for IP
+            toast.info("Using approximate network location.");
+          }
+        } catch {
+          // IP fallback failed
+        }
       }
-    });
+    }
+
+    if (!lat || !lon) {
+      throw new Error("Location access is strictly required to check in or out. Please enable location permissions.");
+    }
+
+    return { lat, lon, accuracy };
   };
 
   const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
@@ -136,9 +183,9 @@ function DoctorVisitsPage() {
     setIsLocating(true);
     try {
       const position = await getCoordinates();
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      const accuracy = position.coords.accuracy;
+      const lat = position.lat;
+      const lon = position.lon;
+      const accuracy = position.accuracy;
       
       toast('Location captured successfully', { description: `Accuracy: ${accuracy.toFixed(0)}m` });
       
@@ -172,9 +219,9 @@ function DoctorVisitsPage() {
     setIsLocating(true);
     try {
       const position = await getCoordinates();
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      const accuracy = position.coords.accuracy;
+      const lat = position.lat;
+      const lon = position.lon;
+      const accuracy = position.accuracy;
       const address = await reverseGeocode(lat, lon);
       
       const checkInTime = new Date(visit.check_in_time);
