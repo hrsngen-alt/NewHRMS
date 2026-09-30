@@ -520,7 +520,7 @@ function Dashboard() {
     }
 
     // Require Selfie Check if configured
-    if (type === "in" && myEmployee.require_selfie === true && !selfieSrc && source === "Manual") {
+    if ((type === "in" || type === "out") && myEmployee.require_selfie === true && !selfieSrc && source === "Manual") {
       setIsPunching(false);
       setIsSelfieModalOpen(true);
       return;
@@ -558,8 +558,18 @@ function Dashboard() {
           check_out: new Date().toISOString(), hours_worked: Number(hours.toFixed(2)),
           check_out_lat: lat || null, check_out_lng: lng || null,
           check_out_address: address || null,
-          check_out_type: source
+          check_out_type: source,
+          metadata: { 
+            ...(latestSession?.metadata || {}), 
+            ...(selfieSrc ? { selfie_out: selfieSrc } : {}) 
+          }
         }).eq("id", latestSession!.id);
+        
+        if (selfieSrc) {
+          setSelfieSrc(null);
+          setIsSelfieModalOpen(false);
+        }
+
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",
           body: { employee_id: myEmployee.id }

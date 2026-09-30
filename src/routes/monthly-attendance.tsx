@@ -1151,6 +1151,21 @@ function AttendancePage() {
                                    ) : (
                                      <p className="text-[10px] font-medium text-amber-500/80 mt-1 max-w-[220px] leading-tight">System Generated (Auto Checkout)</p>
                                    )}
+                                   {s.metadata?.selfie_out && (
+                                     <Dialog>
+                                       <DialogTrigger asChild>
+                                         <button onClick={(e) => e.stopPropagation()} className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-[10px] font-bold hover:bg-rose-100 transition-colors shadow-sm border border-rose-200/50 dark:border-rose-800 w-fit">
+                                           <Scan className="size-3" /> View Photo
+                                         </button>
+                                       </DialogTrigger>
+                                       <DialogContent className="max-w-xs p-0 overflow-hidden bg-slate-950 border-slate-800 rounded-[2rem]">
+                                         <img src={s.metadata.selfie_out} alt="Verification" className="w-full aspect-square object-cover" />
+                                         <div className="p-4 text-center text-xs font-medium text-slate-400">
+                                           Captured at {checkOut.toLocaleTimeString()}
+                                         </div>
+                                       </DialogContent>
+                                     </Dialog>
+                                   )}
                                  </div>
                                  {s.check_out_lat && (
                                    <a href={`https://www.google.com/maps?q=${s.check_out_lat},${s.check_out_lng}`} target="_blank" rel="noreferrer" 
