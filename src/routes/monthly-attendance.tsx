@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { toast } from "sonner";
 import { 
   Clock, Play, Square, Search, Users, Calendar, Activity, 
   CheckCircle2, MapPin, ExternalLink, TrendingUp, ShieldCheck, 
-  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, AlertTriangle, FileSpreadsheet, Download
+  Plane, Sparkles, Timer, Coffee, CheckCircle, XCircle, AlertCircle, X, AlertTriangle, FileSpreadsheet, Download, Scan
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -1092,6 +1093,21 @@ function AttendancePage() {
                                <p className="text-xs font-bold text-muted-foreground">{checkIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                                {s.check_in_address && (
                                  <p className="text-[10px] font-medium text-muted-foreground/80 mt-1 max-w-[220px] leading-tight">{s.check_in_address}</p>
+                               )}
+                               {s.metadata?.selfie && (
+                                 <Dialog>
+                                   <DialogTrigger asChild>
+                                     <button onClick={(e) => e.stopPropagation()} className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-200/50 dark:border-indigo-800 w-fit">
+                                       <Scan className="size-3" /> View Photo
+                                     </button>
+                                   </DialogTrigger>
+                                   <DialogContent className="max-w-xs p-0 overflow-hidden bg-slate-950 border-slate-800 rounded-[2rem]">
+                                     <img src={s.metadata.selfie} alt="Verification" className="w-full aspect-square object-cover" />
+                                     <div className="p-4 text-center text-xs font-medium text-slate-400">
+                                       Captured at {checkIn.toLocaleTimeString()}
+                                     </div>
+                                   </DialogContent>
+                                 </Dialog>
                                )}
                              </div>
                              {s.check_in_lat && (
