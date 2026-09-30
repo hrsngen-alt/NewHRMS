@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { toast } from "sonner";
 import { cn, fetchAddress, getDeviceInfo } from "../lib/utils";
-
+import Webcam from "react-webcam";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -275,7 +275,11 @@ function Dashboard() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isPunching, setIsPunching] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isSelfieModalOpen, setIsSelfieModalOpen] = useState(false);
+  const [selfieSrc, setSelfieSrc] = useState<string | null>(null);
+  const [isPunchingWithSelfie, setIsPunchingWithSelfie] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const webcamRef = useRef<Webcam>(null);
 
   useEffect(() => {
     if (isScannerOpen) {
@@ -515,6 +519,13 @@ function Dashboard() {
       return toast.error("Location access is strictly required to check in or out. Please enable location permissions.");
     }
 
+    // Require Selfie Check if configured
+    if (type === "in" && myEmployee.require_selfie === true && !selfieSrc && source === "Manual") {
+      setIsPunching(false);
+      setIsSelfieModalOpen(true);
+      return;
+    }
+
     try {
       let address = "";
       if (lat && lng) {
@@ -530,8 +541,12 @@ function Dashboard() {
           employee_name: myEmployee.full_name,
           department: myEmployee.department || "Staff",
           check_out_type: source,
-          metadata: { punchSource: source, deviceInfo, ...(isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }) }
+          metadata: { punchSource: source, deviceInfo, selfie: selfieSrc || null, ...(isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }) }
         });
+        if (selfieSrc) {
+          setSelfieSrc(null);
+          setIsSelfieModalOpen(false);
+        }
         await supabase.functions.invoke("attendance-cached", {
           method: "POST",
           body: { employee_id: myEmployee.id }
@@ -887,6 +902,75 @@ function Dashboard() {
             <Button onClick={() => setIsScannerOpen(false)} variant="ghost" className="text-slate-400 hover:text-white mt-2">
               Cancel
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSelfieModalOpen} onOpenChange={(open) => {
+        if (!open) setSelfieSrc(null);
+        setIsSelfieModalOpen(open);
+      }}>
+        <DialogContent className="max-w-md rounded-[2rem] border-2 border-indigo-500/20 shadow-2xl p-0 overflow-hidden bg-slate-950 text-white">
+          <div className="p-6 pb-2 text-center">
+            <DialogTitle className="text-2xl font-black tracking-tight flex items-center justify-center gap-2">
+              <Scan className="size-6 text-indigo-400" /> Identity Verification
+            </DialogTitle>
+            <p className="text-sm text-slate-400 font-medium mt-2">
+              Your profile requires a live photo to punch in. Please face the camera.
+            </p>
+          </div>
+          <div className="px-6 py-4 flex flex-col items-center">
+            <div className="w-full aspect-square rounded-[2rem] overflow-hidden border-4 border-slate-800 bg-black relative">
+              {!selfieSrc ? (
+                <Webcam
+                  audio={false}
+                  ref={webcamRef}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={{ facingMode: "user" }}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img src={selfieSrc} alt="Selfie Capture" className="w-full h-full object-cover" />
+              )}
+              {!selfieSrc && (
+                <div className="absolute inset-0 border-[6px] border-indigo-500/30 rounded-[2rem] pointer-events-none" />
+              )}
+            </div>
+          </div>
+          <div className="p-6 pt-2 flex gap-3">
+            {!selfieSrc ? (
+              <Button 
+                onClick={() => {
+                  const imageSrc = webcamRef.current?.getScreenshot();
+                  if (imageSrc) setSelfieSrc(imageSrc);
+                }} 
+                className="w-full h-14 rounded-xl font-black text-lg bg-indigo-500 hover:bg-indigo-600 shadow-lg shadow-indigo-500/20"
+              >
+                Capture Photo
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  onClick={() => setSelfieSrc(null)} 
+                  variant="outline" 
+                  className="flex-1 h-14 rounded-xl font-black border-slate-700 bg-slate-800 hover:bg-slate-700 text-white"
+                  disabled={isPunchingWithSelfie}
+                >
+                  Retake
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    setIsPunchingWithSelfie(true);
+                    await punch("in");
+                    setIsPunchingWithSelfie(false);
+                  }} 
+                  className="flex-[2] h-14 rounded-xl font-black bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 text-white"
+                  disabled={isPunchingWithSelfie}
+                >
+                  {isPunchingWithSelfie ? "Verifying..." : "Confirm & Punch In"}
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
