@@ -971,13 +971,13 @@ function Dashboard() {
                 <Button 
                   onClick={async () => {
                     setIsPunchingWithSelfie(true);
-                    await punch("in");
+                    await punch(isCheckedIn ? "out" : "in");
                     setIsPunchingWithSelfie(false);
                   }} 
                   className="flex-[2] h-14 rounded-xl font-black bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 text-white"
                   disabled={isPunchingWithSelfie}
                 >
-                  {isPunchingWithSelfie ? "Verifying..." : "Confirm & Punch In"}
+                  {isPunchingWithSelfie ? "Verifying..." : isCheckedIn ? "Confirm & End Shift" : "Confirm & Punch In"}
                 </Button>
               </>
             )}
