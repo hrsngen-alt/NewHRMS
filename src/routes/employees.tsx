@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "../lib/utils";
 
 export const Route = createFileRoute("/employees")({ component: () => <AppShell><EmployeesPage /></AppShell> });
@@ -120,6 +121,9 @@ function EmployeesPage() {
     const obj: any = {};
     fd.forEach((v, k) => { obj[k] = v === "" ? null : v; });
     ["basic_salary", "hra", "bonus", "pf_amount", "esic_amount", "gratuity_amount", "total_experience"].forEach((k) => { obj[k] = Number(obj[k] ?? 0); });
+    if (obj.require_selfie === "true") obj.require_selfie = true;
+    else if (obj.require_selfie === "false") obj.require_selfie = false;
+    
     obj.conveyance = 0;
     obj.medical = 0;
     obj.special_allowance = 0;
@@ -1011,6 +1015,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee, allEmployees =
   const [gratuity, setGratuity] = useState(editingEmployee?.gratuity_amount ?? 0);
   const [policyId, setPolicyId] = useState<string>(editingEmployee?.attendance_policy_id ?? "default");
   const [manager, setManager] = useState(editingEmployee?.reporting_manager ?? "None");
+  const [requireSelfie, setRequireSelfie] = useState(editingEmployee?.require_selfie ?? false);
 
   const { data: policies = [] } = useQuery({
     queryKey: ["attendance-policies"],
@@ -1029,6 +1034,7 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee, allEmployees =
     setGratuity(editingEmployee?.gratuity_amount ?? 0);
     setPolicyId(editingEmployee?.attendance_policy_id ?? "default");
     setManager(editingEmployee?.reporting_manager ?? "None");
+    setRequireSelfie(editingEmployee?.require_selfie ?? false);
   }, [editingEmployee]);
 
   const grossSalary = Number(basic || 0) + Number(hra || 0) + Number(bonus || 0);
@@ -1091,6 +1097,15 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee, allEmployees =
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Require Selfie Check-In</Label>
+            <input type="hidden" name="require_selfie" value={requireSelfie ? "true" : "false"} />
+            <div className="flex items-center gap-3 h-10 px-3 bg-muted/30 border rounded-lg">
+              <Switch checked={requireSelfie} onCheckedChange={setRequireSelfie} id="require_selfie" />
+              <span className="text-sm font-semibold">{requireSelfie ? "Enabled" : "Disabled"}</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Forces employee to take a live photo.</p>
           </div>
         </div>
       </div>
