@@ -80,11 +80,11 @@ function QuickActions() {
           </div>
           <span className="font-bold text-sm">Request Leave</span>
         </Link>
-        <Link to="/payslips" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors gap-2 text-center">
+        <Link to="/doctor-visits" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors gap-2 text-center">
           <div className="size-10 bg-white dark:bg-emerald-900 shadow-sm rounded-full flex items-center justify-center">
-            <FileText className="size-5" />
+            <Activity className="size-5" />
           </div>
-          <span className="font-bold text-sm">View Payslips</span>
+          <span className="font-bold text-sm">Doctor Visits</span>
         </Link>
         <Link to="/profile" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors gap-2 text-center">
           <div className="size-10 bg-white dark:bg-amber-900 shadow-sm rounded-full flex items-center justify-center">
