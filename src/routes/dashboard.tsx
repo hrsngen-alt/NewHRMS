@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
-import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download, LogOut, UserX, Scan, PartyPopper } from "lucide-react";
+import { Users, Clock, CalendarDays, Wallet, Play, Square, ArrowRight, Activity, TrendingUp, TrendingDown, MapPin, Award, Loader2, Plane, ShieldCheck, FileText, Download, LogOut, UserX, Scan, PartyPopper, Zap } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, Area, CartesianGrid, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, Suspense, lazy, useRef } from "react";
@@ -55,6 +55,43 @@ function BirthdayWishesCard({ birthdays, myEmployeeId }: { birthdays: any[], myE
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickActions() {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border shadow-sm mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center gap-2 mb-4">
+        <Zap className="size-5 text-amber-500" />
+        <h3 className="font-bold text-lg">Quick Actions</h3>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Link to="/attendance" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors gap-2 text-center">
+          <div className="size-10 bg-white dark:bg-indigo-900 shadow-sm rounded-full flex items-center justify-center">
+            <Clock className="size-5" />
+          </div>
+          <span className="font-bold text-sm">Attendance</span>
+        </Link>
+        <Link to="/leaves" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors gap-2 text-center">
+          <div className="size-10 bg-white dark:bg-rose-900 shadow-sm rounded-full flex items-center justify-center">
+            <CalendarDays className="size-5" />
+          </div>
+          <span className="font-bold text-sm">Request Leave</span>
+        </Link>
+        <Link to="/payslips" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors gap-2 text-center">
+          <div className="size-10 bg-white dark:bg-emerald-900 shadow-sm rounded-full flex items-center justify-center">
+            <FileText className="size-5" />
+          </div>
+          <span className="font-bold text-sm">View Payslips</span>
+        </Link>
+        <Link to="/profile" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors gap-2 text-center">
+          <div className="size-10 bg-white dark:bg-amber-900 shadow-sm rounded-full flex items-center justify-center">
+            <Award className="size-5" />
+          </div>
+          <span className="font-bold text-sm">Digital ID</span>
+        </Link>
       </div>
     </div>
   );
@@ -647,6 +684,8 @@ function Dashboard() {
       {birthdays.length > 0 && (
         <BirthdayWishesCard birthdays={birthdays} myEmployeeId={myEmployee?.id} />
       )}
+      {/* --- QUICK ACTIONS WIDGET --- */}
+      <QuickActions />
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Total Workforce" value={stats?.totalEmployees ?? 0} trend="up" trendValue="+3.2%" colorClass="bg-indigo-500" />

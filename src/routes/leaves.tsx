@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
@@ -27,7 +27,23 @@ function LeavesPage() {
   const isAdmin = role === "admin";
   const isManager = role === "manager";
   const [open, setOpen] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const { myEmployee } = useMyEmployee();
+
+  const workingDays = useMemo(() => {
+    if (!startDate || !endDate) return 0;
+    let count = 0;
+    let curDate = new Date(startDate);
+    const end = new Date(endDate);
+    if (end < curDate) return 0;
+    while (curDate <= end) {
+      const dayOfWeek = curDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+      curDate.setDate(curDate.getDate() + 1);
+    }
+    return count;
+  }, [startDate, endDate]);
 
   const { data: allEmployees = [] } = useQuery({
     queryKey: ["all-employees"],
@@ -59,7 +75,7 @@ function LeavesPage() {
 
     const start = String(fd.get("start_date"));
     const end = String(fd.get("end_date"));
-    const days = Math.max(1, Math.round((+new Date(end) - +new Date(start)) / 86_400_000) + 1);
+    const days = workingDays > 0 ? workingDays : Math.max(1, Math.round((+new Date(end) - +new Date(start)) / 86_400_000) + 1);
     
     // Determine manager logic
     let manager_id = null;
@@ -160,13 +176,20 @@ function LeavesPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="start_date" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date</Label>
-                      <Input id="start_date" name="start_date" type="date" required className="bg-muted/30" />
+                      <Input id="start_date" name="start_date" type="date" required className="bg-muted/30" value={startDate} onChange={e => setStartDate(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="end_date" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</Label>
-                      <Input id="end_date" name="end_date" type="date" required className="bg-muted/30" />
+                      <Input id="end_date" name="end_date" type="date" required className="bg-muted/30" value={endDate} onChange={e => setEndDate(e.target.value)} />
                     </div>
                   </div>
+
+                  {workingDays > 0 && (
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 flex justify-between items-center text-sm font-bold text-indigo-700 dark:text-indigo-400">
+                      <span>Calculated Working Days:</span>
+                      <span className="text-lg">{workingDays} day{workingDays !== 1 ? 's' : ''}</span>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reason for Leave</Label>

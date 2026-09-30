@@ -2,12 +2,16 @@ import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useSessionExpiry } from "@/hooks/useSessionExpiry";
 import {
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText,
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
   Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug, FileCheck, MapPin, ShieldCheck
 } from "lucide-react";
 import { BugReportWidget } from "./BugReportWidget";
+import { GlobalSearch } from "./GlobalSearch";
+import { MobileBottomNav } from "./MobileBottomNav";
+import { GuidedTour } from "./GuidedTour";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -209,6 +213,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const { user, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  useSessionExpiry(15);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -1023,6 +1029,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </div>
       </main>
       <BugReportWidget />
+      <GlobalSearch />
+      <MobileBottomNav />
+      <GuidedTour />
     </div>
   );
 }

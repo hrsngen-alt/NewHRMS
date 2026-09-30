@@ -54,12 +54,26 @@ function ApprovalsPage() {
       });
       if (error) throw error;
     },
+    onMutate: async (requestId: string) => {
+      await qc.cancelQueries({ queryKey: ['manual-attendance-approvals'] });
+      const previous = qc.getQueryData(['manual-attendance-approvals']);
+      qc.setQueryData(['manual-attendance-approvals'], (old: any) => {
+        if (!old) return old;
+        return old.map((r: any) => r.id === requestId ? { ...r, status: 'Approved' } : r);
+      });
+      return { previous };
+    },
     onSuccess: () => {
       toast.success('Request approved and attendance updated.');
-      qc.invalidateQueries({ queryKey: ['manual-attendance-approvals'] });
     },
-    onError: (err: any) => {
+    onError: (err: any, variables, context: any) => {
+      if (context?.previous) {
+        qc.setQueryData(['manual-attendance-approvals'], context.previous);
+      }
       toast.error(err.message || 'Failed to approve request.');
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['manual-attendance-approvals'] });
     }
   });
 
@@ -71,12 +85,26 @@ function ApprovalsPage() {
         .eq('id', requestId);
       if (error) throw error;
     },
+    onMutate: async (requestId: string) => {
+      await qc.cancelQueries({ queryKey: ['manual-attendance-approvals'] });
+      const previous = qc.getQueryData(['manual-attendance-approvals']);
+      qc.setQueryData(['manual-attendance-approvals'], (old: any) => {
+        if (!old) return old;
+        return old.map((r: any) => r.id === requestId ? { ...r, status: 'Rejected' } : r);
+      });
+      return { previous };
+    },
     onSuccess: () => {
       toast.success('Request rejected.');
-      qc.invalidateQueries({ queryKey: ['manual-attendance-approvals'] });
     },
-    onError: (err: any) => {
+    onError: (err: any, variables, context: any) => {
+      if (context?.previous) {
+        qc.setQueryData(['manual-attendance-approvals'], context.previous);
+      }
       toast.error(err.message || 'Failed to reject request.');
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['manual-attendance-approvals'] });
     }
   });
 
