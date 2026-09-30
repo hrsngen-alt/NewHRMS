@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Mail, Phone, Users, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/directory")({ component: () => <AppShell><DirectoryPage /></AppShell> });
@@ -19,7 +20,7 @@ function DirectoryPage() {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employee-directory"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, full_name, department, designation, employee_code, email, phone, status").eq("status", "active").order("full_name");
+      const { data, error } = await supabase.from("employees").select("id, full_name, department, designation, employee_code, email, phone, status, reporting_manager").eq("status", "active").order("full_name");
       if (error) return [];
       return data;
     },
@@ -63,7 +64,8 @@ function DirectoryPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border-2 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
+
+          <div className="rounded-2xl border-2 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
         <div className="overflow-x-auto">
           <Table className="w-full table-fixed md:table-auto">
             <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
@@ -195,6 +197,7 @@ function DirectoryPage() {
           </div>
         )}
       </div>
+
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   KeyRound,
+  Fingerprint,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PWAInstallManager } from "@/components/auth/PWAInstallManager";
@@ -43,6 +44,23 @@ function LoginPage() {
       toast.error(error);
       setBusy(false);
     }
+  };
+
+  const handleBiometricSignIn = async () => {
+    setBusy(true);
+    try {
+      // @ts-ignore - Supabase passkeys method might not be fully typed in this version
+      const { data, error } = await supabase.auth.signInWithWebAuthn ? await supabase.auth.signInWithWebAuthn() : await supabase.auth.signInWithPasskey();
+      
+      if (error) {
+        toast.error("Face ID / Touch ID is not configured. Please log in with password to set it up.");
+      } else if (data) {
+        toast.success("Biometric authentication successful!");
+      }
+    } catch (e: any) {
+      toast.error("Biometric login failed, cancelled, or not supported on this device.");
+    }
+    setBusy(false);
   };
 
   const handleSubmit = (mode: "in" | "up") => async (e: React.FormEvent<HTMLFormElement>) => {
@@ -485,6 +503,16 @@ function LoginPage() {
                   />
                 </svg>
                 Sign in with Google
+              </Button>
+
+              <Button
+                type="button"
+                className="w-full h-12 rounded-xl font-bold flex items-center justify-center gap-2 mt-3 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg"
+                onClick={handleBiometricSignIn}
+                disabled={busy}
+              >
+                <Fingerprint className="size-5 shrink-0" />
+                Sign in with Face ID / Touch ID
               </Button>
             </div>
           )}
