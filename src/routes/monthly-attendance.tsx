@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { toast } from "sonner";
@@ -52,6 +53,8 @@ function AttendancePage() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterTime, setFilterTime] = useState("10:00");
 
   const downloadMonthlyAttendanceReport = async () => {
     setDownloadingReport(true);
@@ -534,17 +537,48 @@ function AttendancePage() {
 
   const availableYears = Array.from(new Set(records.map((r: any) => new Date(r.date).getFullYear()))).sort((a: any, b: any) => b - a);
 
-
+  const lateCheckIns = useMemo(() => {
+    if (!filterDate || !filterTime) return [];
+    return records.filter((a: any) => {
+      if (!a.check_in) return false;
+      const checkInDate = new Date(a.check_in);
+      
+      const year = checkInDate.getFullYear();
+      const month = String(checkInDate.getMonth() + 1).padStart(2, '0');
+      const day = String(checkInDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      if (dateStr !== filterDate) return false;
+      
+      const hours = checkInDate.getHours().toString().padStart(2, '0');
+      const minutes = checkInDate.getMinutes().toString().padStart(2, '0');
+      const timeStr = `${hours}:${minutes}`;
+      
+      return timeStr > filterTime;
+    });
+  }, [records, filterDate, filterTime]);
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 p-4 md:p-8">
       {/* Header Section */}
       <div className="space-y-6">
-        <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-          {isAuthorized ? "Team Monthly Attendance" : "My Monthly Attendance"}
-        </h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h1 className="font-display text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+            {isAuthorized ? "Team Monthly Attendance" : "My Monthly Attendance"}
+          </h1>
+        </div>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-3xl border-2 border-slate-50 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+      <Tabs defaultValue="attendance" className="w-full space-y-8 mt-6">
+        {isAuthorized && (
+          <TabsList className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 h-auto mb-2 inline-flex flex-wrap">
+            <TabsTrigger value="attendance" className="rounded-xl px-6 py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Monthly Attendance</TabsTrigger>
+            <TabsTrigger value="late-arrivals" className="rounded-xl px-6 py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-rose-500 data-[state=active]:text-rose-600">Time-Wise Late Arrivals</TabsTrigger>
+          </TabsList>
+        )}
+
+        <TabsContent value="attendance" className="space-y-8 m-0 focus:outline-none">
+          <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-3xl border-2 border-slate-50 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             {isAuthorized && (
               <div className="relative w-full md:w-auto md:min-w-[280px]">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -682,7 +716,6 @@ function AttendancePage() {
                <span className="flex items-center gap-1.5"><div className="size-2 rounded-full bg-rose-500" /> Leave</span>
             </div>
          </div>
-      </div>
 
       {/* Selected Employee Profile Card */}
       {targetEmployee && (
@@ -1202,6 +1235,71 @@ function AttendancePage() {
           </div>
         </SheetContent>
       </Sheet>
+      </TabsContent>
+
+      {isAuthorized && (
+        <TabsContent value="late-arrivals" className="m-0 focus:outline-none">
+          <div className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-[32px] p-6 shadow-xl dark:shadow-none">
+             <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                 <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Time-Wise Late Arrivals</h2>
+                 <p className="text-sm text-muted-foreground font-medium">Filter employees who checked in after a specific time.</p>
+              </div>
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                 <input 
+                   type="date" 
+                   value={filterDate}
+                   onChange={e => setFilterDate(e.target.value)}
+                   className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-bold shadow-sm"
+                 />
+                 <span className="text-sm font-bold text-muted-foreground">After:</span>
+                 <input 
+                   type="time" 
+                   value={filterTime}
+                   onChange={e => setFilterTime(e.target.value)}
+                   className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-bold shadow-sm"
+                 />
+              </div>
+           </div>
+           
+           {lateCheckIns.length > 0 ? (
+             <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+               <Table>
+                  <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                     <TableRow>
+                        <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">Employee</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest">Department</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Check-in Time</TableHead>
+                     </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                     {lateCheckIns.map((a: any) => (
+                        <TableRow key={a.id} className="hover:primary/5 transition-colors">
+                           <TableCell className="pl-6 font-bold text-slate-900 dark:text-white">
+                             {a.employees?.full_name || a.employee_name || "Unknown"}
+                           </TableCell>
+                           <TableCell className="font-medium text-muted-foreground">
+                             {a.employees?.department || a.department || "Staff"}
+                           </TableCell>
+                           <TableCell className="text-right pr-6 font-black text-rose-500">
+                              {new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </TableCell>
+                        </TableRow>
+                     ))}
+                  </TableBody>
+               </Table>
+             </div>
+           ) : (
+             <div className="py-12 text-center flex flex-col items-center justify-center">
+               <CheckCircle2 className="size-12 text-emerald-500 mb-4 opacity-50" />
+               <p className="text-slate-900 dark:text-white font-bold text-lg">No Late Arrivals</p>
+               <p className="text-sm text-muted-foreground mt-1">Everyone checked in before {filterTime} on this date.</p>
+             </div>
+           )}
+        </div>
+        </TabsContent>
+      )}
+      </Tabs>
     </div>
   );
 }
