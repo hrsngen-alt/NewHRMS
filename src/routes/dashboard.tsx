@@ -18,23 +18,6 @@ import 'leaflet/dist/leaflet.css';
 
 export const Route = createFileRoute("/dashboard")({ component: () => <AppShell><Dashboard /></AppShell> });
 
-const OFFICE_LOCATIONS = [
-  { name: "Surat", lat: 21.183722, lng: 72.8142742 },
-  { name: "Ahmedabad", lat: 23.039387, lng: 72.5626358 }
-];
-
-function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);  
-  const dLon = (lon2 - lon1) * (Math.PI / 180); 
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2); 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  return R * c; 
-}
-
 function BirthdayWishesCard({ birthdays, myEmployeeId }: { birthdays: any[], myEmployeeId?: string }) {
   if (!birthdays || birthdays.length === 0) return null;
   const isMyBirthday = birthdays.some((b: any) => b.id === myEmployeeId);
@@ -521,22 +504,6 @@ function Dashboard() {
     if (!lat || !lng) {
       setIsPunching(false);
       return toast.error("Location access is strictly required to check in or out. Please enable location permissions.");
-    }
-
-    // NEW QR DISTANCE CHECK (MULTIPLE OFFICES)
-    if (source === "QR") {
-      let isNearAnOffice = false;
-      for (const office of OFFICE_LOCATIONS) {
-        const distance = getDistanceInMeters(lat, lng, office.lat, office.lng);
-        if (distance <= 50) {
-          isNearAnOffice = true;
-          break;
-        }
-      }
-      if (!isNearAnOffice) {
-        setIsPunching(false);
-        return toast.error("You must be within 50 meters of an office to check in using the QR code.");
-      }
     }
 
     // Require Selfie Check if configured
