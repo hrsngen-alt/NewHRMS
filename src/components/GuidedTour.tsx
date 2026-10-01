@@ -19,7 +19,7 @@ export function GuidedTour() {
             popover: {
               title: 'Welcome to SN Gene HRMS! 🎉',
               description: 'Let us take you on a quick tour to show you around your new workspace. It will only take a minute!',
-              side: "center", 
+              side: "top", 
               align: 'center'
             }
           },
