@@ -331,8 +331,8 @@ function AttendancePage() {
         .select("*, employees(full_name, employee_code, department)")
         .order("check_in", { ascending: false });
       
-      if (!isAdmin && !isManager && myEmployee) query = query.eq("employee_id", myEmployee.id).limit(200);
-      else query = query.limit(500);
+      if (!isAdmin && !isManager && myEmployee) query = query.eq("employee_id", myEmployee.id).limit(500);
+      else query = query.limit(3000);
       
       const { data, error } = await query;
       if (error) throw error;
@@ -540,16 +540,10 @@ function AttendancePage() {
   const lateCheckIns = useMemo(() => {
     if (!filterDate || !filterTime) return [];
     return records.filter((a: any) => {
-      if (!a.check_in) return false;
+      if (!a.check_in || !a.date) return false;
+      if (a.date !== filterDate) return false;
+      
       const checkInDate = new Date(a.check_in);
-      
-      const year = checkInDate.getFullYear();
-      const month = String(checkInDate.getMonth() + 1).padStart(2, '0');
-      const day = String(checkInDate.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
-      
-      if (dateStr !== filterDate) return false;
-      
       const hours = checkInDate.getHours().toString().padStart(2, '0');
       const minutes = checkInDate.getMinutes().toString().padStart(2, '0');
       const timeStr = `${hours}:${minutes}`;
