@@ -1233,20 +1233,20 @@ function AttendancePage() {
 
       {isAuthorized && (
         <TabsContent value="late-arrivals" className="m-0 focus:outline-none">
-          <div className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-[32px] p-6 shadow-xl dark:shadow-none">
+          <div className="bg-white dark:bg-slate-900 border-2 border-slate-50 dark:border-slate-800 rounded-[32px] p-4 md:p-6 shadow-xl dark:shadow-none">
              <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                  <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Time-Wise Late Arrivals</h2>
                  <p className="text-sm text-muted-foreground font-medium">Filter employees who checked in after a specific time.</p>
               </div>
-              <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
                  <input 
                    type="date" 
                    value={filterDate}
                    onChange={e => setFilterDate(e.target.value)}
                    className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-bold shadow-sm"
                  />
-                 <span className="text-sm font-bold text-muted-foreground">After:</span>
+                 <span className="text-sm font-bold text-muted-foreground hidden sm:inline">After:</span>
                  <input 
                    type="time" 
                    value={filterTime}
@@ -1257,25 +1257,25 @@ function AttendancePage() {
            </div>
            
            {lateCheckIns.length > 0 ? (
-             <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
-               <Table>
+             <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 -mx-4 md:mx-0">
+               <Table className="min-w-full">
                   <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
                      <TableRow>
-                        <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">Employee</TableHead>
-                        <TableHead className="font-black uppercase text-[10px] tracking-widest">Department</TableHead>
-                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Check-in Time</TableHead>
+                        <TableHead className="pl-4 md:pl-6 font-black uppercase text-[10px] tracking-widest whitespace-nowrap">Employee</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest whitespace-nowrap">Department</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-4 md:pr-6 whitespace-nowrap">Check-in</TableHead>
                      </TableRow>
                   </TableHeader>
                   <TableBody>
                      {lateCheckIns.map((a: any) => (
                         <TableRow key={a.id} className="hover:primary/5 transition-colors">
-                           <TableCell className="pl-6 font-bold text-slate-900 dark:text-white">
+                           <TableCell className="pl-4 md:pl-6 font-bold text-slate-900 dark:text-white whitespace-nowrap">
                              {a.employees?.full_name || a.employee_name || "Unknown"}
                            </TableCell>
-                           <TableCell className="font-medium text-muted-foreground">
+                           <TableCell className="font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                              {a.employees?.department || a.department || "Staff"}
                            </TableCell>
-                           <TableCell className="text-right pr-6 font-black text-rose-500">
+                           <TableCell className="text-right pr-4 md:pr-6 font-black text-rose-500 whitespace-nowrap">
                               {new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                            </TableCell>
                         </TableRow>
