@@ -467,22 +467,15 @@ function Dashboard() {
       if (typeof navigator !== "undefined" && navigator.geolocation) {
         let pos: GeolocationPosition;
         try {
-          // First attempt: High accuracy GPS
+          // Strictly use High Accuracy and wait up to 20 seconds for a lock
           pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {
             enableHighAccuracy: true,
-            timeout: 10000,
+            timeout: 20000,
             maximumAge: 0
           }));
         } catch (err: any) {
-          // code 1 = Permission Denied. Bubble this up immediately so we don't delay the error.
           if (err?.code === 1) throw err;
-          
-          // Fallback attempt: Low accuracy (WiFi/IP)
-          pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {
-            enableHighAccuracy: false,
-            timeout: 8000,
-            maximumAge: 60000
-          }));
+          throw new Error("Unable to fetch accurate GPS location. Please make sure location services are on, wait a few seconds, and try again.");
         }
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
@@ -499,17 +492,11 @@ function Dashboard() {
           toast.warning("Location permission denied. Proceeding without location.");
         }
       } else {
-        // code 2 (hardware unavailable / kCLErrorLocationUnknown) or code 3 (timeout) — try IP fallback
-        try {
-          const ipRes = await fetch("https://ipapi.co/json/");
-          const ipData = await ipRes.json();
-          if (ipData?.latitude && ipData?.longitude) {
-            lat = ipData.latitude;
-            lng = ipData.longitude;
-            toast.info("Using approximate network location.");
-          }
-        } catch {
-          // IP fallback failed silently, handle below
+        if (type === "in") {
+          setIsPunching(false);
+          return toast.error(e?.message || "Unable to fetch accurate GPS location. Please try again.");
+        } else {
+          toast.warning("Unable to fetch accurate location. Proceeding without location.");
         }
       }
     }
