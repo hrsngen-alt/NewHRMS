@@ -265,7 +265,15 @@ function AttendancePage() {
       return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear && r.employee_id === myEmployee.id;
     });
 
-    const totalProdHours = monthRecords.reduce((acc: number, r: any) => acc + (Number(r.hours_worked) || 0), 0);
+    const totalProdHours = monthRecords.reduce((acc: number, r: any) => {
+      let hrs = Number(r.hours_worked) || 0;
+      if (!hrs && r.check_in && r.check_out) {
+        hrs = (new Date(r.check_out).getTime() - new Date(r.check_in).getTime()) / 3600000;
+      } else if (!r.check_out && r.check_in) {
+        hrs = (new Date().getTime() - new Date(r.check_in).getTime()) / 3600000;
+      }
+      return acc + Math.max(0, hrs);
+    }, 0);
     const workingDays = new Set(monthRecords.map((r: any) => r.date)).size;
     
     const punctuality = monthRecords.length > 0 
@@ -281,20 +289,49 @@ function AttendancePage() {
       return acc;
     }, {});
 
+    let lateArrivals = 0;
+    let earlyDepartures = 0;
+    let missedPunches = 0;
+    const todayStr = new Date().toLocaleDateString('en-CA');
+
     const dailyStats = Object.entries(dailyGroups).map(([date, sessions]: [string, any]) => {
       const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
       const firstIn = new Date(sorted[0].check_in);
+      
+      if (firstIn.getHours() > 9 || (firstIn.getHours() === 9 && firstIn.getMinutes() > 45)) {
+        lateArrivals++;
+      }
+
+      const hasMissedPunch = sessions.some((s: any) => !s.check_out && s.date !== todayStr);
+      if (hasMissedPunch) {
+        missedPunches++;
+      }
+
       const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : new Date();
       const availability = (lastOut.getTime() - firstIn.getTime()) / 3600000;
-      const production = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
+      const production = sessions.reduce((s: number, r: any) => {
+        let hrs = Number(r.hours_worked) || 0;
+        if (!hrs && r.check_in && r.check_out) {
+          hrs = (new Date(r.check_out).getTime() - new Date(r.check_in).getTime()) / 3600000;
+        } else if (!r.check_out && r.check_in) {
+          hrs = (new Date().getTime() - new Date(r.check_in).getTime()) / 3600000;
+        }
+        return s + Math.max(0, hrs);
+      }, 0);
+
+      if (date !== todayStr && !hasMissedPunch && production < 8.5) {
+        earlyDepartures++;
+      }
+
       return { availability, production };
     });
 
     const totalAvailHours = dailyStats.reduce((acc, s) => acc + s.availability, 0);
     const totalBreakHours = Math.max(0, totalAvailHours - totalProdHours);
     const breakPercentage = totalAvailHours > 0 ? (totalBreakHours / totalAvailHours) * 100 : 0;
+    console.log("METRICS DEBUG:", { totalAvailHours, totalProdHours, totalBreakHours, breakPercentage, monthRecords });
 
-    return { totalProdHours, workingDays, punctuality, totalBreakHours, breakPercentage, totalAvailHours, dailyGroups };
+    return { totalProdHours, workingDays, punctuality, totalBreakHours, breakPercentage, totalAvailHours, dailyGroups, lateArrivals, earlyDepartures, missedPunches };
   }, [records, myEmployee, selMonth, selYear]);
 
   // Generate all days for the selected month/year and determine status
@@ -881,9 +918,9 @@ function AttendancePage() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 divide-x divide-y dark:divide-slate-800 border-t dark:border-slate-800">
              <SummaryItem label="Total Holidays" value={String(summaryStats.totalHolidays)} />
-             <SummaryItem label="Total Timesheet Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-indigo-600 dark:text-indigo-400" />
-             <SummaryItem label="Project Timesheet Hours" value={`${monthlyMetrics?.totalProdHours.toFixed(1) || 0}h`} color="text-blue-600 dark:text-blue-400" />
-             <SummaryItem label="Free Timesheet Hours" value="0h 0m" color="text-rose-600 dark:text-rose-400" />
+             <SummaryItem label="Late Arrivals" value={String(monthlyMetrics?.lateArrivals || 0)} color="text-amber-500" />
+             <SummaryItem label="Early Departures" value={String(monthlyMetrics?.earlyDepartures || 0)} color="text-orange-500" />
+             <SummaryItem label="Missed Punches" value={String(monthlyMetrics?.missedPunches || 0)} color="text-rose-600 dark:text-rose-400" />
           </div>
         </div>
       )}
