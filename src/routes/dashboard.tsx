@@ -11,7 +11,7 @@ import { useState, useEffect, Suspense, lazy, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { toast } from "sonner";
-import { cn, fetchAddress, getDeviceInfo } from "../lib/utils";
+import { cn, fetchAddress, getDeviceInfo, calculateDistance } from "../lib/utils";
 import Webcam from "react-webcam";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -504,6 +504,29 @@ function Dashboard() {
     if (!lat || !lng) {
       setIsPunching(false);
       return toast.error("Location access is strictly required to check in or out. Please enable location permissions.");
+    }
+
+    if (source === "QR") {
+      const { data: locations } = await supabase.from("company_locations").select("*");
+      if (locations && locations.length > 0) {
+        let isWithinRange = false;
+        for (const loc of locations) {
+          if (loc.lat && loc.lng) {
+            const dist = calculateDistance(lat, lng, loc.lat, loc.lng);
+            if (dist <= 50) {
+              isWithinRange = true;
+              break;
+            }
+          }
+        }
+        if (!isWithinRange) {
+          setIsPunching(false);
+          return toast.error("You must be within 50 meters of an office location to scan the QR code.");
+        }
+      } else {
+        setIsPunching(false);
+        return toast.error("No office locations configured. Cannot verify QR scan distance.");
+      }
     }
 
     // Require Selfie Check if configured
