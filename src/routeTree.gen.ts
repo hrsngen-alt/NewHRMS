@@ -9,181 +9,41 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SalaryStructureRouteImport } from './routes/salary-structure'
-import { Route as ResignationRouteImport } from './routes/resignation'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ReportsDoctorVisitsRouteImport } from './routes/reports-doctor-visits'
-import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as PerformanceRouteImport } from './routes/performance'
-import { Route as PayslipsRouteImport } from './routes/payslips'
-import { Route as PayrollRouteImport } from './routes/payroll'
-import { Route as OfferLettersRouteImport } from './routes/offer-letters'
-import { Route as MonthlyAttendanceRouteImport } from './routes/monthly-attendance'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as LeavesRouteImport } from './routes/leaves'
-import { Route as KioskRouteImport } from './routes/kiosk'
-import { Route as HolidaysRouteImport } from './routes/holidays'
-import { Route as ExpensesRouteImport } from './routes/expenses'
-import { Route as EmployeesRouteImport } from './routes/employees'
-import { Route as EmployeeAccessRouteImport } from './routes/employee-access'
-import { Route as Employee360RouteImport } from './routes/employee-360'
-import { Route as DocumentsRouteImport } from './routes/documents'
-import { Route as DoctorVisitsRouteImport } from './routes/doctor-visits'
-import { Route as DirectoryRouteImport } from './routes/directory'
-import { Route as DevResetRouteImport } from './routes/dev-reset'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as BugsRouteImport } from './routes/bugs'
-import { Route as AttendanceRouteImport } from './routes/attendance'
-import { Route as ApprovalsRouteImport } from './routes/approvals'
-import { Route as AnnouncementsRouteImport } from './routes/announcements'
-import { Route as AccessControlRouteImport } from './routes/access-control'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccessControlRouteImport } from './routes/access-control'
+import { Route as AnnouncementsRouteImport } from './routes/announcements'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
+import { Route as AttendanceRouteImport } from './routes/attendance'
+import { Route as BugsRouteImport } from './routes/bugs'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DevResetRouteImport } from './routes/dev-reset'
+import { Route as DirectoryRouteImport } from './routes/directory'
+import { Route as DoctorVisitsRouteImport } from './routes/doctor-visits'
+import { Route as DocumentsRouteImport } from './routes/documents'
+import { Route as Employee360RouteImport } from './routes/employee-360'
+import { Route as EmployeeAccessRouteImport } from './routes/employee-access'
+import { Route as EmployeesRouteImport } from './routes/employees'
+import { Route as ExpensesRouteImport } from './routes/expenses'
+import { Route as HolidaysRouteImport } from './routes/holidays'
+import { Route as KioskRouteImport } from './routes/kiosk'
+import { Route as LeavesRouteImport } from './routes/leaves'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MonthlyAttendanceRouteImport } from './routes/monthly-attendance'
+import { Route as OfferLettersRouteImport } from './routes/offer-letters'
+import { Route as PayrollRouteImport } from './routes/payroll'
+import { Route as PayslipsRouteImport } from './routes/payslips'
+import { Route as PerformanceRouteImport } from './routes/performance'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ReportsDoctorVisitsRouteImport } from './routes/reports-doctor-visits'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ResignationRouteImport } from './routes/resignation'
+import { Route as SalaryStructureRouteImport } from './routes/salary-structure'
+import { Route as SettingsRouteImport } from './routes/settings'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalaryStructureRoute = SalaryStructureRouteImport.update({
-  id: '/salary-structure',
-  path: '/salary-structure',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResignationRoute = ResignationRouteImport.update({
-  id: '/resignation',
-  path: '/resignation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsDoctorVisitsRoute = ReportsDoctorVisitsRouteImport.update({
-  id: '/reports-doctor-visits',
-  path: '/reports-doctor-visits',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PerformanceRoute = PerformanceRouteImport.update({
-  id: '/performance',
-  path: '/performance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PayslipsRoute = PayslipsRouteImport.update({
-  id: '/payslips',
-  path: '/payslips',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PayrollRoute = PayrollRouteImport.update({
-  id: '/payroll',
-  path: '/payroll',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OfferLettersRoute = OfferLettersRouteImport.update({
-  id: '/offer-letters',
-  path: '/offer-letters',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MonthlyAttendanceRoute = MonthlyAttendanceRouteImport.update({
-  id: '/monthly-attendance',
-  path: '/monthly-attendance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LeavesRoute = LeavesRouteImport.update({
-  id: '/leaves',
-  path: '/leaves',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KioskRoute = KioskRouteImport.update({
-  id: '/kiosk',
-  path: '/kiosk',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HolidaysRoute = HolidaysRouteImport.update({
-  id: '/holidays',
-  path: '/holidays',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExpensesRoute = ExpensesRouteImport.update({
-  id: '/expenses',
-  path: '/expenses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmployeesRoute = EmployeesRouteImport.update({
-  id: '/employees',
-  path: '/employees',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmployeeAccessRoute = EmployeeAccessRouteImport.update({
-  id: '/employee-access',
-  path: '/employee-access',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Employee360Route = Employee360RouteImport.update({
-  id: '/employee-360',
-  path: '/employee-360',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocumentsRoute = DocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DoctorVisitsRoute = DoctorVisitsRouteImport.update({
-  id: '/doctor-visits',
-  path: '/doctor-visits',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DirectoryRoute = DirectoryRouteImport.update({
-  id: '/directory',
-  path: '/directory',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevResetRoute = DevResetRouteImport.update({
-  id: '/dev-reset',
-  path: '/dev-reset',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BugsRoute = BugsRouteImport.update({
-  id: '/bugs',
-  path: '/bugs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AttendanceRoute = AttendanceRouteImport.update({
-  id: '/attendance',
-  path: '/attendance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApprovalsRoute = ApprovalsRouteImport.update({
-  id: '/approvals',
-  path: '/approvals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AnnouncementsRoute = AnnouncementsRouteImport.update({
-  id: '/announcements',
-  path: '/announcements',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccessControlRoute = AccessControlRouteImport.update({
@@ -191,9 +51,149 @@ const AccessControlRoute = AccessControlRouteImport.update({
   path: '/access-control',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AnnouncementsRoute = AnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttendanceRoute = AttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BugsRoute = BugsRouteImport.update({
+  id: '/bugs',
+  path: '/bugs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevResetRoute = DevResetRouteImport.update({
+  id: '/dev-reset',
+  path: '/dev-reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DirectoryRoute = DirectoryRouteImport.update({
+  id: '/directory',
+  path: '/directory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DoctorVisitsRoute = DoctorVisitsRouteImport.update({
+  id: '/doctor-visits',
+  path: '/doctor-visits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Employee360Route = Employee360RouteImport.update({
+  id: '/employee-360',
+  path: '/employee-360',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployeeAccessRoute = EmployeeAccessRouteImport.update({
+  id: '/employee-access',
+  path: '/employee-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployeesRoute = EmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExpensesRoute = ExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HolidaysRoute = HolidaysRouteImport.update({
+  id: '/holidays',
+  path: '/holidays',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KioskRoute = KioskRouteImport.update({
+  id: '/kiosk',
+  path: '/kiosk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeavesRoute = LeavesRouteImport.update({
+  id: '/leaves',
+  path: '/leaves',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonthlyAttendanceRoute = MonthlyAttendanceRouteImport.update({
+  id: '/monthly-attendance',
+  path: '/monthly-attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfferLettersRoute = OfferLettersRouteImport.update({
+  id: '/offer-letters',
+  path: '/offer-letters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayrollRoute = PayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayslipsRoute = PayslipsRouteImport.update({
+  id: '/payslips',
+  path: '/payslips',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsDoctorVisitsRoute = ReportsDoctorVisitsRouteImport.update({
+  id: '/reports-doctor-visits',
+  path: '/reports-doctor-visits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResignationRoute = ResignationRouteImport.update({
+  id: '/resignation',
+  path: '/resignation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalaryStructureRoute = SalaryStructureRouteImport.update({
+  id: '/salary-structure',
+  path: '/salary-structure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -435,207 +435,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/salary-structure': {
-      id: '/salary-structure'
-      path: '/salary-structure'
-      fullPath: '/salary-structure'
-      preLoaderRoute: typeof SalaryStructureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/resignation': {
-      id: '/resignation'
-      path: '/resignation'
-      fullPath: '/resignation'
-      preLoaderRoute: typeof ResignationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports-doctor-visits': {
-      id: '/reports-doctor-visits'
-      path: '/reports-doctor-visits'
-      fullPath: '/reports-doctor-visits'
-      preLoaderRoute: typeof ReportsDoctorVisitsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/performance': {
-      id: '/performance'
-      path: '/performance'
-      fullPath: '/performance'
-      preLoaderRoute: typeof PerformanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payslips': {
-      id: '/payslips'
-      path: '/payslips'
-      fullPath: '/payslips'
-      preLoaderRoute: typeof PayslipsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payroll': {
-      id: '/payroll'
-      path: '/payroll'
-      fullPath: '/payroll'
-      preLoaderRoute: typeof PayrollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/offer-letters': {
-      id: '/offer-letters'
-      path: '/offer-letters'
-      fullPath: '/offer-letters'
-      preLoaderRoute: typeof OfferLettersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/monthly-attendance': {
-      id: '/monthly-attendance'
-      path: '/monthly-attendance'
-      fullPath: '/monthly-attendance'
-      preLoaderRoute: typeof MonthlyAttendanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leaves': {
-      id: '/leaves'
-      path: '/leaves'
-      fullPath: '/leaves'
-      preLoaderRoute: typeof LeavesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kiosk': {
-      id: '/kiosk'
-      path: '/kiosk'
-      fullPath: '/kiosk'
-      preLoaderRoute: typeof KioskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/holidays': {
-      id: '/holidays'
-      path: '/holidays'
-      fullPath: '/holidays'
-      preLoaderRoute: typeof HolidaysRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/expenses': {
-      id: '/expenses'
-      path: '/expenses'
-      fullPath: '/expenses'
-      preLoaderRoute: typeof ExpensesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/employees': {
-      id: '/employees'
-      path: '/employees'
-      fullPath: '/employees'
-      preLoaderRoute: typeof EmployeesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/employee-access': {
-      id: '/employee-access'
-      path: '/employee-access'
-      fullPath: '/employee-access'
-      preLoaderRoute: typeof EmployeeAccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/employee-360': {
-      id: '/employee-360'
-      path: '/employee-360'
-      fullPath: '/employee-360'
-      preLoaderRoute: typeof Employee360RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/documents': {
-      id: '/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof DocumentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/doctor-visits': {
-      id: '/doctor-visits'
-      path: '/doctor-visits'
-      fullPath: '/doctor-visits'
-      preLoaderRoute: typeof DoctorVisitsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/directory': {
-      id: '/directory'
-      path: '/directory'
-      fullPath: '/directory'
-      preLoaderRoute: typeof DirectoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dev-reset': {
-      id: '/dev-reset'
-      path: '/dev-reset'
-      fullPath: '/dev-reset'
-      preLoaderRoute: typeof DevResetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bugs': {
-      id: '/bugs'
-      path: '/bugs'
-      fullPath: '/bugs'
-      preLoaderRoute: typeof BugsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/attendance': {
-      id: '/attendance'
-      path: '/attendance'
-      fullPath: '/attendance'
-      preLoaderRoute: typeof AttendanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/approvals': {
-      id: '/approvals'
-      path: '/approvals'
-      fullPath: '/approvals'
-      preLoaderRoute: typeof ApprovalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/announcements': {
-      id: '/announcements'
-      path: '/announcements'
-      fullPath: '/announcements'
-      preLoaderRoute: typeof AnnouncementsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/access-control': {
@@ -645,11 +449,207 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccessControlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/announcements': {
+      id: '/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof AnnouncementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attendance': {
+      id: '/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bugs': {
+      id: '/bugs'
+      path: '/bugs'
+      fullPath: '/bugs'
+      preLoaderRoute: typeof BugsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev-reset': {
+      id: '/dev-reset'
+      path: '/dev-reset'
+      fullPath: '/dev-reset'
+      preLoaderRoute: typeof DevResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/directory': {
+      id: '/directory'
+      path: '/directory'
+      fullPath: '/directory'
+      preLoaderRoute: typeof DirectoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/doctor-visits': {
+      id: '/doctor-visits'
+      path: '/doctor-visits'
+      fullPath: '/doctor-visits'
+      preLoaderRoute: typeof DoctorVisitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employee-360': {
+      id: '/employee-360'
+      path: '/employee-360'
+      fullPath: '/employee-360'
+      preLoaderRoute: typeof Employee360RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employee-access': {
+      id: '/employee-access'
+      path: '/employee-access'
+      fullPath: '/employee-access'
+      preLoaderRoute: typeof EmployeeAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employees': {
+      id: '/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof EmployeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/expenses': {
+      id: '/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof ExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/holidays': {
+      id: '/holidays'
+      path: '/holidays'
+      fullPath: '/holidays'
+      preLoaderRoute: typeof HolidaysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kiosk': {
+      id: '/kiosk'
+      path: '/kiosk'
+      fullPath: '/kiosk'
+      preLoaderRoute: typeof KioskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaves': {
+      id: '/leaves'
+      path: '/leaves'
+      fullPath: '/leaves'
+      preLoaderRoute: typeof LeavesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monthly-attendance': {
+      id: '/monthly-attendance'
+      path: '/monthly-attendance'
+      fullPath: '/monthly-attendance'
+      preLoaderRoute: typeof MonthlyAttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offer-letters': {
+      id: '/offer-letters'
+      path: '/offer-letters'
+      fullPath: '/offer-letters'
+      preLoaderRoute: typeof OfferLettersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payroll': {
+      id: '/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof PayrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payslips': {
+      id: '/payslips'
+      path: '/payslips'
+      fullPath: '/payslips'
+      preLoaderRoute: typeof PayslipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports-doctor-visits': {
+      id: '/reports-doctor-visits'
+      path: '/reports-doctor-visits'
+      fullPath: '/reports-doctor-visits'
+      preLoaderRoute: typeof ReportsDoctorVisitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resignation': {
+      id: '/resignation'
+      path: '/resignation'
+      fullPath: '/resignation'
+      preLoaderRoute: typeof ResignationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/salary-structure': {
+      id: '/salary-structure'
+      path: '/salary-structure'
+      fullPath: '/salary-structure'
+      preLoaderRoute: typeof SalaryStructureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
