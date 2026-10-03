@@ -6,7 +6,7 @@ import { useSessionExpiry } from "@/hooks/useSessionExpiry";
 import {
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, FileText,
   LogOut, Settings, Sparkles, Sun, Moon, Bell, BarChart3, Info, CheckCircle2, AlertTriangle, AlertCircle, Award, User, QrCode,
-  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug, FileCheck, MapPin, ShieldCheck
+  Megaphone, FolderOpen, Receipt, Calendar as CalendarIcon, Search, Menu, X, IndianRupee, Fingerprint, Bug, FileCheck, MapPin, ShieldCheck, ShieldAlert
 } from "lucide-react";
 import { BugReportWidget } from "./BugReportWidget";
 import { GlobalSearch } from "./GlobalSearch";
@@ -62,6 +62,7 @@ const essNav: NavItem[] = [
   { to: "/documents", label: "Policy Hub", icon: FolderOpen },
   { to: "/expenses", label: "Expense Claims", icon: Receipt },
   { to: "/doctor-visits", label: "Doctor Visits", icon: MapPin },
+  { to: "/feedback", label: "Safety & Feedback", icon: ShieldAlert },
 ];
 
 const ROUTE_PERMISSIONS: Record<string, { module: string; action: string; requireWiderScope?: boolean }> = {

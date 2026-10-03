@@ -24,6 +24,7 @@ import { Route as Employee360RouteImport } from './routes/employee-360'
 import { Route as EmployeeAccessRouteImport } from './routes/employee-access'
 import { Route as EmployeesRouteImport } from './routes/employees'
 import { Route as ExpensesRouteImport } from './routes/expenses'
+import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as HolidaysRouteImport } from './routes/holidays'
 import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as LeavesRouteImport } from './routes/leaves'
@@ -114,6 +115,11 @@ const EmployeesRoute = EmployeesRouteImport.update({
 const ExpensesRoute = ExpensesRouteImport.update({
   id: '/expenses',
   path: '/expenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackRoute = FeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HolidaysRoute = HolidaysRouteImport.update({
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/employee-access': typeof EmployeeAccessRoute
   '/employees': typeof EmployeesRoute
   '/expenses': typeof ExpensesRoute
+  '/feedback': typeof FeedbackRoute
   '/holidays': typeof HolidaysRoute
   '/kiosk': typeof KioskRoute
   '/leaves': typeof LeavesRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/employee-access': typeof EmployeeAccessRoute
   '/employees': typeof EmployeesRoute
   '/expenses': typeof ExpensesRoute
+  '/feedback': typeof FeedbackRoute
   '/holidays': typeof HolidaysRoute
   '/kiosk': typeof KioskRoute
   '/leaves': typeof LeavesRoute
@@ -280,6 +288,7 @@ export interface FileRoutesById {
   '/employee-access': typeof EmployeeAccessRoute
   '/employees': typeof EmployeesRoute
   '/expenses': typeof ExpensesRoute
+  '/feedback': typeof FeedbackRoute
   '/holidays': typeof HolidaysRoute
   '/kiosk': typeof KioskRoute
   '/leaves': typeof LeavesRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/employee-access'
     | '/employees'
     | '/expenses'
+    | '/feedback'
     | '/holidays'
     | '/kiosk'
     | '/leaves'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/employee-access'
     | '/employees'
     | '/expenses'
+    | '/feedback'
     | '/holidays'
     | '/kiosk'
     | '/leaves'
@@ -381,6 +392,7 @@ export interface FileRouteTypes {
     | '/employee-access'
     | '/employees'
     | '/expenses'
+    | '/feedback'
     | '/holidays'
     | '/kiosk'
     | '/leaves'
@@ -415,6 +427,7 @@ export interface RootRouteChildren {
   EmployeeAccessRoute: typeof EmployeeAccessRoute
   EmployeesRoute: typeof EmployeesRoute
   ExpensesRoute: typeof ExpensesRoute
+  FeedbackRoute: typeof FeedbackRoute
   HolidaysRoute: typeof HolidaysRoute
   KioskRoute: typeof KioskRoute
   LeavesRoute: typeof LeavesRoute
@@ -538,6 +551,13 @@ declare module '@tanstack/react-router' {
       path: '/expenses'
       fullPath: '/expenses'
       preLoaderRoute: typeof ExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback': {
+      id: '/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof FeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/holidays': {
@@ -671,6 +691,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmployeeAccessRoute: EmployeeAccessRoute,
   EmployeesRoute: EmployeesRoute,
   ExpensesRoute: ExpensesRoute,
+  FeedbackRoute: FeedbackRoute,
   HolidaysRoute: HolidaysRoute,
   KioskRoute: KioskRoute,
   LeavesRoute: LeavesRoute,
