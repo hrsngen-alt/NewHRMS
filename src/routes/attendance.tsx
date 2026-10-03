@@ -508,7 +508,8 @@ function AttendancePage() {
     }
 
     if (source === "QR") {
-      const { data: locations } = await supabase.from("company_locations").select("*");
+      const { data } = await supabase.from("company_locations" as any).select("*");
+      const locations = data as any[] | null;
       if (locations && locations.length > 0) {
         let isWithinRange = false;
         for (const loc of locations) {
