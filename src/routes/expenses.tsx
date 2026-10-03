@@ -11,8 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Receipt, Plus, Clock, CheckCircle2, XCircle, Wallet, FileText, IndianRupee, Upload, ExternalLink, Eye, Search, TrendingUp, Building2, X, Users as UsersIcon, ListFilter, LayoutGrid, Pencil, Trash2, Mail, Sparkles } from "lucide-react";
-import Tesseract from 'tesseract.js';
+import { Receipt, Plus, Clock, CheckCircle2, XCircle, Wallet, FileText, IndianRupee, Upload, ExternalLink, Eye, Search, TrendingUp, Building2, X, Users as UsersIcon, ListFilter, LayoutGrid, Pencil, Trash2, Mail } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,43 +59,6 @@ function ExpensesPage() {
   };
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  const [isScanning, setIsScanning] = useState(false);
-
-  const scanReceipt = async (file: File) => {
-    setIsScanning(true);
-    toast.info("Scanning receipt with AI...");
-    try {
-      const result = await Tesseract.recognize(file, 'eng');
-      const text = result.data.text;
-      
-      const lines = text.split('\n').filter(l => l.trim().length > 0);
-      let extractedTitle = lines[0] || "Scanned Receipt";
-      let extractedAmount = "";
-      
-      const amountRegex = /(?:rs\.?|inr|₹|\$)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2}))/i;
-      for (const line of lines) {
-        const match = line.match(amountRegex);
-        if (match && match[1]) {
-          extractedAmount = match[1].replace(/,/g, '');
-        }
-      }
-
-      if (formRef.current) {
-        const titleInput = formRef.current.elements.namedItem('title') as HTMLInputElement;
-        const amountInput = formRef.current.elements.namedItem('amount') as HTMLInputElement;
-        if (titleInput && extractedTitle) titleInput.value = extractedTitle.substring(0, 50);
-        if (amountInput && extractedAmount) amountInput.value = extractedAmount;
-      }
-      
-      toast.success("Receipt scanned! Please verify the details.");
-    } catch (err) {
-      console.error("OCR Error:", err);
-      toast.error("Failed to scan receipt. Please enter details manually.");
-    } finally {
-      setIsScanning(false);
-    }
-  };
   const editFileRef = useRef<HTMLInputElement>(null);
   const { myEmployee } = useMyEmployee();
 
@@ -479,7 +441,7 @@ function ExpensesPage() {
                     <CardDescription>Enter details and attach your bill copy for approval.</CardDescription>
                   </DialogHeader>
                 </div>
-                <form ref={formRef} onSubmit={submitClaim} className="flex flex-col flex-1 min-h-0">
+                <form onSubmit={submitClaim} className="flex flex-col flex-1 min-h-0">
                   <div className="overflow-y-auto flex-1 px-8 pb-2 space-y-5">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Expense Title</Label>
@@ -517,25 +479,11 @@ function ExpensesPage() {
 
                     <div className="space-y-2 pb-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Attach Receipt (Bill Copy)</Label>
-                      <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group" onClick={() => !isScanning && fileRef.current?.click()}>
-                        <input type="file" className="hidden" ref={fileRef} accept="image/*,application/pdf" onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file && file.type.startsWith('image/')) {
-                            scanReceipt(file);
-                          }
-                        }} />
-                        {isScanning ? (
-                          <div className="flex flex-col items-center animate-pulse">
-                            <Sparkles className="size-8 text-indigo-500 mb-2 animate-spin" />
-                            <p className="text-xs font-bold text-indigo-600">Scanning with AI...</p>
-                          </div>
-                        ) : (
-                          <>
-                            <Upload className="size-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                            <p className="text-xs font-bold text-muted-foreground">Click to upload image or PDF</p>
-                            <p className="text-[10px] text-muted-foreground/50 mt-1">Maximum size: 5MB. Images are auto-scanned by AI.</p>
-                          </>
-                        )}
+                      <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group" onClick={() => fileRef.current?.click()}>
+                        <input type="file" className="hidden" ref={fileRef} accept="image/*,application/pdf" />
+                        <Upload className="size-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                        <p className="text-xs font-bold text-muted-foreground">Click to upload image or PDF</p>
+                        <p className="text-[10px] text-muted-foreground/50 mt-1">Maximum size: 5MB</p>
                       </div>
                     </div>
                   </div>
