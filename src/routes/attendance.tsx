@@ -514,7 +514,7 @@ function AttendancePage() {
         for (const loc of locations) {
           if (loc.lat && loc.lng) {
             const dist = calculateDistance(lat, lng, loc.lat, loc.lng);
-            if (dist <= 50) {
+            if (dist <= 150) {
               isWithinRange = true;
               break;
             }
@@ -522,7 +522,7 @@ function AttendancePage() {
         }
         if (!isWithinRange) {
           setIsPunching(false);
-          return toast.error("You must be within 50 meters of an office location to scan the QR code.");
+          return toast.error("You must be within 150 meters of an office location to scan the QR code.");
         }
       } else {
         setIsPunching(false);
