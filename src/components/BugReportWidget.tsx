@@ -409,7 +409,7 @@ export function BugReportWidget() {
       <motion.div
         drag
         dragMomentum={false}
-        className="fixed bottom-6 right-6 z-50 flex items-center justify-center cursor-move"
+        className="fixed bottom-[100px] md:bottom-6 right-6 z-[60] flex items-center justify-center cursor-move"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
