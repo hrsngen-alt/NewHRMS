@@ -145,8 +145,8 @@ function FeedbackPage() {
               <div className="space-y-4">
                 {feedbacks.map((f: any) => (
                   <div key={f.id} className={cn("p-6 rounded-3xl border-2 transition-all", f.status === 'unread' ? "bg-white dark:bg-slate-900 border-indigo-100 dark:border-indigo-900 shadow-lg" : "bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800 opacity-70")}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                      <div className="flex flex-wrap items-center gap-3">
                         <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border", 
                           f.category.includes('Safety') ? "bg-red-50 text-red-600 border-red-200" :
                           f.category.includes('HR') ? "bg-orange-50 text-orange-600 border-orange-200" :
@@ -159,7 +159,7 @@ function FeedbackPage() {
                         </span>
                       </div>
                       {f.status === 'unread' && (
-                        <Button variant="outline" size="sm" onClick={() => markAsRead(f.id)} className="h-8 rounded-lg gap-2 text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200">
+                        <Button variant="outline" size="sm" onClick={() => markAsRead(f.id)} className="h-8 rounded-lg gap-2 text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 w-full sm:w-auto mt-2 sm:mt-0">
                           <CheckCircle2 className="size-4" /> Mark Read
                         </Button>
                       )}
