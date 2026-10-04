@@ -166,7 +166,7 @@ function Employee360Page() {
           <p className="text-muted-foreground mt-1 font-medium">Complete overview of employee lifecycle, performance, and data.</p>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {isAdmin && (
             <Popover open={isEmpComboboxOpen} onOpenChange={setIsEmpComboboxOpen}>
               <PopoverTrigger asChild>
@@ -221,10 +221,27 @@ function Employee360Page() {
             </Button>
           )}
 
-          <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl shrink-0" title="Print Profile" disabled={!selectedEmpId}>
+          <Button onClick={() => window.print()} variant="outline" size="icon" className="h-12 w-12 rounded-xl shrink-0" title="Print Profile" disabled={!selectedEmpId}>
             <Printer className="size-5" />
           </Button>
-          <Button variant="default" size="icon" className="h-12 w-12 rounded-xl shrink-0 bg-indigo-600 hover:bg-indigo-700" title="Share" disabled={!selectedEmpId}>
+          <Button 
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: `Employee 360: ${employee?.full_name || 'Profile'}`,
+                  url: window.location.href
+                }).catch(console.error);
+              } else {
+                navigator.clipboard.writeText(window.location.href);
+                toast.success("Profile URL copied to clipboard!");
+              }
+            }}
+            variant="default" 
+            size="icon" 
+            className="h-12 w-12 rounded-xl shrink-0 bg-indigo-600 hover:bg-indigo-700" 
+            title="Share" 
+            disabled={!selectedEmpId}
+          >
             <Share2 className="size-5" />
           </Button>
         </div>

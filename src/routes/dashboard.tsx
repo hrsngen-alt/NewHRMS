@@ -570,12 +570,12 @@ function Dashboard() {
           check_out_lat: lat || null, check_out_lng: lng || null,
           check_out_address: address || null,
           check_out_type: source,
-          metadata: { 
-            ...((latestSession?.metadata as Record<string, any>) || {}), 
-            ...(selfieSrc ? { selfie_out: selfieSrc } : {}) 
+          metadata: {
+            ...((latestSession?.metadata as Record<string, any>) || {}),
+            ...(selfieSrc ? { selfie_out: selfieSrc } : {})
           }
         }).eq("id", latestSession!.id);
-        
+
         if (selfieSrc) {
           setSelfieSrc(null);
           setIsSelfieModalOpen(false);
@@ -960,31 +960,31 @@ function Dashboard() {
           </div>
           <div className="p-6 pt-2 flex gap-3">
             {!selfieSrc ? (
-              <Button 
+              <Button
                 onClick={() => {
                   const imageSrc = webcamRef.current?.getScreenshot();
                   if (imageSrc) setSelfieSrc(imageSrc);
-                }} 
+                }}
                 className="w-full h-14 rounded-xl font-black text-lg bg-indigo-500 hover:bg-indigo-600 shadow-lg shadow-indigo-500/20"
               >
                 Capture Photo
               </Button>
             ) : (
               <>
-                <Button 
-                  onClick={() => setSelfieSrc(null)} 
-                  variant="outline" 
+                <Button
+                  onClick={() => setSelfieSrc(null)}
+                  variant="outline"
                   className="flex-1 h-14 rounded-xl font-black border-slate-700 bg-slate-800 hover:bg-slate-700 text-white"
                   disabled={isPunchingWithSelfie}
                 >
                   Retake
                 </Button>
-                <Button 
+                <Button
                   onClick={async () => {
                     setIsPunchingWithSelfie(true);
                     await punch(isCheckedIn ? "out" : "in");
                     setIsPunchingWithSelfie(false);
-                  }} 
+                  }}
                   className="flex-[2] h-14 rounded-xl font-black bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 text-white"
                   disabled={isPunchingWithSelfie}
                 >

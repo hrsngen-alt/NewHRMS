@@ -672,9 +672,9 @@ function AttendancePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full">
            <Select value={selMonth} onValueChange={setSelMonth}>
-             <SelectTrigger className="w-[140px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
+             <SelectTrigger className="w-[120px] sm:w-[140px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
                <SelectValue />
              </SelectTrigger>
              <SelectContent>
@@ -683,7 +683,7 @@ function AttendancePage() {
              </SelectContent>
            </Select>
            <Select value={selYear} onValueChange={setSelYear}>
-             <SelectTrigger className="w-[110px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
+             <SelectTrigger className="w-[100px] sm:w-[110px] h-12 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold shadow-sm">
                <SelectValue />
              </SelectTrigger>
                <SelectContent>
@@ -691,11 +691,11 @@ function AttendancePage() {
                {(availableYears as number[]).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
              </SelectContent>
            </Select>
-           <div className="relative">
+           <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <input 
                 placeholder="Search logs..." 
-                className="pl-12 h-12 w-[240px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                className="pl-12 h-12 w-full lg:w-[240px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-medium shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
