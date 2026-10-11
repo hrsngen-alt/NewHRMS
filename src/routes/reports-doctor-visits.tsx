@@ -207,29 +207,92 @@ function DoctorVisitsReportPage() {
     }
   };
 
+  const mapVisitsToEmployeeSummaryRows = (list: any[]) => {
+    const groups: Record<string, any[]> = {};
+    list.forEach((v: any) => {
+      const empId = v.employees?.id || v.employee_id || v.employees?.full_name || 'unknown';
+      if (!groups[empId]) groups[empId] = [];
+      groups[empId].push(v);
+    });
+
+    const summaryList = Object.values(groups).map((empVisits) => {
+      const emp = empVisits[0]?.employees;
+      const totalVisitsCount = empVisits.length;
+      const completed = empVisits.filter((v: any) => v.status === 'Completed').length;
+      const checkedIn = empVisits.filter((v: any) => v.status === 'Checked In').length;
+      const cancelled = empVisits.filter((v: any) => v.status === 'Cancelled').length;
+      const uniqueDocs = new Set(empVisits.map((v: any) => v.doctor_name).filter(Boolean)).size;
+      const uniqueHosps = new Set(empVisits.map((v: any) => v.hospital_name).filter(Boolean)).size;
+      const totalMinutes = empVisits.reduce((acc: number, v: any) => acc + (Number(v.visit_duration) || 0), 0);
+      const activeDays = new Set(empVisits.map((v: any) => v.visit_date).filter(Boolean)).size;
+
+      return {
+        'Employee ID': emp?.id || '',
+        'Employee Name': emp?.full_name || 'Unknown Employee',
+        'Department': emp?.department || '—',
+        'Designation': emp?.designation || '—',
+        'Total Visits': totalVisitsCount,
+        'Completed Visits': completed,
+        'Checked-In Visits': checkedIn,
+        'Cancelled Visits': cancelled,
+        'Unique Doctors Met': uniqueDocs,
+        'Unique Hospitals Visited': uniqueHosps,
+        'Total Field Time': formatDuration(totalMinutes),
+        'Total Duration (Mins)': totalMinutes,
+        'Active Field Days': activeDays,
+      };
+    });
+
+    return summaryList.sort((a, b) => a['Employee Name'].localeCompare(b['Employee Name']));
+  };
+
   const mapVisitsToDetailedRows = (list: any[]) => {
-    return list.map((v: any) => ({
-      'Employee ID': v.employees?.id || '',
-      'Employee Name': v.employees?.full_name || '',
-      'Department': v.employees?.department || '',
-      'Designation': v.employees?.designation || '',
-      'Doctor Name': v.doctor_name || '',
-      'Hospital/Clinic': v.hospital_name || '',
-      'Contact Number': v.contact_number || '',
-      'Visit Purpose': v.visit_purpose || '',
-      'Visit Date': v.visit_date || '',
-      'Check-In Time': v.check_in_time ? format(new Date(v.check_in_time), 'dd-MMM-yyyy hh:mm a') : '',
-      'Check-In Latitude': v.check_in_latitude ?? '',
-      'Check-In Longitude': v.check_in_longitude ?? '',
-      'Check-In Address': v.check_in_address || '',
-      'Check-Out Time': v.check_out_time ? format(new Date(v.check_out_time), 'dd-MMM-yyyy hh:mm a') : '',
-      'Check-Out Latitude': v.check_out_latitude ?? '',
-      'Check-Out Longitude': v.check_out_longitude ?? '',
-      'Check-Out Address': v.check_out_address || '',
-      'Visit Duration (Mins)': v.visit_duration ?? '',
-      'Status': v.status || '',
-      'Created At': v.created_at ? format(new Date(v.created_at), 'dd-MMM-yyyy hh:mm a') : '',
-    }));
+    // Sort by employee name, then date, then check-in time
+    const sorted = [...list].sort((a, b) => {
+      const nameA = a.employees?.full_name || '';
+      const nameB = b.employees?.full_name || '';
+      const cmp = nameA.localeCompare(nameB);
+      if (cmp !== 0) return cmp;
+      const dateA = a.visit_date || '';
+      const dateB = b.visit_date || '';
+      const dateCmp = dateA.localeCompare(dateB);
+      if (dateCmp !== 0) return dateCmp;
+      const timeA = a.check_in_time || '';
+      const timeB = b.check_in_time || '';
+      return timeA.localeCompare(timeB);
+    });
+
+    const empVisitCounters: Record<string, number> = {};
+
+    return sorted.map((v: any) => {
+      const empId = v.employees?.id || v.employee_id || v.employees?.full_name || 'unknown';
+      empVisitCounters[empId] = (empVisitCounters[empId] || 0) + 1;
+      const visitIndex = empVisitCounters[empId];
+
+      return {
+        'Visit #': visitIndex,
+        'Employee ID': v.employees?.id || '',
+        'Employee Name': v.employees?.full_name || '',
+        'Department': v.employees?.department || '',
+        'Designation': v.employees?.designation || '',
+        'Doctor Name': v.doctor_name || '',
+        'Hospital/Clinic': v.hospital_name || '',
+        'Contact Number': v.contact_number || '',
+        'Visit Purpose': v.visit_purpose || '',
+        'Visit Date': v.visit_date || '',
+        'Check-In Time': v.check_in_time ? format(new Date(v.check_in_time), 'dd-MMM-yyyy hh:mm a') : '',
+        'Check-In Latitude': v.check_in_latitude ?? '',
+        'Check-In Longitude': v.check_in_longitude ?? '',
+        'Check-In Address': v.check_in_address || '',
+        'Check-Out Time': v.check_out_time ? format(new Date(v.check_out_time), 'dd-MMM-yyyy hh:mm a') : '',
+        'Check-Out Latitude': v.check_out_latitude ?? '',
+        'Check-Out Longitude': v.check_out_longitude ?? '',
+        'Check-Out Address': v.check_out_address || '',
+        'Visit Duration (Mins)': v.visit_duration ?? '',
+        'Status': v.status || '',
+        'Created At': v.created_at ? format(new Date(v.created_at), 'dd-MMM-yyyy hh:mm a') : '',
+      };
+    });
   };
 
   const handleExportExcel = () => {
@@ -237,11 +300,17 @@ function DoctorVisitsReportPage() {
       toast.info('No visit data available to export.');
       return;
     }
-    const exportData = mapVisitsToDetailedRows(filteredData);
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'DoctorVisits');
+
+    // Sheet 1: Employee Summary
+    const summaryData = mapVisitsToEmployeeSummaryRows(filteredData);
+    const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Employee Summary');
+
+    // Sheet 2: Detailed Visits
+    const exportData = mapVisitsToDetailedRows(filteredData);
+    const detailedWorksheet = XLSX.utils.json_to_sheet(exportData);
+    XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Visits');
     
     const curMonthLabel = MONTHS.find(m => m.value === selectedMonth)?.label || 'Month';
     const fileSuffix = viewMode === 'month' 
@@ -300,10 +369,17 @@ function DoctorVisitsReportPage() {
       toast.error('No visits found for the selected month and filters.');
       return;
     }
-    const exportData = mapVisitsToDetailedRows(modalFilteredVisits);
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'DoctorVisits');
+
+    // Sheet 1: Employee Summary
+    const summaryData = mapVisitsToEmployeeSummaryRows(modalFilteredVisits);
+    const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Employee Summary');
+
+    // Sheet 2: Detailed Visits
+    const exportData = mapVisitsToDetailedRows(modalFilteredVisits);
+    const detailedWorksheet = XLSX.utils.json_to_sheet(exportData);
+    XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Visits');
     
     const mName = MONTHS.find(m => m.value === modalMonth)?.label || 'Month';
     const fileName = `Doctor_Visit_Report_${mName}_${modalYear}.xlsx`;
