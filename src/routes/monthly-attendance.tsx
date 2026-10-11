@@ -113,6 +113,7 @@ function AttendancePage() {
 
         let presentCount = 0;
         let absentCount = 0;
+        let leaveCount = 0;
         let halfCount = 0;
         let lateCount = 0;
         let otCount = 0;
@@ -146,8 +147,12 @@ function AttendancePage() {
               }
             }
           } else {
-            if (!isHoliday && !isSunday && !isLeave) {
-              absentCount++;
+            if (!isHoliday && !isSunday) {
+              if (isLeave) {
+                leaveCount++;
+              } else {
+                absentCount++;
+              }
             }
           }
         }
@@ -161,6 +166,7 @@ function AttendancePage() {
           "Designation": emp.designation || "—",
           "Total Days": totalDays,
           "Paid Days": Number(paid.toFixed(1)),
+          "Leave Days": leaveCount,
           "Absent Days": absentCount,
           "Half Days": halfCount,
           "Late Marks": lateCount,
