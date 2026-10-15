@@ -66,10 +66,15 @@ function AttendancePage() {
       const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
       const endStr = `${year}-${String(month).padStart(2, "0")}-${totalDays}`;
 
-      // 1. Fetch active employees (filtered by department if manager)
-      let empQuery = supabase.from("employees").select("*").eq("status", "active");
+      // 1. Fetch active employees (filtered by department if manager or department selected)
+      let empQuery = supabase
+        .from("employees")
+        .select("*")
+        .in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
       if (isManager && myEmployee) {
         empQuery = empQuery.eq("department", myEmployee.department);
+      } else if (selectedDept && selectedDept !== "all") {
+        empQuery = empQuery.eq("department", selectedDept);
       }
       const { data: employees, error: empErr } = await empQuery;
       if (empErr) throw empErr;
@@ -112,7 +117,8 @@ function AttendancePage() {
           .select("*")
           .in("employee_id", employeeIds)
           .eq("status", "approved")
-          .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`)
+          .lte("start_date", endStr)
+          .gte("end_date", startStr)
           .range(from, to);
         if (error) throw error;
         if (!data || data.length === 0) break;
@@ -129,6 +135,11 @@ function AttendancePage() {
         .lte("date", endStr);
       const holidays = holidaysLogs || [];
 
+      const now = new Date();
+      const isCurrentMonthYear = now.getFullYear() === year && (now.getMonth() + 1) === month;
+      const todayDate = now.getDate();
+      const elapsedDays = isCurrentMonthYear ? Math.min(todayDate, totalDays) : totalDays;
+
       // 5. Calculate metrics for each employee
       const reportRows = employees.map((emp) => {
         const empAtt = (attendanceLogs || []).filter((a) => a.employee_id === emp.id);
@@ -141,84 +152,92 @@ function AttendancePage() {
         let lateCount = 0;
         let otCount = 0;
 
+        const dayWiseData: Record<string, string> = {};
+
         for (let d = 1; d <= totalDays; d++) {
           const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
           const dObj = new Date(year, month - 1, d);
           const isSunday = dObj.getDay() === 0;
+          const isFuture = isCurrentMonthYear && d > todayDate;
 
-          const attRec = empAtt.find((a) => a.date === dateStr);
+          const daySessions = empAtt.filter((a) => a.date === dateStr);
           const isHoliday = holidays.some((h: any) => h.date === dateStr);
           const isLeave = empLeaves.some((l) => dateStr >= l.start_date && dateStr <= l.end_date);
 
-          if (attRec) {
-            const hrs = Number(attRec.hours_worked || 0);
-            if (hrs > 0 && hrs < 4) {
-              halfCount++;
-              presentCount += 0.5;
-            } else {
-              presentCount++;
+          if (daySessions.length > 0) {
+            // Aggregate hours worked across all sessions for the day
+            let dayHours = 0;
+            for (const s of daySessions) {
+              let hrs = Number(s.hours_worked) || 0;
+              if (!hrs && s.check_in && s.check_out) {
+                hrs = (new Date(s.check_out).getTime() - new Date(s.check_in).getTime()) / 3600000;
+              }
+              if (hrs > 0) dayHours += hrs;
             }
-            if (hrs > 9) {
-              otCount += (hrs - 9);
-            }
-            if (attRec.check_in) {
-              const ciTime = new Date(attRec.check_in);
-              const thresh = new Date(attRec.check_in);
+
+            // Check late arrivals based on earliest check-in of the day
+            const checkIns = daySessions
+              .filter((s) => s.check_in)
+              .map((s) => new Date(s.check_in))
+              .sort((a, b) => a.getTime() - b.getTime());
+
+            if (checkIns.length > 0) {
+              const earliestIn = checkIns[0];
+              const thresh = new Date(earliestIn);
               thresh.setHours(9, 45, 0, 0);
-              if (ciTime.getTime() > thresh.getTime()) {
+              if (earliestIn.getTime() > thresh.getTime()) {
                 lateCount++;
               }
             }
-          } else {
-            if (!isHoliday && !isSunday) {
-              if (isLeave) {
-                leaveCount++;
+
+            const roundedHrs = Number(dayHours.toFixed(1));
+            if (roundedHrs > 0) {
+              if (roundedHrs < 4) {
+                halfCount++;
+                presentCount += 0.5;
               } else {
-                absentCount++;
+                presentCount++;
               }
+              if (roundedHrs > 9) {
+                otCount += (roundedHrs - 9);
+              }
+              dayWiseData[`Day ${d}`] = `${roundedHrs} hrs`;
+            } else {
+              presentCount++;
+              dayWiseData[`Day ${d}`] = "Present";
             }
+          } else if (isFuture) {
+            dayWiseData[`Day ${d}`] = "—";
+          } else if (isHoliday) {
+            dayWiseData[`Day ${d}`] = "H"; // Holiday
+          } else if (isSunday) {
+            dayWiseData[`Day ${d}`] = "W"; // Weekend
+          } else if (isLeave) {
+            leaveCount++;
+            dayWiseData[`Day ${d}`] = "L"; // Leave
+          } else {
+            absentCount++;
+            dayWiseData[`Day ${d}`] = "A"; // Absent
           }
         }
 
-        const paid = totalDays - absentCount - (halfCount * 0.5);
+        const paid = Math.max(0, elapsedDays - absentCount - (halfCount * 0.5));
 
-        const rowData: any = {
-          "Employee ID": emp.employee_code,
-          "Employee Name": emp.full_name,
+        return {
+          "Employee ID": emp.employee_code || "—",
+          "Employee Name": emp.full_name || "—",
           "Department": emp.department || "—",
           "Designation": emp.designation || "—",
           "Total Days": totalDays,
+          ...(isCurrentMonthYear ? { "Elapsed Days": elapsedDays } : {}),
           "Paid Days": Number(paid.toFixed(1)),
           "Leave Days": leaveCount,
           "Absent Days": absentCount,
           "Half Days": halfCount,
           "Late Marks": lateCount,
           "OT Hours": Number(otCount.toFixed(1)),
+          ...dayWiseData,
         };
-
-        // Add day-wise data
-        for (let d = 1; d <= totalDays; d++) {
-          const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          const dObj = new Date(year, month - 1, d);
-          const isSunday = dObj.getDay() === 0;
-          const attRec = empAtt.find((a) => a.date === dateStr);
-          const isHoliday = holidays.some((h: any) => h.date === dateStr);
-          const isLeave = empLeaves.some((l) => dateStr >= l.start_date && dateStr <= l.end_date);
-
-          if (attRec) {
-            rowData[`Day ${d}`] = attRec.hours_worked !== null ? `${attRec.hours_worked} hrs` : "Present";
-          } else if (isHoliday) {
-            rowData[`Day ${d}`] = "H"; // Holiday
-          } else if (isSunday) {
-            rowData[`Day ${d}`] = "W"; // Weekend
-          } else if (isLeave) {
-            rowData[`Day ${d}`] = "L"; // Leave
-          } else {
-            rowData[`Day ${d}`] = "A"; // Absent
-          }
-        }
-
-        return rowData;
       });
 
       // 6. Generate Excel workbook
@@ -253,6 +272,8 @@ function AttendancePage() {
       let empQuery = supabase.from("employees").select("id, full_name, employee_code, department").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
       if (isManager && myEmployee) {
         empQuery = empQuery.eq("department", myEmployee.department);
+      } else if (selectedDept && selectedDept !== "all") {
+        empQuery = empQuery.eq("department", selectedDept);
       }
       const { data: employees, error: empErr } = await empQuery;
       if (empErr) throw empErr;
@@ -297,6 +318,14 @@ function AttendancePage() {
           if (info) deviceStr = `${info.os} (${info.browser})`;
         }
 
+        let hoursStr = "—";
+        if (log.hours_worked !== null && log.hours_worked !== undefined) {
+          hoursStr = `${Number(log.hours_worked).toFixed(2)} hrs`;
+        } else if (log.check_in && log.check_out) {
+          const diff = (new Date(log.check_out).getTime() - new Date(log.check_in).getTime()) / 3600000;
+          hoursStr = `${Math.max(0, diff).toFixed(2)} hrs`;
+        }
+
         return {
           "Employee ID": emp?.employee_code || "—",
           "Employee Name": log.employee_name || emp?.full_name || "—",
@@ -304,7 +333,7 @@ function AttendancePage() {
           "Date": log.date,
           "Check-In Time": checkInTime,
           "Check-Out Time": checkOutTime,
-          "Hours Worked": log.hours_worked !== null ? String(log.hours_worked) : "—",
+          "Hours Worked": hoursStr,
           "Check-Out Type": log.check_out_type || "—",
           "Check-In Location (Lat/Lng)": log.check_in_lat && log.check_in_lng ? `${log.check_in_lat}, ${log.check_in_lng}` : "—",
           "Check-In Address": log.check_in_address || "—",
