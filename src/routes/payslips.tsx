@@ -384,19 +384,44 @@ function PayslipsPage() {
       const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
       const endStr = `${year}-${String(month).padStart(2, "0")}-${totalDays}`;
 
-      const { data: attendanceLogs, error: attErr } = await supabase
-        .from("attendance")
-        .select("*")
-        .gte("date", startStr)
-        .lte("date", endStr);
-      if (attErr) throw attErr;
+      // Fetch attendance logs (paginated to handle >1000 rows)
+      const attendanceLogs: any[] = [];
+      const pageSize = 1000;
+      let attPage = 0;
+      while (true) {
+        const from = attPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("attendance")
+          .select("*")
+          .gte("date", startStr)
+          .lte("date", endStr)
+          .range(from, to);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        attendanceLogs.push(...data);
+        if (data.length < pageSize) break;
+        attPage++;
+      }
 
-      const { data: leavesLogs, error: lvErr } = await supabase
-        .from("leaves")
-        .select("*")
-        .eq("status", "approved")
-        .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`);
-      if (lvErr) throw lvErr;
+      // Fetch leaves (paginated to handle >1000 rows)
+      const leavesLogs: any[] = [];
+      let lvPage = 0;
+      while (true) {
+        const from = lvPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("leaves")
+          .select("*")
+          .eq("status", "approved")
+          .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`)
+          .range(from, to);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        leavesLogs.push(...data);
+        if (data.length < pageSize) break;
+        lvPage++;
+      }
 
       const { data: holidaysLogs, error: holErr } = await supabase
         .from("holidays" as any)
@@ -498,21 +523,44 @@ function PayslipsPage() {
         return;
       }
 
-      // 2. Fetch attendance logs
-      const { data: attendanceLogs, error: attErr } = await supabase
-        .from("attendance")
-        .select("*")
-        .gte("date", startStr)
-        .lte("date", endStr);
-      if (attErr) throw attErr;
+      // 2. Fetch attendance logs (paginated to handle >1000 rows)
+      const attendanceLogs: any[] = [];
+      const pageSize = 1000;
+      let attPage = 0;
+      while (true) {
+        const from = attPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("attendance")
+          .select("*")
+          .gte("date", startStr)
+          .lte("date", endStr)
+          .range(from, to);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        attendanceLogs.push(...data);
+        if (data.length < pageSize) break;
+        attPage++;
+      }
 
-      // 3. Fetch leaves
-      const { data: leavesLogs, error: lvErr } = await supabase
-        .from("leaves")
-        .select("*")
-        .eq("status", "approved")
-        .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`);
-      if (lvErr) throw lvErr;
+      // 3. Fetch leaves (paginated to handle >1000 rows)
+      const leavesLogs: any[] = [];
+      let lvPage = 0;
+      while (true) {
+        const from = lvPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("leaves")
+          .select("*")
+          .eq("status", "approved")
+          .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`)
+          .range(from, to);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        leavesLogs.push(...data);
+        if (data.length < pageSize) break;
+        lvPage++;
+      }
 
       // 4. Fetch holidays
       const { data: holidaysLogs, error: holErr } = await supabase

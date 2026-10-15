@@ -79,24 +79,47 @@ function AttendancePage() {
         return;
       }
 
-      // 2. Fetch attendance logs for all fetched employees
+      // 2. Fetch attendance logs for all fetched employees (paginated to handle >1000 rows)
       const employeeIds = employees.map(e => e.id);
-      const { data: attendanceLogs, error: attErr } = await supabase
-        .from("attendance")
-        .select("*")
-        .in("employee_id", employeeIds)
-        .gte("date", startStr)
-        .lte("date", endStr);
-      if (attErr) throw attErr;
+      const attendanceLogs: any[] = [];
+      const pageSize = 1000;
+      let attPage = 0;
+      while (true) {
+        const from = attPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("attendance")
+          .select("*")
+          .in("employee_id", employeeIds)
+          .gte("date", startStr)
+          .lte("date", endStr)
+          .range(from, to);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        attendanceLogs.push(...data);
+        if (data.length < pageSize) break;
+        attPage++;
+      }
 
-      // 3. Fetch leaves for fetched employees
-      const { data: leavesLogs, error: lvErr } = await supabase
-        .from("leaves")
-        .select("*")
-        .in("employee_id", employeeIds)
-        .eq("status", "approved")
-        .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`);
-      if (lvErr) throw lvErr;
+      // 3. Fetch leaves for fetched employees (paginated to handle >1000 rows)
+      const leavesLogs: any[] = [];
+      let lvPage = 0;
+      while (true) {
+        const from = lvPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("leaves")
+          .select("*")
+          .in("employee_id", employeeIds)
+          .eq("status", "approved")
+          .or(`and(start_date.lte.${endStr},end_date.gte.${startStr})`)
+          .range(from, to);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        leavesLogs.push(...data);
+        if (data.length < pageSize) break;
+        lvPage++;
+      }
 
       // 4. Fetch holidays
       const { data: holidaysLogs, error: holErr } = await supabase
@@ -239,16 +262,28 @@ function AttendancePage() {
         return;
       }
 
-      // 2. Fetch all detailed logs for these employees
+      // 2. Fetch all detailed logs for these employees (paginated to handle >1000 rows)
       const employeeIds = employees.map(e => e.id);
-      const { data: logs, error: logErr } = await supabase
-        .from("attendance")
-        .select("*")
-        .in("employee_id", employeeIds)
-        .gte("date", startStr)
-        .lte("date", endStr)
-        .order("check_in", { ascending: true });
-      if (logErr) throw logErr;
+      const logs: any[] = [];
+      const pageSize = 1000;
+      let logPage = 0;
+      while (true) {
+        const from = logPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error } = await supabase
+          .from("attendance")
+          .select("*")
+          .in("employee_id", employeeIds)
+          .gte("date", startStr)
+          .lte("date", endStr)
+          .order("check_in", { ascending: true })
+          .range(from, to);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        logs.push(...data);
+        if (data.length < pageSize) break;
+        logPage++;
+      }
 
       // 3. Format rows
       const reportRows = (logs || []).map((log) => {
@@ -332,17 +367,33 @@ function AttendancePage() {
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["attendance", role, myEmployee?.id],
     queryFn: async () => {
-      let query = supabase
-        .from("attendance" as any)
-        .select("*, employees(full_name, employee_code, department)")
-        .order("check_in", { ascending: false });
-      
-      if (!isAdmin && !isManager && myEmployee) query = query.eq("employee_id", myEmployee.id).limit(500);
-      else query = query.limit(3000);
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data as any) || [];
+      if (!isAdmin && !isManager && myEmployee) {
+        const { data, error } = await supabase
+          .from("attendance" as any)
+          .select("*, employees(full_name, employee_code, department)")
+          .eq("employee_id", myEmployee.id)
+          .order("check_in", { ascending: false })
+          .limit(500);
+        if (error) throw error;
+        return (data as any) || [];
+      } else {
+        const allRecords: any[] = [];
+        const pageSize = 1000;
+        for (let page = 0; page < 3; page++) {
+          const from = page * pageSize;
+          const to = from + pageSize - 1;
+          const { data, error } = await supabase
+            .from("attendance" as any)
+            .select("*, employees(full_name, employee_code, department)")
+            .order("check_in", { ascending: false })
+            .range(from, to);
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          allRecords.push(...data);
+          if (data.length < pageSize) break;
+        }
+        return (allRecords as any) || [];
+      }
     },
     enabled: !!user && (isAuthorized || !!myEmployee),
   });
