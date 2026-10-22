@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Role = "admin" | "manager" | "employee" | "hr";
 
@@ -159,6 +160,7 @@ async function syncUserRecords(user: User): Promise<string | null> {
         } else {
           console.log("[Auth] Unauthorized email attempted login:", email);
           await supabase.auth.signOut();
+          toast.error(`Access Denied: The email "${email}" is not registered in this system. Please use your official company account (e.g. @sngenelab.com).`);
           throw new Error("Access Denied: Your email is not registered in the system. Please contact HR.");
         }
       }
@@ -270,7 +272,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const cleanEmail = email.trim().toLowerCase();
+    const isAdminEmail = ADMIN_EMAILS.includes(cleanEmail);
+
+    if (!isAdminEmail) {
+      try {
+        const { data: emp } = await (supabase.from("employees") as any)
+          .select("id, status, login_enabled")
+          .ilike("email", cleanEmail)
+          .maybeSingle();
+
+        if (!emp) {
+          setLoading(false);
+          return {
+            error: `Access Denied: The email "${email.trim()}" is not registered in this system. Please use your official registered company email (e.g. your @sngenelab.com account) or contact HR.`
+          };
+        }
+
+        if (emp.status === "Terminated") {
+          setLoading(false);
+          return { error: "Your employment has been marked as Terminated. Login is disabled. Please contact HR." };
+        }
+        if (emp.status === "Resigned") {
+          setLoading(false);
+          return { error: "Your account is deactivated due to resignation. Please contact HR." };
+        }
+        if (emp.login_enabled === false) {
+          setLoading(false);
+          return { error: "Your login access has been disabled by HR." };
+        }
+      } catch (checkErr) {
+        console.error("[Auth] Pre-login employee check error:", checkErr);
+      }
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
     if (error) {
       setLoading(false);
       return { error: error.message };
@@ -280,24 +316,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp: AuthContextValue["signUp"] = async (email, password, fullName) => {
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+    const isAdminEmail = ADMIN_EMAILS.includes(cleanEmail);
 
     try {
-      const { data: existingEmp } = await supabase
-        .from("employees")
-        .select("id, user_id")
-        .ilike("email", email.trim())
+      const { data: existingEmp } = await (supabase.from("employees") as any)
+        .select("id, user_id, status, login_enabled")
+        .ilike("email", cleanEmail)
         .maybeSingle();
+
+      if (!existingEmp && !isAdminEmail) {
+        setLoading(false);
+        return { 
+          error: `Access Denied: The email "${email.trim()}" is not registered in this system. Only pre-registered employees can create an account. Please use your official company email (e.g. your @sngenelab.com account) or contact HR.` 
+        };
+      }
 
       if (existingEmp && existingEmp.user_id) {
         setLoading(false);
-        return { error: "User already exists with this email. Please sign in instead." };
+        return { error: "An account already exists for this email. Please sign in instead." };
+      }
+      if (existingEmp && existingEmp.status === "Terminated") {
+        setLoading(false);
+        return { error: "This employee record is marked as Terminated." };
+      }
+      if (existingEmp && existingEmp.login_enabled === false) {
+        setLoading(false);
+        return { error: "Login access for this employee has been disabled by HR." };
       }
     } catch (err) {
       console.error("[Auth] Existing email check failed:", err);
     }
 
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
