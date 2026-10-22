@@ -18,7 +18,8 @@ import {
   Upload, ExternalLink, Eye, Search, TrendingUp, Building2, X, Users as UsersIcon,
   ListFilter, LayoutGrid, Pencil, Trash2, Mail, Download, FileSpreadsheet,
   AlertTriangle, ShieldCheck, Calendar, Filter, Check, Plane, Train, Fuel,
-  Car, Utensils, Hotel, MoreHorizontal, Sparkles, RefreshCw, Paperclip, ArrowUpDown
+  Car, Utensils, Hotel, MoreHorizontal, Sparkles, RefreshCw, Paperclip, ArrowUpDown,
+  Save
 } from "lucide-react";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { toast } from "sonner";
@@ -634,6 +635,65 @@ function ExpensesPage() {
       qc.invalidateQueries({ queryKey: ["expense-claims"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to submit batch.");
+    }
+  };
+
+  // Explicit Save Sheet Handler (Saves row amounts, remarks, attached receipts to Supabase)
+  const [isSavingSheet, setIsSavingSheet] = useState(false);
+
+  const handleSaveSheet = async () => {
+    if (!selectedBatch) return;
+    setIsSavingSheet(true);
+    try {
+      const recalculated = recalculateBatch(selectedBatch);
+      setSelectedBatch(recalculated);
+      saveBatch(recalculated);
+      setBatches(loadAllBatches());
+
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recalculated.id);
+      let syncSuccess = false;
+
+      if (isUuid) {
+        const { error: updateError } = await supabase
+          .from("expense_claims" as any)
+          .update({
+            amount: recalculated.totalClaimAmount,
+            notes: JSON.stringify(recalculated),
+            status: recalculated.status === "draft" ? "draft" : recalculated.status === "approved" ? "approved" : recalculated.status === "rejected" ? "rejected" : "pending",
+          })
+          .eq("id", recalculated.id);
+        if (!updateError) syncSuccess = true;
+      }
+
+      if (!syncSuccess) {
+        const title = `20-Day Expense Claim (${recalculated.batchNumber}) - ${recalculated.employeeName}`;
+        const { data: inserted } = await supabase
+          .from("expense_claims" as any)
+          .insert({
+            employee_id: recalculated.employeeId,
+            title,
+            amount: recalculated.totalClaimAmount,
+            category: "travel_da_batch",
+            notes: JSON.stringify(recalculated),
+            status: recalculated.status === "draft" ? "draft" : recalculated.status === "approved" ? "approved" : recalculated.status === "rejected" ? "rejected" : "pending",
+          })
+          .select()
+          .single();
+
+        if (inserted) {
+          const synced = { ...recalculated, id: inserted.id };
+          setSelectedBatch(synced);
+          saveBatch(synced);
+        }
+      }
+
+      qc.invalidateQueries({ queryKey: ["expense-claims"] });
+      toast.success("Daily Expense Claim Sheet saved successfully!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to save sheet.");
+    } finally {
+      setIsSavingSheet(false);
     }
   };
 
@@ -1882,46 +1942,62 @@ function ExpensesPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-10 rounded-xl bg-white dark:bg-slate-800 hover:bg-muted text-foreground border-2 border-border font-bold gap-2 text-xs shadow-sm"
-                    onClick={() => exportBatchToExcel(selectedBatch)}
-                  >
-                    <Download className="size-4 text-emerald-600" /> Export Excel (.xlsx)
-                  </Button>
+                {(() => {
+                  const isBatchEditable = isAuthorized || selectedBatch.status === "draft" || selectedBatch.status === "pending_manager" || selectedBatch.status === "pending";
+                  return (
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 rounded-xl bg-white dark:bg-slate-800 hover:bg-muted text-foreground border-2 border-border font-bold gap-2 text-xs shadow-sm"
+                        onClick={() => exportBatchToExcel(selectedBatch)}
+                      >
+                        <Download className="size-4 text-emerald-600" /> Export Excel (.xlsx)
+                      </Button>
 
-                  {selectedBatch.status === "draft" && (
-                    <Button
-                      size="sm"
-                      className="h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black gap-2 text-xs"
-                      onClick={() => handleSubmitBatch(selectedBatch)}
-                    >
-                      <Check className="size-4" /> Submit Batch
-                    </Button>
-                  )}
+                      {isBatchEditable && (
+                        <Button
+                          size="sm"
+                          disabled={isSavingSheet}
+                          className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black gap-2 text-xs shadow-md shadow-blue-600/20"
+                          onClick={handleSaveSheet}
+                        >
+                          <Save className="size-4" /> {isSavingSheet ? "Saving..." : "Save Sheet"}
+                        </Button>
+                      )}
 
-                  {isAuthorized && selectedBatch.status === "pending_manager" && (
-                    <Button
-                      size="sm"
-                      className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs gap-1.5"
-                      onClick={() => setApprovingBatch({ batch: selectedBatch, stage: "manager", action: "approve" })}
-                    >
-                      <ShieldCheck className="size-4" /> Reporting Manager Review
-                    </Button>
-                  )}
+                      {selectedBatch.status === "draft" && (
+                        <Button
+                          size="sm"
+                          className="h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black gap-2 text-xs"
+                          onClick={() => handleSubmitBatch(selectedBatch)}
+                        >
+                          <Check className="size-4" /> Submit Batch
+                        </Button>
+                      )}
 
-                  {isAdmin && selectedBatch.status === "manager_approved" && (
-                    <Button
-                      size="sm"
-                      className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5"
-                      onClick={() => setApprovingBatch({ batch: selectedBatch, stage: "hr", action: "approve" })}
-                    >
-                      <ShieldCheck className="size-4" /> HR Reimbursement Review
-                    </Button>
-                  )}
-                </div>
+                      {isAuthorized && selectedBatch.status === "pending_manager" && (
+                        <Button
+                          size="sm"
+                          className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs gap-1.5"
+                          onClick={() => setApprovingBatch({ batch: selectedBatch, stage: "manager", action: "approve" })}
+                        >
+                          <ShieldCheck className="size-4" /> Reporting Manager Review
+                        </Button>
+                      )}
+
+                      {isAdmin && selectedBatch.status === "manager_approved" && (
+                        <Button
+                          size="sm"
+                          className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5"
+                          onClick={() => setApprovingBatch({ batch: selectedBatch, stage: "hr", action: "approve" })}
+                        >
+                          <ShieldCheck className="size-4" /> HR Reimbursement Review
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* KPI Strip */}
@@ -1989,7 +2065,7 @@ function ExpensesPage() {
                   <TableBody>
                     {selectedBatch.rows.map((r, rowIdx) => {
                       const isEligible = r.daEligibility === "Eligible";
-                      const isBatchEditable = selectedBatch.status === "draft";
+                      const isBatchEditable = isAuthorized || selectedBatch.status === "draft" || selectedBatch.status === "pending_manager" || selectedBatch.status === "pending";
                       return (
                         <TableRow key={r.date} className="hover:bg-muted/40 transition-colors">
                           <TableCell className="font-black text-xs whitespace-nowrap">{r.date}</TableCell>
@@ -2005,15 +2081,32 @@ function ExpensesPage() {
                             </div>
                           </TableCell>
 
-                          <TableCell className="text-center">
-                            <span
-                              className={cn(
-                                "inline-flex size-6 items-center justify-center rounded-full text-xs font-black",
-                                r.doctorVisits >= 1 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500"
-                              )}
-                            >
-                              {r.doctorVisits}
-                            </span>
+                          <TableCell className="text-center p-1">
+                            {isBatchEditable ? (
+                              <Input
+                                type="number"
+                                min="0"
+                                value={r.doctorVisits}
+                                onChange={(e) => {
+                                  const val = Math.max(0, parseInt(e.target.value) || 0);
+                                  const updatedRows = [...selectedBatch.rows];
+                                  updatedRows[rowIdx] = { ...r, doctorVisits: val };
+                                  const recalculated = recalculateBatch({ ...selectedBatch, rows: updatedRows });
+                                  setSelectedBatch(recalculated);
+                                  saveBatch(recalculated);
+                                }}
+                                className="h-8 w-14 mx-auto text-center font-bold text-xs rounded-lg p-0"
+                              />
+                            ) : (
+                              <span
+                                className={cn(
+                                  "inline-flex size-6 items-center justify-center rounded-full text-xs font-black",
+                                  r.doctorVisits >= 1 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500"
+                                )}
+                              >
+                                {r.doctorVisits}
+                              </span>
+                            )}
                           </TableCell>
 
                           <TableCell className="text-center">
