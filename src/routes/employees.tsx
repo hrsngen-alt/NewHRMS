@@ -17,6 +17,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "../lib/utils";
+import { STANDARD_DEPARTMENTS, normalizeDepartment } from "@/lib/departments";
 
 export const Route = createFileRoute("/employees")({ component: () => <AppShell><EmployeesPage /></AppShell> });
 
@@ -59,7 +60,7 @@ function EmployeesPage() {
   });
 
   const departments = useMemo(() => {
-    const set = new Set(employees.map(e => e.department).filter(Boolean));
+    const set = new Set(employees.map(e => normalizeDepartment(e.department)).filter(Boolean));
     return Array.from(set).sort();
   }, [employees]);
 
@@ -88,7 +89,7 @@ function EmployeesPage() {
 
   const filtered = employees.filter((e) => {
     const matchesQ = `${e.full_name} ${e.email} ${e.employee_code} ${e.department ?? ""}`.toLowerCase().includes(q.toLowerCase());
-    const matchesDept = deptFilter === "all" || e.department === deptFilter;
+    const matchesDept = deptFilter === "all" || normalizeDepartment(e.department) === deptFilter;
     return matchesQ && matchesDept;
   });
 
@@ -120,6 +121,9 @@ function EmployeesPage() {
     const fd = new FormData(e.currentTarget);
     const obj: any = {};
     fd.forEach((v, k) => { obj[k] = v === "" ? null : v; });
+    if (obj.department) {
+      obj.department = normalizeDepartment(obj.department);
+    }
     ["basic_salary", "hra", "bonus", "pf_amount", "esic_amount", "gratuity_amount", "total_experience"].forEach((k) => { obj[k] = Number(obj[k] ?? 0); });
     if (obj.require_selfie === "true") obj.require_selfie = true;
     else if (obj.require_selfie === "false") obj.require_selfie = false;
@@ -290,7 +294,7 @@ function EmployeesPage() {
             full_name: get("full_name", "name", "employee_name"),
             email: get("email", "work_email", "email_address"),
             phone: get("phone", "mobile", "contact_number"),
-            department: get("department", "dept"),
+            department: get("department", "dept") ? normalizeDepartment(get("department", "dept")) : null,
             designation: get("designation", "role", "position"),
             joining_date: get("joining_date", "doj", "date_of_joining"),
             pan_number: get("pan_number", "pan", "pan_card")?.toString().toUpperCase(),
@@ -1017,6 +1021,23 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee, allEmployees =
   const [manager, setManager] = useState(editingEmployee?.reporting_manager ?? "None");
   const [requireSelfie, setRequireSelfie] = useState(editingEmployee?.require_selfie ?? false);
 
+  const departmentOptions = useMemo(() => {
+    const list = new Set([
+      ...STANDARD_DEPARTMENTS,
+      ...allEmployees.map((e: any) => normalizeDepartment(e.department)).filter(Boolean)
+    ]);
+    return Array.from(list).sort();
+  }, [allEmployees]);
+
+  const [dept, setDept] = useState<string>(() => {
+    if (editingEmployee?.department) {
+      return normalizeDepartment(editingEmployee.department);
+    }
+    return "Marketing";
+  });
+  const [customDept, setCustomDept] = useState("");
+  const isCustomDept = dept === "OTHER_CUSTOM";
+
   const { data: policies = [] } = useQuery({
     queryKey: ["attendance-policies"],
     queryFn: async () => {
@@ -1035,7 +1056,21 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee, allEmployees =
     setPolicyId(editingEmployee?.attendance_policy_id ?? "default");
     setManager(editingEmployee?.reporting_manager ?? "None");
     setRequireSelfie(editingEmployee?.require_selfie ?? false);
-  }, [editingEmployee]);
+
+    if (editingEmployee?.department) {
+      const norm = normalizeDepartment(editingEmployee.department);
+      if (departmentOptions.includes(norm)) {
+        setDept(norm);
+        setCustomDept("");
+      } else {
+        setDept("OTHER_CUSTOM");
+        setCustomDept(norm);
+      }
+    } else {
+      setDept("Marketing");
+      setCustomDept("");
+    }
+  }, [editingEmployee, departmentOptions]);
 
   const grossSalary = Number(basic || 0) + Number(hra || 0) + Number(bonus || 0);
 
@@ -1069,6 +1104,30 @@ function EmployeeForm({ onSubmit, busy, setOpen, editingEmployee, allEmployees =
                   ))}
                 </SelectContent>
               </Select>
+            </>
+          ) : name === "department" ? (
+            <>
+              <input type="hidden" name="department" value={isCustomDept ? customDept.trim() : dept} />
+              <Select value={dept} onValueChange={setDept}>
+                <SelectTrigger className="bg-muted/30 focus:bg-white h-10 border rounded-md">
+                  <SelectValue placeholder="Select Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departmentOptions.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                  <SelectItem value="OTHER_CUSTOM">+ Add Custom Department...</SelectItem>
+                </SelectContent>
+              </Select>
+              {isCustomDept && (
+                <Input
+                  placeholder="Type department name..."
+                  value={customDept}
+                  onChange={(e) => setCustomDept(e.target.value)}
+                  className="bg-muted/30 focus:bg-white mt-2"
+                  required
+                />
+              )}
             </>
           ) : (
             <Input 

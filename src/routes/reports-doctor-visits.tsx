@@ -18,6 +18,7 @@ import * as XLSX from 'xlsx';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { normalizeDepartment } from '@/lib/departments';
 
 // Fix leaflet default icon issue in React
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -119,7 +120,7 @@ function DoctorVisitsReportPage() {
       }
       
       // Dept filter
-      if (department !== 'All' && v.employees?.department !== department) return false;
+      if (department !== 'All' && normalizeDepartment(v.employees?.department) !== department) return false;
       
       // Employee filter
       if (employeeId !== 'All' && v.employees?.id !== employeeId) return false;
@@ -147,7 +148,7 @@ function DoctorVisitsReportPage() {
     const monthPrefix = `${modalYear}-${String(modalMonth).padStart(2, '0')}`;
     return visits.filter((v: any) => {
       if (!v.visit_date || !v.visit_date.startsWith(monthPrefix)) return false;
-      if (modalDepartment !== 'All' && v.employees?.department !== modalDepartment) return false;
+      if (modalDepartment !== 'All' && normalizeDepartment(v.employees?.department) !== modalDepartment) return false;
       if (modalEmployeeId !== 'All' && v.employees?.id !== modalEmployeeId) return false;
       if (modalStatus !== 'All' && v.status !== modalStatus) return false;
       return true;
@@ -184,7 +185,7 @@ function DoctorVisitsReportPage() {
 
   // Summaries
   const totalVisits = filteredData.length;
-  const marketingVisits = filteredData.filter((v: any) => v.employees?.department === 'Marketing').length;
+  const marketingVisits = filteredData.filter((v: any) => normalizeDepartment(v.employees?.department) === 'Marketing').length;
   const completedVisits = filteredData.filter((v: any) => v.status === 'Completed').length;
   const checkedInVisits = filteredData.filter((v: any) => v.status === 'Checked In').length;
   const uniqueDoctors = new Set(filteredData.map((v: any) => v.doctor_name)).size;

@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { normalizeDepartment } from "@/lib/departments";
 export const Route = createFileRoute("/expenses")({ component: () => <AppShell><ExpensesPage /></AppShell> });
 
 const getEmailUrl = (email: string, employeeName: string, title: string, amount: number) => {
@@ -137,7 +138,7 @@ function ExpensesPage() {
         map[eid] = {
           id: eid,
           name: c.employees?.full_name || "Unknown",
-          dept: c.employees?.department || "Other",
+          dept: normalizeDepartment(c.employees?.department) || "Other",
           total: 0,
           count: 0,
           pending: 0,
@@ -156,7 +157,7 @@ function ExpensesPage() {
     const map: Record<string, number> = {};
     groupedClaims.forEach((c: any) => {
       if (c.status === 'rejected') return;
-      const dept = c.employees?.department || "Other";
+      const dept = normalizeDepartment(c.employees?.department) || "Other";
       map[dept] = (map[dept] ?? 0) + Number(c.amount);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
@@ -164,7 +165,7 @@ function ExpensesPage() {
 
   const filteredClaims = claims.filter((c: any) => {
     const matchesSearch = c.employees?.full_name?.toLowerCase().includes(search.toLowerCase()) || c.title.toLowerCase().includes(search.toLowerCase());
-    const matchesDept = deptFilter === "all" || c.employees?.department === deptFilter;
+    const matchesDept = deptFilter === "all" || normalizeDepartment(c.employees?.department) === deptFilter;
     
     let matchesMonth = true;
     if (monthFilter !== "all" && c.created_at) {
@@ -419,7 +420,7 @@ function ExpensesPage() {
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
                     <SelectItem value="all">All Depts</SelectItem>
-                    {Array.from(new Set(claims.map((c: any) => c.employees?.department).filter(Boolean))).map((d: any) => (
+                    {Array.from(new Set(claims.map((c: any) => normalizeDepartment(c.employees?.department)).filter(Boolean))).sort().map((d: any) => (
                       <SelectItem key={d as string} value={d as string}>{d as string}</SelectItem>
                     ))}
                   </SelectContent>

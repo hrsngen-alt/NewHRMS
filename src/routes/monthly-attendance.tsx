@@ -20,6 +20,7 @@ import {
 import { cn } from "../lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import * as XLSX from "xlsx";
+import { normalizeDepartment } from "@/lib/departments";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -386,7 +387,7 @@ function AttendancePage() {
     );
   }, [visibleEmployees, q]);
 
-  const departments = useMemo(() => Array.from(new Set(visibleEmployees.map((e: any) => e.department).filter(Boolean))), [visibleEmployees]);
+  const departments = useMemo(() => Array.from(new Set(visibleEmployees.map((e: any) => normalizeDepartment(e.department)).filter(Boolean))).sort(), [visibleEmployees]);
 
   const targetEmployeeId = isAuthorized ? (selectedEmpId || myEmployee?.id) : myEmployee?.id;
   const targetEmployee = isAuthorized ? (visibleEmployees.find((e: any) => e.id === targetEmployeeId) || myEmployee) : myEmployee;

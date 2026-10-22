@@ -15,6 +15,7 @@ import { cn, fetchAddress, getDeviceInfo, calculateDistance } from "../lib/utils
 import Webcam from "react-webcam";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { normalizeDepartment } from "@/lib/departments";
 
 export const Route = createFileRoute("/dashboard")({ component: () => <AppShell><Dashboard /></AppShell> });
 
@@ -550,7 +551,7 @@ function Dashboard() {
           status: "present", check_in_lat: lat || null, check_in_lng: lng || null,
           check_in_address: address || null,
           employee_name: myEmployee.full_name,
-          department: myEmployee.department || "Staff",
+          department: myEmployee.department ? normalizeDepartment(myEmployee.department) : "Supporting Staff",
           check_out_type: source,
           metadata: { punchSource: source, deviceInfo, selfie: selfieSrc || null, ...(isMarketing ? { mode: 'field', zone: 'India-Wide' } : { mode: 'office' }) }
         });

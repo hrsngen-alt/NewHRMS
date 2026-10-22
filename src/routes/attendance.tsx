@@ -21,6 +21,7 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Webcam from "react-webcam";
+import { normalizeDepartment } from "@/lib/departments";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -572,7 +573,7 @@ function AttendancePage() {
           check_in_lng: lng || null,
           check_in_address: address || null,
           employee_name: myEmployee.full_name,
-          department: myEmployee.department || "Staff",
+          department: myEmployee.department ? normalizeDepartment(myEmployee.department) : "Supporting Staff",
           check_out_type: source,
           metadata: { 
             mode: isMarketing ? 'field' : 'office', 
