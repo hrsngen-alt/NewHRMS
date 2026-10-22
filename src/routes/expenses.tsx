@@ -128,6 +128,8 @@ function ExpensesPage() {
   // Legacy / Ad-hoc Claims states
   const [openLegacyClaim, setOpenLegacyClaim] = useState(false);
   const [legacyBusy, setLegacyBusy] = useState(false);
+  const [singleExpenseType, setSingleExpenseType] = useState<string>("AIR FARE (₹)");
+  const [singleClaimFileName, setSingleClaimFileName] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Query employees for selection (Admins/Managers see all; employees see only themselves)
@@ -728,11 +730,15 @@ function ExpensesPage() {
         receiptUrl = publicUrl;
       }
 
+      const expenseType = singleExpenseType || "AIR FARE (₹)";
+      const customDetail = fd.get("customDetail") ? String(fd.get("customDetail")).trim() : "";
+      const finalTitle = customDetail ? `${expenseType} - ${customDetail}` : expenseType;
+
       const { error: insertError } = await supabase.from("expense_claims" as any).insert({
         employee_id: myEmployee.id,
-        title: fd.get("title"),
+        title: finalTitle,
         amount: Number(fd.get("amount")),
-        category: fd.get("category"),
+        category: expenseType,
         receipt_url: receiptUrl,
         notes: fd.get("notes") ? String(fd.get("notes")) : null,
         status: "pending",
@@ -740,8 +746,9 @@ function ExpensesPage() {
 
       if (insertError) throw insertError;
 
-      toast.success("Ad-hoc expense claim submitted!");
+      toast.success("Single expense claim submitted!");
       setOpenLegacyClaim(false);
+      setSingleClaimFileName("");
       qc.invalidateQueries({ queryKey: ["expense-claims"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to submit claim.");
@@ -2297,7 +2304,10 @@ function ExpensesPage() {
       )}
 
       {/* AD-HOC SINGLE CLAIM MODAL */}
-      <Dialog open={openLegacyClaim} onOpenChange={setOpenLegacyClaim}>
+      <Dialog open={openLegacyClaim} onOpenChange={(v) => {
+        setOpenLegacyClaim(v);
+        if (!v) setSingleClaimFileName("");
+      }}>
         <DialogContent className="rounded-3xl p-6 border-2 border-primary/5 shadow-elegant max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-black tracking-tight">Submit Single Expense Claim</DialogTitle>
@@ -2306,51 +2316,138 @@ function ExpensesPage() {
 
           <form onSubmit={submitLegacyClaim} className="space-y-4 py-3">
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">Expense Title</Label>
-              <Input name="title" required placeholder="e.g. Courier charges, Client Dinner..." className="rounded-xl" />
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                Expense Title / Category
+              </Label>
+              <Select value={singleExpenseType} onValueChange={setSingleExpenseType}>
+                <SelectTrigger className="h-12 rounded-xl text-xs font-bold border-2">
+                  <SelectValue placeholder="Select Expense Type..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="AIR FARE (₹)" className="font-bold">
+                    <div className="flex items-center gap-2">
+                      <Plane className="size-4 text-blue-500" />
+                      <span>AIR FARE (₹)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="RAIL FARE (₹)" className="font-bold">
+                    <div className="flex items-center gap-2">
+                      <Train className="size-4 text-emerald-500" />
+                      <span>RAIL FARE (₹)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="PETROL (₹)" className="font-bold">
+                    <div className="flex items-center gap-2">
+                      <Fuel className="size-4 text-amber-500" />
+                      <span>PETROL (₹)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="LOCAL (₹)" className="font-bold">
+                    <div className="flex items-center gap-2">
+                      <Car className="size-4 text-purple-500" />
+                      <span>LOCAL (₹)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="FOOD (₹)" className="font-bold">
+                    <div className="flex items-center gap-2">
+                      <Utensils className="size-4 text-orange-500" />
+                      <span>FOOD (₹)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="LODGING (₹)" className="font-bold">
+                    <div className="flex items-center gap-2">
+                      <Hotel className="size-4 text-indigo-500" />
+                      <span>LODGING (₹)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="OTHER (₹)" className="font-bold">
+                    <div className="flex items-center gap-2">
+                      <Receipt className="size-4 text-slate-500" />
+                      <span>OTHER (₹)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Amount (₹)</Label>
-                <Input name="amount" type="number" required placeholder="0.00" className="rounded-xl font-bold" />
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Amount (₹)
+                </Label>
+                <Input
+                  name="amount"
+                  type="number"
+                  step="any"
+                  min="0"
+                  required
+                  placeholder="0.00"
+                  className="h-12 rounded-xl font-bold border-2"
+                />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Category</Label>
-                <Select name="category" defaultValue="travel">
-                  <SelectTrigger className="rounded-xl text-xs font-bold"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="travel">Travel</SelectItem>
-                    <SelectItem value="food">Food & Dining</SelectItem>
-                    <SelectItem value="fuel">Fuel / Transport</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Detail / Note (Optional)
+                </Label>
+                <Input
+                  name="customDetail"
+                  placeholder="e.g. Flight, Hotel info"
+                  className="h-12 rounded-xl text-xs font-bold border-2"
+                />
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">Notes / Remarks</Label>
-              <Textarea name="notes" placeholder="Describe the expense reason..." className="rounded-xl" />
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                Notes / Remarks
+              </Label>
+              <Textarea
+                name="notes"
+                placeholder="Describe the expense reason or justification..."
+                className="rounded-xl border-2 min-h-[70px]"
+              />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">Receipt / Bill Copy</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                Receipt / Bill Copy
+              </Label>
               <div
-                className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-4 bg-muted/30 cursor-pointer"
+                className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-4 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
                 onClick={() => fileRef.current?.click()}
               >
-                <input type="file" ref={fileRef} className="hidden" accept="image/*,application/pdf" />
+                <input
+                  type="file"
+                  ref={fileRef}
+                  className="hidden"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setSingleClaimFileName(f.name);
+                  }}
+                />
                 <Upload className="size-6 text-muted-foreground mb-1" />
-                <p className="text-xs font-bold text-foreground">Click to upload bill copy</p>
+                <p className="text-xs font-bold text-foreground">
+                  {singleClaimFileName ? singleClaimFileName : "Click to upload bill copy"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Supported: Image, PDF</p>
               </div>
             </div>
 
             <DialogFooter className="gap-2 pt-2">
-              <Button type="button" variant="ghost" className="rounded-xl font-bold" onClick={() => setOpenLegacyClaim(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                className="rounded-xl font-bold"
+                onClick={() => setOpenLegacyClaim(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={legacyBusy} className="rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button
+                type="submit"
+                disabled={legacyBusy}
+                className="rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
                 {legacyBusy ? "Submitting..." : "Submit Claim"}
               </Button>
             </DialogFooter>

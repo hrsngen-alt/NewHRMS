@@ -618,11 +618,8 @@ export function deleteBatch(batchId: string): BatchExpenseClaim[] {
  * Excel Export & Import
  */
 export function exportBatchToExcel(batch: BatchExpenseClaim) {
-<<<<<<< Updated upstream
   // Format matching Section 7 of Master Prompt:
   // Date | Employee Name | Designation | Check-In | Check-Out | Doctor Visits | Fixed DA | DA Rule | DA Eligibility | DA Payable | Air Fare | Rail Fare | Petrol/Road | Local Travel | Lunch/Dinner | Lodging | Other Expenses | Total Expense | Remarks
-=======
->>>>>>> Stashed changes
   const claimData = batch.rows.map((r) => ({
     "Date": r.date,
     "Employee Name": r.employeeName,
@@ -667,10 +664,7 @@ export function exportBatchToExcel(batch: BatchExpenseClaim) {
   const wsClaims = XLSX.utils.json_to_sheet(claimData);
   const wsSummary = XLSX.utils.json_to_sheet(summaryData);
 
-<<<<<<< Updated upstream
   // Column width formatting
-=======
->>>>>>> Stashed changes
   wsClaims["!cols"] = [
     { wch: 12 }, // Date
     { wch: 22 }, // Employee Name
@@ -743,10 +737,7 @@ export async function parseMasterFromExcel(file: File): Promise<EmployeeMasterDA
           throw new Error("Excel sheet does not contain enough data rows.");
         }
 
-<<<<<<< Updated upstream
         // Header detection
-=======
->>>>>>> Stashed changes
         let headerRowIndex = 0;
         for (let i = 0; i < Math.min(rows.length, 5); i++) {
           const rowStr = (rows[i] || []).join(" ").toLowerCase();
@@ -761,16 +752,10 @@ export async function parseMasterFromExcel(file: File): Promise<EmployeeMasterDA
         const deptIdx = headers.findIndex((h) => h.includes("DEPART") || h.includes("DEPT"));
         const desigIdx = headers.findIndex((h) => h.includes("DESIG"));
         const locIdx = headers.findIndex((h) => h.includes("LOC") || h.includes("CITY"));
-<<<<<<< Updated upstream
         // 6th column or column containing DA/AMOUNT/RATE
         let daIdx = headers.findIndex((h) => h.includes("DA") || h.includes("RATE") || h.includes("FIXED") || h.includes("DAILY"));
         if (daIdx === -1 && headers.length >= 6) {
           daIdx = 5; // 6th column
-=======
-        let daIdx = headers.findIndex((h) => h.includes("DA") || h.includes("RATE") || h.includes("FIXED") || h.includes("DAILY"));
-        if (daIdx === -1 && headers.length >= 6) {
-          daIdx = 5;
->>>>>>> Stashed changes
         }
         const ruleIdx = headers.findIndex((h) => h.includes("RULE"));
 
