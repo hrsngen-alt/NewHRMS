@@ -767,16 +767,16 @@ function ExpensesPage() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-16">
       {/* Header Banner - Daylight / Clean Theme */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-slate-900 p-7 md:p-8 rounded-[2.5rem] text-foreground shadow-card border-2 border-primary/10 relative overflow-hidden transition-colors">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6 bg-white dark:bg-slate-900 p-5 sm:p-7 md:p-8 rounded-3xl sm:rounded-[2.5rem] text-foreground shadow-card border-2 border-primary/10 relative overflow-hidden transition-colors">
         <div className="absolute right-0 top-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col gap-2">
-          <div className="flex items-center gap-3.5">
-            <div className="size-12 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/20 flex items-center justify-center text-primary shadow-sm shrink-0">
-              <IndianRupee className="size-6 text-primary" />
+          <div className="flex items-center gap-3 sm:gap-3.5">
+            <div className="size-11 sm:size-12 rounded-2xl bg-primary/10 dark:bg-primary/20 border border-primary/20 flex items-center justify-center text-primary shadow-sm shrink-0">
+              <IndianRupee className="size-5 sm:size-6 text-primary" />
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
                   {isAuthorized ? "Travel & DA Expense Automation Hub" : "My Travel & Expense Hub"}
                 </h1>
                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/70 font-black text-[10px] uppercase tracking-wider px-2.5 py-0.5 shadow-none">
@@ -792,7 +792,7 @@ function ExpensesPage() {
           </div>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-3">
+        <div className="relative z-10 flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
           {isAdmin && (
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-border text-xs font-bold shadow-inner">
               <button
@@ -824,15 +824,15 @@ function ExpensesPage() {
 
           <Button
             onClick={() => setIsCreateBatchOpen(true)}
-            className="h-12 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black gap-2 shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all text-sm"
+            className="h-11 sm:h-12 px-5 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black gap-2 shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all text-xs sm:text-sm w-full sm:w-auto"
           >
-            <Plus className="size-5" /> New 20-Day Batch Claim
+            <Plus className="size-4 sm:size-5" /> New 20-Day Batch Claim
           </Button>
           {isAuthorized && (
             <Button
               variant="outline"
               onClick={() => exportMasterToExcel(masterList)}
-              className="h-12 px-5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-muted text-foreground border-2 border-border font-bold gap-2 text-sm shadow-sm"
+              className="h-11 sm:h-12 px-4 sm:px-5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-muted text-foreground border-2 border-border font-bold gap-2 text-xs sm:text-sm shadow-sm w-full sm:w-auto"
             >
               <FileSpreadsheet className="size-4 text-emerald-600" /> Export Master (.xlsx)
             </Button>
@@ -944,50 +944,52 @@ function ExpensesPage() {
 
       {/* Tabs Navigation - Strict RBAC */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-3">
-          <TabsList className="bg-muted/50 p-1.5 rounded-2xl border">
-            <TabsTrigger value="batches" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-              <Calendar className="size-4" /> {isAuthorized ? "20-Day Batch Claims" : "My 20-Day Claims"}
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
-                {filteredBatches.length}
-              </span>
-            </TabsTrigger>
-
-            {/* ONLY Admins and Managers can see the Employee Master DA Sheet */}
-            {isAuthorized && (
-              <TabsTrigger value="master" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-                <UsersIcon className="size-4" /> Employee Master DA Sheet
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
+          <div className="w-full sm:w-auto overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+            <TabsList className="bg-muted/50 p-1.5 rounded-2xl border inline-flex w-max flex-nowrap shrink-0">
+              <TabsTrigger value="batches" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
+                <Calendar className="size-4" /> {isAuthorized ? "20-Day Batch Claims" : "My 20-Day Claims"}
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
-                  {masterList.length}
+                  {filteredBatches.length}
                 </span>
               </TabsTrigger>
-            )}
 
-            {/* ONLY Admins and Managers can see company-wide Summaries & Analytics */}
-            {isAuthorized && (
-              <TabsTrigger value="summaries" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-                <TrendingUp className="size-4" /> Summaries & Analytics
+              {/* ONLY Admins and Managers can see the Employee Master DA Sheet */}
+              {isAuthorized && (
+                <TabsTrigger value="master" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
+                  <UsersIcon className="size-4" /> Employee Master DA Sheet
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
+                    {masterList.length}
+                  </span>
+                </TabsTrigger>
+              )}
+
+              {/* ONLY Admins and Managers can see company-wide Summaries & Analytics */}
+              {isAuthorized && (
+                <TabsTrigger value="summaries" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
+                  <TrendingUp className="size-4" /> Summaries & Analytics
+                </TabsTrigger>
+              )}
+
+              <TabsTrigger value="individual" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
+                <Receipt className="size-4" /> {isAuthorized ? "Single Ad-Hoc Claims" : "My Single Claims"}
               </TabsTrigger>
-            )}
-
-            <TabsTrigger value="individual" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-              <Receipt className="size-4" /> {isAuthorized ? "Single Ad-Hoc Claims" : "My Single Claims"}
-            </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          </div>
 
           {activeTab === "batches" && (
-            <div className="flex items-center gap-3">
-              <div className="relative w-56">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+              <div className="relative w-full sm:w-56">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search batches..."
                   value={batchSearch}
                   onChange={(e) => setBatchSearch(e.target.value)}
-                  className="h-10 pl-9 rounded-xl text-xs font-bold"
+                  className="h-10 pl-9 rounded-xl text-xs font-bold w-full"
                 />
               </div>
               <Select value={batchStatusFilter} onValueChange={setBatchStatusFilter}>
-                <SelectTrigger className="h-10 w-44 rounded-xl text-xs font-bold">
+                <SelectTrigger className="h-10 w-full sm:w-44 rounded-xl text-xs font-bold">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -1004,171 +1006,301 @@ function ExpensesPage() {
         </div>
 
         {/* TAB 1: 20-DAY BATCH CLAIMS (Strictly Scoped) */}
-        <TabsContent value="batches" className="space-y-6">
-          <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
-            <Table>
-              <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
-                <TableRow>
-                  <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">
-                    {isAuthorized ? "Batch & Employee" : "My Batch Number"}
-                  </TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Period (20 Days)</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Eligible DA</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Outstation Exp</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Total Claim</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status & Flags</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBatches.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-20 text-center">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <Calendar className="size-10 text-muted-foreground/40" />
-                        <p className="font-black text-sm text-foreground">No 20-Day Batch Claims Found</p>
-                        <p className="text-xs text-muted-foreground max-w-sm">
-                          {isAuthorized
-                            ? "No matching batch claims in this view."
-                            : "You have not submitted any 20-day batch claims yet. Click the button above to generate one."}
-                        </p>
-                        <Button onClick={() => setIsCreateBatchOpen(true)} className="rounded-xl font-bold gap-2 mt-2">
-                          <Plus className="size-4" /> Create 20-Day Batch Claim
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredBatches.map((b) => (
-                    <TableRow key={b.id} className="hover:bg-primary/5 transition-colors group">
-                      <TableCell className="pl-6">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs shrink-0">
-                            20D
-                          </div>
-                          <div>
-                            <p className="font-black text-sm text-foreground flex items-center gap-2">
-                              {isAuthorized ? b.employeeName : b.batchNumber}
-                              <span className="text-[10px] font-bold text-muted-foreground/60">
-                                {isAuthorized ? b.batchNumber : `(${b.designation})`}
-                              </span>
-                            </p>
-                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                              {b.designation} • {b.department}
-                            </p>
-                          </div>
+        <TabsContent value="batches" className="space-y-4 sm:space-y-6">
+          {filteredBatches.length === 0 ? (
+            <Card className="rounded-2xl sm:rounded-[2.5rem] border-2 border-primary/5 shadow-card p-8 sm:p-14 text-center">
+              <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
+                <div className="size-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Calendar className="size-7" />
+                </div>
+                <p className="font-black text-base text-foreground">No 20-Day Batch Claims Found</p>
+                <p className="text-xs text-muted-foreground">
+                  {isAuthorized
+                    ? "No matching batch claims in this view."
+                    : "You have not submitted any 20-day batch claims yet. Click below to generate your first batch."}
+                </p>
+                <Button onClick={() => setIsCreateBatchOpen(true)} className="rounded-xl font-bold gap-2 mt-2 w-full sm:w-auto">
+                  <Plus className="size-4" /> Create 20-Day Batch Claim
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <>
+              {/* Mobile View: Responsive Touch Cards (block md:hidden) */}
+              <div className="block md:hidden space-y-3.5">
+                {filteredBatches.map((b) => (
+                  <Card key={b.id} className="p-4 rounded-2xl border-2 border-primary/5 bg-card shadow-sm space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs shrink-0">
+                          20D
                         </div>
-                      </TableCell>
+                        <div>
+                          <p className="font-black text-sm text-foreground flex items-center gap-1.5 flex-wrap">
+                            {isAuthorized ? b.employeeName : b.batchNumber}
+                            <span className="text-[10px] font-bold text-muted-foreground">
+                              {isAuthorized ? `(${b.batchNumber})` : `(${b.designation})`}
+                            </span>
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            {b.designation} • {b.department}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="shrink-0">{renderBatchStatusBadge(b.status)}</div>
+                    </div>
 
-                      <TableCell>
-                        <span className="text-xs font-bold text-foreground block">{b.startDate} to {b.endDate}</span>
-                        <span className="text-[10px] text-muted-foreground font-medium">20 Calendar Days</span>
-                      </TableCell>
+                    <div className="p-2.5 rounded-xl bg-muted/40 text-xs flex items-center justify-between">
+                      <span className="text-muted-foreground font-medium">Period (20 Days):</span>
+                      <span className="font-bold text-foreground">{b.startDate} to {b.endDate}</span>
+                    </div>
 
-                      <TableCell className="text-right">
-                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-border/60 text-center">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground block">Eligible DA</span>
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
                           ₹{b.totalEligibleDA.toLocaleString("en-IN")}
                         </span>
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <span className="text-sm font-bold text-foreground">
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground block">Outstation</span>
+                        <span className="text-xs font-bold text-foreground">
                           ₹{b.totalOtherExpenses.toLocaleString("en-IN")}
                         </span>
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <span className="text-base font-black text-foreground">
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground block">Total Claim</span>
+                        <span className="text-sm font-black text-foreground">
                           ₹{b.totalClaimAmount.toLocaleString("en-IN")}
                         </span>
-                      </TableCell>
+                      </div>
+                    </div>
 
-                      <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          {renderBatchStatusBadge(b.status)}
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {b.missingBillsCount > 0 && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-800" title="Missing bills">
-                                {b.missingBillsCount} Bill Missing
-                              </span>
-                            )}
-                            {b.exceptionsCount > 0 && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-100 text-rose-800" title="Exceptions">
-                                {b.exceptionsCount} Exceptions
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
+                    {(b.missingBillsCount > 0 || b.exceptionsCount > 0) && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {b.missingBillsCount > 0 && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                            {b.missingBillsCount} Bill(s) Missing
+                          </span>
+                        )}
+                        {b.exceptionsCount > 0 && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-900 border border-rose-300">
+                            {b.exceptionsCount} Exceptions
+                          </span>
+                        )}
+                      </div>
+                    )}
 
-                      <TableCell className="text-right pr-6">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 rounded-xl font-bold text-xs gap-1.5 border-primary/20 hover:bg-primary/10"
-                            onClick={() => {
-                              setSelectedBatch(b);
-                              setIsBatchEditorOpen(true);
-                            }}
-                          >
-                            <Eye className="size-3.5" /> Open Sheet
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-8 rounded-xl text-emerald-600 hover:bg-emerald-50"
-                            onClick={() => exportBatchToExcel(b)}
-                            title="Download Excel (.xlsx)"
-                          >
-                            <Download className="size-4" />
-                          </Button>
+                    <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-9 rounded-xl font-bold text-xs gap-1.5 border-primary/20 hover:bg-primary/10"
+                        onClick={() => {
+                          setSelectedBatch(b);
+                          setIsBatchEditorOpen(true);
+                        }}
+                      >
+                        <Eye className="size-3.5" /> Open Sheet
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-9 rounded-xl text-emerald-600 hover:bg-emerald-50 shrink-0"
+                        onClick={() => exportBatchToExcel(b)}
+                        title="Download Excel (.xlsx)"
+                      >
+                        <Download className="size-4" />
+                      </Button>
+                      {isAuthorized && b.status === "pending_manager" && (
+                        <Button
+                          size="sm"
+                          className="h-9 rounded-xl font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1 shrink-0"
+                          onClick={() => setApprovingBatch({ batch: b, stage: "manager", action: "approve" })}
+                        >
+                          Verify RM
+                        </Button>
+                      )}
+                      {isAdmin && b.status === "manager_approved" && (
+                        <Button
+                          size="sm"
+                          className="h-9 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 shrink-0"
+                          onClick={() => setApprovingBatch({ batch: b, stage: "hr", action: "approve" })}
+                        >
+                          Approve HR
+                        </Button>
+                      )}
+                      {b.status === "draft" && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-9 rounded-xl text-rose-500 hover:bg-rose-50 shrink-0"
+                          onClick={() => {
+                            if (confirm("Delete this draft batch?")) {
+                              const updated = deleteBatch(b.id);
+                              setBatches(updated);
+                              toast.success("Draft batch deleted.");
+                            }
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
 
-                          {/* Approval Actions for Managers & Admins */}
-                          {isAuthorized && b.status === "pending_manager" && (
-                            <Button
-                              size="sm"
-                              className="h-8 rounded-xl font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1"
-                              onClick={() => setApprovingBatch({ batch: b, stage: "manager", action: "approve" })}
-                            >
-                              Verify RM
-                            </Button>
-                          )}
+              {/* Desktop View: Full Spreadsheet Table (hidden md:block) */}
+              <Card className="hidden md:block rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
+                <div className="overflow-x-auto w-full">
+                  <Table className="min-w-[850px]">
+                    <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+                      <TableRow>
+                        <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">
+                          {isAuthorized ? "Batch & Employee" : "My Batch Number"}
+                        </TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest">Period (20 Days)</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Eligible DA</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Outstation Exp</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Total Claim</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status & Flags</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredBatches.map((b) => (
+                        <TableRow key={b.id} className="hover:bg-primary/5 transition-colors group">
+                          <TableCell className="pl-6">
+                            <div className="flex items-center gap-3">
+                              <div className="size-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs shrink-0">
+                                20D
+                              </div>
+                              <div>
+                                <p className="font-black text-sm text-foreground flex items-center gap-2">
+                                  {isAuthorized ? b.employeeName : b.batchNumber}
+                                  <span className="text-[10px] font-bold text-muted-foreground/60">
+                                    {isAuthorized ? b.batchNumber : `(${b.designation})`}
+                                  </span>
+                                </p>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                  {b.designation} • {b.department}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
 
-                          {isAdmin && b.status === "manager_approved" && (
-                            <Button
-                              size="sm"
-                              className="h-8 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
-                              onClick={() => setApprovingBatch({ batch: b, stage: "hr", action: "approve" })}
-                            >
-                              Approve HR
-                            </Button>
-                          )}
+                          <TableCell>
+                            <span className="text-xs font-bold text-foreground block">{b.startDate} to {b.endDate}</span>
+                            <span className="text-[10px] text-muted-foreground font-medium">20 Calendar Days</span>
+                          </TableCell>
 
-                          {b.status === "draft" && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-8 rounded-xl text-rose-500 hover:bg-rose-50"
-                              onClick={() => {
-                                if (confirm("Delete this draft batch?")) {
-                                  const updated = deleteBatch(b.id);
-                                  setBatches(updated);
-                                  toast.success("Draft batch deleted.");
-                                }
-                              }}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+                          <TableCell className="text-right">
+                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                              ₹{b.totalEligibleDA.toLocaleString("en-IN")}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            <span className="text-sm font-bold text-foreground">
+                              ₹{b.totalOtherExpenses.toLocaleString("en-IN")}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            <span className="text-base font-black text-foreground">
+                              ₹{b.totalClaimAmount.toLocaleString("en-IN")}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              {renderBatchStatusBadge(b.status)}
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                {b.missingBillsCount > 0 && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-800" title="Missing bills">
+                                    {b.missingBillsCount} Bill Missing
+                                  </span>
+                                )}
+                                {b.exceptionsCount > 0 && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-100 text-rose-800" title="Exceptions">
+                                    {b.exceptionsCount} Exceptions
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-right pr-6">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-xl font-bold text-xs gap-1.5 border-primary/20 hover:bg-primary/10"
+                                onClick={() => {
+                                  setSelectedBatch(b);
+                                  setIsBatchEditorOpen(true);
+                                }}
+                              >
+                                <Eye className="size-3.5" /> Open Sheet
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-8 rounded-xl text-emerald-600 hover:bg-emerald-50"
+                                onClick={() => exportBatchToExcel(b)}
+                                title="Download Excel (.xlsx)"
+                              >
+                                <Download className="size-4" />
+                              </Button>
+
+                              {/* Approval Actions for Managers & Admins */}
+                              {isAuthorized && b.status === "pending_manager" && (
+                                <Button
+                                  size="sm"
+                                  className="h-8 rounded-xl font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1"
+                                  onClick={() => setApprovingBatch({ batch: b, stage: "manager", action: "approve" })}
+                                >
+                                  Verify RM
+                                </Button>
+                              )}
+
+                              {isAdmin && b.status === "manager_approved" && (
+                                <Button
+                                  size="sm"
+                                  className="h-8 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                                  onClick={() => setApprovingBatch({ batch: b, stage: "hr", action: "approve" })}
+                                >
+                                  Approve HR
+                                </Button>
+                              )}
+
+                              {b.status === "draft" && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-8 rounded-xl text-rose-500 hover:bg-rose-50"
+                                  onClick={() => {
+                                    if (confirm("Delete this draft batch?")) {
+                                      const updated = deleteBatch(b.id);
+                                      setBatches(updated);
+                                      toast.success("Draft batch deleted.");
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         {/* TAB 2: EMPLOYEE MASTER DA SHEET (AUTHORIZED ONLY) */}
@@ -1235,87 +1367,89 @@ function ExpensesPage() {
             </div>
 
             <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
-              <Table>
-                <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
-                  <TableRow>
-                    <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">SR NO</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee Name</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Department</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Designation</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Location</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Fixed Daily DA</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Applicable DA Rule</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMaster.map((m) => {
-                    const isPhleb = isPhlebotomist(m.designation);
-                    const isMissingDA = m.fixedDailyDA === null || m.fixedDailyDA === undefined;
-                    const isZeroDA = m.fixedDailyDA === 0;
+              <div className="overflow-x-auto w-full">
+                <Table className="min-w-[760px]">
+                  <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+                    <TableRow>
+                      <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">SR NO</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee Name</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest">Department</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest">Designation</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest">Location</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Fixed Daily DA</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest">Applicable DA Rule</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMaster.map((m) => {
+                      const isPhleb = isPhlebotomist(m.designation);
+                      const isMissingDA = m.fixedDailyDA === null || m.fixedDailyDA === undefined;
+                      const isZeroDA = m.fixedDailyDA === 0;
 
-                    return (
-                      <TableRow key={m.srNo} className="hover:bg-primary/5 transition-colors">
-                        <TableCell className="pl-6 font-bold text-xs text-muted-foreground">{m.srNo}</TableCell>
-                        <TableCell className="font-black text-sm text-foreground">
-                          {m.name}
-                          {isMissingDA && (
-                            <Badge variant="destructive" className="ml-2 text-[8px] font-black uppercase">
-                              DA Rate Missing
+                      return (
+                        <TableRow key={m.srNo} className="hover:bg-primary/5 transition-colors">
+                          <TableCell className="pl-6 font-bold text-xs text-muted-foreground">{m.srNo}</TableCell>
+                          <TableCell className="font-black text-sm text-foreground">
+                            {m.name}
+                            {isMissingDA && (
+                              <Badge variant="destructive" className="ml-2 text-[8px] font-black uppercase">
+                                DA Rate Missing
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs font-bold text-muted-foreground">{m.department}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-black text-[10px] uppercase",
+                                isPhleb ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-indigo-50 text-indigo-800 border-indigo-200"
+                              )}
+                            >
+                              {m.designation}
                             </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs font-bold text-muted-foreground">{m.department}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "font-black text-[10px] uppercase",
-                              isPhleb ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-indigo-50 text-indigo-800 border-indigo-200"
+                          </TableCell>
+                          <TableCell className="text-xs font-bold text-muted-foreground">{m.location}</TableCell>
+                          <TableCell className="text-right">
+                            {isMissingDA ? (
+                              <span className="text-xs font-bold text-rose-500 italic">Rate Missing</span>
+                            ) : isZeroDA ? (
+                              <span className="text-xs font-bold text-muted-foreground">₹0</span>
+                            ) : (
+                              <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                ₹{m.fixedDailyDA}
+                              </span>
                             )}
-                          >
-                            {m.designation}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs font-bold text-muted-foreground">{m.location}</TableCell>
-                        <TableCell className="text-right">
-                          {isMissingDA ? (
-                            <span className="text-xs font-bold text-rose-500 italic">Rate Missing</span>
-                          ) : isZeroDA ? (
-                            <span className="text-xs font-bold text-muted-foreground">₹0</span>
-                          ) : (
-                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                              ₹{m.fixedDailyDA}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                m.daRule === "Check-In/Check-Out"
+                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                  : "bg-blue-100 text-blue-900 border border-blue-200"
+                              )}
+                            >
+                              {m.daRule === "Check-In/Check-Out" ? "Check-In/Check-Out" : "Doctor Visit"}
                             </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                              m.daRule === "Check-In/Check-Out"
-                                ? "bg-amber-100 text-amber-900 border border-amber-300"
-                                : "bg-blue-100 text-blue-900 border border-blue-200"
-                            )}
-                          >
-                            {m.daRule === "Check-In/Check-Out" ? "Check-In/Check-Out" : "Doctor Visit"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right pr-6">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-8 rounded-xl text-indigo-600 hover:bg-indigo-50"
-                            onClick={() => setEditingMasterRecord(m)}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-8 rounded-xl text-indigo-600 hover:bg-indigo-50"
+                              onClick={() => setEditingMasterRecord(m)}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </Card>
           </TabsContent>
         )}
@@ -1399,8 +1533,8 @@ function ExpensesPage() {
         )}
 
         {/* TAB 4: INDIVIDUAL AD-HOC CLAIMS */}
-        <TabsContent value="individual" className="space-y-6">
-          <div className="flex justify-between items-center bg-muted/30 p-4 rounded-2xl border">
+        <TabsContent value="individual" className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/30 p-4 rounded-2xl border">
             <div>
               <h3 className="font-black text-sm tracking-tight">
                 {isAuthorized ? "Ad-hoc Individual Claim Records" : "My Ad-hoc Claims"}
@@ -1408,74 +1542,126 @@ function ExpensesPage() {
               <p className="text-xs text-muted-foreground">Single receipts and miscellaneous non-batch expense vouchers.</p>
             </div>
             {myEmployee && (
-              <Button onClick={() => setOpenLegacyClaim(true)} className="rounded-xl font-bold text-xs gap-1.5">
+              <Button onClick={() => setOpenLegacyClaim(true)} className="rounded-xl font-bold text-xs gap-1.5 w-full sm:w-auto">
                 <Plus className="size-4" /> Submit Single Claim
               </Button>
             )}
           </div>
 
-          <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
-            <Table>
-              <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
-                <TableRow>
-                  <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">Title</TableHead>
-                  {isAuthorized && (
-                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>
-                  )}
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Category</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Amount</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Proof</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dbClaims.filter((c: any) => c.category !== "travel_da_batch").length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={isAuthorized ? 6 : 5} className="py-16 text-center text-xs text-muted-foreground">
-                      No ad-hoc claims found. Use the 20-Day Batch Claims tab for travel and daily DA.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  dbClaims
-                    .filter((c: any) => c.category !== "travel_da_batch")
-                    .map((c: any) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="pl-6 font-bold text-sm">{c.title}</TableCell>
+          {/* Mobile View: Clean Cards for Small Screens (block md:hidden) */}
+          <div className="block md:hidden space-y-3">
+            {dbClaims.filter((c: any) => c.category !== "travel_da_batch").length === 0 ? (
+              <Card className="p-8 rounded-2xl text-center text-xs text-muted-foreground border">
+                No ad-hoc claims found. Use the 20-Day Batch Claims tab for travel and daily DA.
+              </Card>
+            ) : (
+              dbClaims
+                .filter((c: any) => c.category !== "travel_da_batch")
+                .map((c: any) => (
+                  <Card key={c.id} className="p-4 rounded-2xl border bg-card shadow-sm space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-black text-sm text-foreground">{c.title}</p>
                         {isAuthorized && (
-                          <TableCell className="text-xs font-bold text-muted-foreground">{c.employees?.full_name}</TableCell>
+                          <p className="text-xs text-muted-foreground font-medium">{c.employees?.full_name}</p>
                         )}
-                        <TableCell>
-                          <Badge variant="outline" className="text-[10px] uppercase font-bold">{c.category}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge
-                            className={cn(
-                              "text-[10px] uppercase font-black",
-                              c.status === "approved"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : c.status === "rejected"
-                                ? "bg-rose-100 text-rose-800"
-                                : "bg-amber-100 text-amber-800"
-                            )}
-                          >
-                            {c.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-black text-sm">₹{Number(c.amount).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-right pr-6">
-                          {c.receipt_url ? (
-                            <Button size="icon" variant="ghost" className="size-8" asChild>
-                              <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
-                            </Button>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">No Bill</span>
+                      </div>
+                      <Badge
+                        className={cn(
+                          "text-[10px] uppercase font-black shrink-0",
+                          c.status === "approved"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : c.status === "rejected"
+                            ? "bg-rose-100 text-rose-800"
+                            : "bg-amber-100 text-amber-800"
+                        )}
+                      >
+                        {c.status}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t">
+                      <Badge variant="outline" className="text-[10px] uppercase font-bold">{c.category}</Badge>
+                      <span className="font-black text-sm text-foreground">₹{Number(c.amount).toLocaleString("en-IN")}</span>
+                    </div>
+
+                    {c.receipt_url && (
+                      <div className="pt-1">
+                        <Button size="sm" variant="outline" className="w-full h-8 text-xs font-bold gap-1.5" asChild>
+                          <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-3.5" /> View Receipt</a>
+                        </Button>
+                      </div>
+                    )}
+                  </Card>
+                ))
+            )}
+          </div>
+
+          {/* Desktop View: Full Table (hidden md:block) */}
+          <Card className="hidden md:block rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
+            <div className="overflow-x-auto w-full">
+              <Table className="min-w-[650px]">
+                <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+                  <TableRow>
+                    <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">Title</TableHead>
+                    {isAuthorized && (
+                      <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>
+                    )}
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Category</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Amount</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Proof</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dbClaims.filter((c: any) => c.category !== "travel_da_batch").length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={isAuthorized ? 6 : 5} className="py-16 text-center text-xs text-muted-foreground">
+                        No ad-hoc claims found. Use the 20-Day Batch Claims tab for travel and daily DA.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    dbClaims
+                      .filter((c: any) => c.category !== "travel_da_batch")
+                      .map((c: any) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="pl-6 font-bold text-sm">{c.title}</TableCell>
+                          {isAuthorized && (
+                            <TableCell className="text-xs font-bold text-muted-foreground">{c.employees?.full_name}</TableCell>
                           )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                )}
-              </TableBody>
-            </Table>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] uppercase font-bold">{c.category}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              className={cn(
+                                "text-[10px] uppercase font-black",
+                                c.status === "approved"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : c.status === "rejected"
+                                  ? "bg-rose-100 text-rose-800"
+                                  : "bg-amber-100 text-amber-800"
+                              )}
+                            >
+                              {c.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-black text-sm">₹{Number(c.amount).toLocaleString("en-IN")}</TableCell>
+                          <TableCell className="text-right pr-6">
+                            {c.receipt_url ? (
+                              <Button size="icon" variant="ghost" className="size-8" asChild>
+                                <a href={c.receipt_url} target="_blank" rel="noreferrer"><Eye className="size-4" /></a>
+                              </Button>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">No Bill</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
@@ -1691,7 +1877,7 @@ function ExpensesPage() {
 
               {/* Editable Spreadsheet Table */}
               <div className="flex-1 overflow-auto">
-                <Table>
+                <Table className="min-w-[1300px]">
                   <TableHeader className="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-20 shadow-sm text-[10px]">
                     <TableRow>
                       <TableHead className="font-black uppercase w-24">Date</TableHead>
