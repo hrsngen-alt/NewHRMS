@@ -73,13 +73,22 @@ function ExpensesPage() {
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
   const isManager = role === "manager";
-  const isAuthorized = isAdmin || isManager;
+  // View mode switcher: allows admins/managers to preview and test the exact employee experience
+  const [viewMode, setViewMode] = useState<"admin" | "employee">(isAdmin || isManager ? "admin" : "employee");
+  const isAuthorized = (isAdmin || isManager) && viewMode === "admin";
   const { myEmployee } = useMyEmployee();
 
-  // Navigation tab
+  // Navigation tab (Strict RBAC: non-authorized users only have access to "batches" and "individual")
   const [activeTab, setActiveTab] = useState<"batches" | "master" | "summaries" | "individual">("batches");
 
-  // Master Data State
+  // Prevent non-authorized employees from staying on Master or Summaries tab
+  useEffect(() => {
+    if (!isAuthorized && (activeTab === "master" || activeTab === "summaries")) {
+      setActiveTab("batches");
+    }
+  }, [isAuthorized, activeTab]);
+
+  // Master Data State (Available to Admins/Managers)
   const [masterList, setMasterList] = useState<EmployeeMasterDARecord[]>(() => loadEmployeeMasterDA());
   const [masterSearch, setMasterSearch] = useState("");
   const [editingMasterRecord, setEditingMasterRecord] = useState<EmployeeMasterDARecord | null>(null);
@@ -119,31 +128,28 @@ function ExpensesPage() {
   // Legacy / Ad-hoc Claims states
   const [openLegacyClaim, setOpenLegacyClaim] = useState(false);
   const [legacyBusy, setLegacyBusy] = useState(false);
-  const [legacySearch, setLegacySearch] = useState("");
-  const [legacyDeptFilter, setLegacyDeptFilter] = useState("all");
-  const [legacyMonthFilter, setLegacyMonthFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"claims" | "employees">("employees");
-  const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
-  const [reviewingLegacyClaim, setReviewingLegacyClaim] = useState<{ id: string; status: "approved" | "rejected" } | null>(null);
-  const [legacyReviewNote, setLegacyReviewNote] = useState("");
-  const [editingClaim, setEditingClaim] = useState<any | null>(null);
-  const [editBusy, setEditBusy] = useState(false);
-  const [deleteReceipt, setDeleteReceipt] = useState(false);
-  const [selectedEditFile, setSelectedEditFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const editFileRef = useRef<HTMLInputElement>(null);
 
-  // Query all employees for selection
+  // Query employees for selection (Admins/Managers see all; employees see only themselves)
   const { data: allEmployees = [] } = useQuery({
-    queryKey: ["all-employees-for-expenses"],
+    queryKey: ["all-employees-for-expenses", isAuthorized, myEmployee?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("employees")
         .select("id, full_name, designation, department, employee_code, email, phone")
         .order("full_name");
+
+      // Non-authorized employees can only retrieve their own record
+      if (!isAuthorized) {
+        if (!myEmployee) return [];
+        query = query.eq("id", myEmployee.id);
+      }
+
+      const { data, error } = await query;
       if (error) return [];
       return data || [];
     },
+    enabled: !!user && (isAuthorized || !!myEmployee),
   });
 
   // Query Department Employees for Managers
@@ -160,22 +166,24 @@ function ExpensesPage() {
     },
   });
 
-  // Query Legacy & Batch claims from Supabase
-  const { data: dbClaims = [] as any[], isLoading: isClaimsLoading } = useQuery({
-    queryKey: ["expense-claims", role, myEmployee?.id, departmentEmployees],
+  // Query Claims from Supabase strictly filtered by permission
+  const { data: dbClaims = [] as any[] } = useQuery({
+    queryKey: ["expense-claims", role, viewMode, myEmployee?.id, departmentEmployees],
     queryFn: async () => {
       let query = supabase
         .from("expense_claims" as any)
         .select("*, employees(full_name, department, designation, phone, email)")
         .order("created_at", { ascending: false });
 
-      if (role === "manager" && myEmployee) {
+      if (isManager && viewMode === "admin" && myEmployee) {
         if (departmentEmployees.length > 0) {
           query = query.in("employee_id", departmentEmployees);
         } else {
           query = query.eq("employee_id", myEmployee.id);
         }
-      } else if (!isAdmin && myEmployee) {
+      } else if (!isAdmin || viewMode === "employee") {
+        if (!myEmployee) return [];
+        // Strict employee isolation: only own claims!
         query = query.eq("employee_id", myEmployee.id);
       }
 
@@ -216,11 +224,6 @@ function ExpensesPage() {
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         setBatches(mergedList);
-        try {
-          localStorage.setItem("hrms_expense_batches_v1", JSON.stringify(mergedList));
-        } catch {
-          // ignore
-        }
       }
     }
   }, [dbClaims]);
@@ -231,6 +234,135 @@ function ExpensesPage() {
       setNewBatchEmployeeId(myEmployee.id);
     }
   }, [myEmployee, newBatchEmployeeId]);
+
+  // ==========================================
+  // STRICT DATA ISOLATION / RBAC FILTERING
+  // ==========================================
+  const accessibleBatches = useMemo(() => {
+    if (isAdmin && viewMode === "admin") return batches;
+    if (isManager && viewMode === "admin" && myEmployee) {
+      return batches.filter(
+        (b) => b.employeeId === myEmployee.id || departmentEmployees.includes(b.employeeId)
+      );
+    }
+    if (myEmployee) {
+      // Regular employees (or admin in employee view) can ONLY see their own batches!
+      return batches.filter((b) => b.employeeId === myEmployee.id);
+    }
+    return [];
+  }, [batches, isAdmin, isManager, viewMode, myEmployee, departmentEmployees]);
+
+  // Filtered Batches List based on user search and status
+  const filteredBatches = useMemo(() => {
+    return accessibleBatches.filter((b) => {
+      const q = batchSearch.toLowerCase();
+      const matchesSearch =
+        b.employeeName.toLowerCase().includes(q) ||
+        b.batchNumber.toLowerCase().includes(q) ||
+        b.designation.toLowerCase().includes(q) ||
+        b.department.toLowerCase().includes(q);
+
+      const matchesStatus = batchStatusFilter === "all" || b.status === batchStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [accessibleBatches, batchSearch, batchStatusFilter]);
+
+  // Batch Aggregates computed strictly from ACCESSIBLE batches
+  const batchAggregates = useMemo(() => {
+    let totalEligibleDA = 0;
+    let totalOtherExpenses = 0;
+    let totalClaimVolume = 0;
+    let totalMissingBills = 0;
+    let totalExceptions = 0;
+    let pendingRM = 0;
+    let pendingHR = 0;
+    let approvedTotal = 0;
+
+    accessibleBatches.forEach((b) => {
+      totalEligibleDA += b.totalEligibleDA;
+      totalOtherExpenses += b.totalOtherExpenses;
+      totalClaimVolume += b.totalClaimAmount;
+      totalMissingBills += b.missingBillsCount;
+      totalExceptions += b.exceptionsCount;
+      if (b.status === "pending_manager") pendingRM += 1;
+      if (b.status === "manager_approved") pendingHR += 1;
+      if (b.status === "approved") approvedTotal += b.totalClaimAmount;
+    });
+
+    return {
+      totalEligibleDA,
+      totalOtherExpenses,
+      totalClaimVolume,
+      totalMissingBills,
+      totalExceptions,
+      pendingRM,
+      pendingHR,
+      approvedTotal,
+    };
+  }, [accessibleBatches]);
+
+  // Employee-wise Summary for Tab 3 (Authorized only)
+  const employeeWiseSummary = useMemo(() => {
+    if (!isAuthorized) return [];
+    const map: Record<string, any> = {};
+    accessibleBatches.forEach((b) => {
+      if (!map[b.employeeId]) {
+        map[b.employeeId] = {
+          employeeId: b.employeeId,
+          name: b.employeeName,
+          designation: b.designation,
+          department: b.department,
+          batchesCount: 0,
+          totalDA: 0,
+          totalOther: 0,
+          totalClaim: 0,
+          missingBills: 0,
+          approvedAmount: 0,
+        };
+      }
+      map[b.employeeId].batchesCount += 1;
+      map[b.employeeId].totalDA += b.totalEligibleDA;
+      map[b.employeeId].totalOther += b.totalOtherExpenses;
+      map[b.employeeId].totalClaim += b.totalClaimAmount;
+      map[b.employeeId].missingBills += b.missingBillsCount;
+      if (b.status === "approved") {
+        map[b.employeeId].approvedAmount += b.totalClaimAmount;
+      }
+    });
+    return Object.values(map).sort((a: any, b: any) => b.totalClaim - a.totalClaim);
+  }, [accessibleBatches, isAuthorized]);
+
+  // Date-wise Summary for Tab 3 (Authorized only)
+  const dateWiseSummary = useMemo(() => {
+    if (!isAuthorized) return [];
+    const dateMap: Record<string, { date: string; totalDA: number; totalExpenses: number; totalClaim: number; count: number }> = {};
+    accessibleBatches.forEach((b) => {
+      b.rows.forEach((r) => {
+        if (!dateMap[r.date]) {
+          dateMap[r.date] = { date: r.date, totalDA: 0, totalExpenses: 0, totalClaim: 0, count: 0 };
+        }
+        dateMap[r.date].totalDA += r.daPayable;
+        dateMap[r.date].totalExpenses += r.totalExpense - r.daPayable;
+        dateMap[r.date].totalClaim += r.totalExpense;
+        dateMap[r.date].count += 1;
+      });
+    });
+    return Object.values(dateMap).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
+  }, [accessibleBatches, isAuthorized]);
+
+  // Filtered Master List (Authorized only)
+  const filteredMaster = useMemo(() => {
+    if (!isAuthorized) return [];
+    return masterList.filter((m) => {
+      const q = masterSearch.toLowerCase();
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.designation.toLowerCase().includes(q) ||
+        m.department.toLowerCase().includes(q) ||
+        m.location.toLowerCase().includes(q)
+      );
+    });
+  }, [masterList, masterSearch, isAuthorized]);
 
   // Save Master changes to localStorage
   const handleSaveMasterRecord = (rec: EmployeeMasterDARecord) => {
@@ -277,25 +409,16 @@ function ExpensesPage() {
     }
   };
 
-  // Filtered Master List
-  const filteredMaster = useMemo(() => {
-    return masterList.filter((m) => {
-      const q = masterSearch.toLowerCase();
-      return (
-        m.name.toLowerCase().includes(q) ||
-        m.designation.toLowerCase().includes(q) ||
-        m.department.toLowerCase().includes(q) ||
-        m.location.toLowerCase().includes(q)
-      );
-    });
-  }, [masterList, masterSearch]);
-
   // Create New 20-Day Batch
   const handleGenerateBatch = async () => {
-    if (!newBatchEmployeeId) {
+    const targetEmpId = isAuthorized ? newBatchEmployeeId : myEmployee?.id;
+    if (!targetEmpId) {
       return toast.error("Please select an employee.");
     }
-    const emp = allEmployees.find((e) => e.id === newBatchEmployeeId);
+    const emp = isAuthorized
+      ? allEmployees.find((e) => e.id === targetEmpId)
+      : myEmployee;
+
     if (!emp) {
       return toast.error("Employee profile not found.");
     }
@@ -404,7 +527,6 @@ function ExpensesPage() {
       if (insertError) {
         console.warn("Could not sync batch claim to Supabase table, cached locally:", insertError);
       } else if (inserted) {
-        // Update batch id to match DB row
         updated.id = inserted.id;
         saveBatch(updated);
       }
@@ -551,7 +673,6 @@ function ExpensesPage() {
         const { data } = supabase.storage.from("expense_receipts").getPublicUrl(fileName);
         publicUrl = data.publicUrl;
       } else {
-        // Fallback: create an object URL or mock URL
         publicUrl = URL.createObjectURL(file);
       }
 
@@ -585,107 +706,6 @@ function ExpensesPage() {
       if (billFileInputRef.current) billFileInputRef.current.value = "";
     }
   };
-
-  // Filtered Batches List
-  const filteredBatches = useMemo(() => {
-    return batches.filter((b) => {
-      const q = batchSearch.toLowerCase();
-      const matchesSearch =
-        b.employeeName.toLowerCase().includes(q) ||
-        b.batchNumber.toLowerCase().includes(q) ||
-        b.designation.toLowerCase().includes(q) ||
-        b.department.toLowerCase().includes(q);
-
-      const matchesStatus = batchStatusFilter === "all" || b.status === batchStatusFilter;
-
-      // Filter by role: non-admin/manager only sees own batches
-      if (!isAuthorized && myEmployee && b.employeeId !== myEmployee.id) {
-        return false;
-      }
-      return matchesSearch && matchesStatus;
-    });
-  }, [batches, batchSearch, batchStatusFilter, isAuthorized, myEmployee]);
-
-  // Batch Aggregates for Dashboard / Summaries
-  const batchAggregates = useMemo(() => {
-    let totalEligibleDA = 0;
-    let totalOtherExpenses = 0;
-    let totalClaimVolume = 0;
-    let totalMissingBills = 0;
-    let totalExceptions = 0;
-    let pendingRM = 0;
-    let pendingHR = 0;
-    let approvedTotal = 0;
-
-    batches.forEach((b) => {
-      totalEligibleDA += b.totalEligibleDA;
-      totalOtherExpenses += b.totalOtherExpenses;
-      totalClaimVolume += b.totalClaimAmount;
-      totalMissingBills += b.missingBillsCount;
-      totalExceptions += b.exceptionsCount;
-      if (b.status === "pending_manager") pendingRM += 1;
-      if (b.status === "manager_approved") pendingHR += 1;
-      if (b.status === "approved") approvedTotal += b.totalClaimAmount;
-    });
-
-    return {
-      totalEligibleDA,
-      totalOtherExpenses,
-      totalClaimVolume,
-      totalMissingBills,
-      totalExceptions,
-      pendingRM,
-      pendingHR,
-      approvedTotal,
-    };
-  }, [batches]);
-
-  // Employee-wise Summary for Tab 3
-  const employeeWiseSummary = useMemo(() => {
-    const map: Record<string, any> = {};
-    batches.forEach((b) => {
-      if (!map[b.employeeId]) {
-        map[b.employeeId] = {
-          employeeId: b.employeeId,
-          name: b.employeeName,
-          designation: b.designation,
-          department: b.department,
-          batchesCount: 0,
-          totalDA: 0,
-          totalOther: 0,
-          totalClaim: 0,
-          missingBills: 0,
-          approvedAmount: 0,
-        };
-      }
-      map[b.employeeId].batchesCount += 1;
-      map[b.employeeId].totalDA += b.totalEligibleDA;
-      map[b.employeeId].totalOther += b.totalOtherExpenses;
-      map[b.employeeId].totalClaim += b.totalClaimAmount;
-      map[b.employeeId].missingBills += b.missingBillsCount;
-      if (b.status === "approved") {
-        map[b.employeeId].approvedAmount += b.totalClaimAmount;
-      }
-    });
-    return Object.values(map).sort((a: any, b: any) => b.totalClaim - a.totalClaim);
-  }, [batches]);
-
-  // Date-wise Summary for Tab 3
-  const dateWiseSummary = useMemo(() => {
-    const dateMap: Record<string, { date: string; totalDA: number; totalExpenses: number; totalClaim: number; count: number }> = {};
-    batches.forEach((b) => {
-      b.rows.forEach((r) => {
-        if (!dateMap[r.date]) {
-          dateMap[r.date] = { date: r.date, totalDA: 0, totalExpenses: 0, totalClaim: 0, count: 0 };
-        }
-        dateMap[r.date].totalDA += r.daPayable;
-        dateMap[r.date].totalExpenses += r.totalExpense - r.daPayable;
-        dateMap[r.date].totalClaim += r.totalExpense;
-        dateMap[r.date].count += 1;
-      });
-    });
-    return Object.values(dateMap).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
-  }, [batches]);
 
   // Legacy single claim submit
   const submitLegacyClaim = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -730,7 +750,7 @@ function ExpensesPage() {
     }
   };
 
-  // Helper status badge styling
+  // Status badge styling helper
   const renderBatchStatusBadge = (status: BatchExpenseClaim["status"]) => {
     switch (status) {
       case "draft":
@@ -761,59 +781,116 @@ function ExpensesPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2.5">
                 <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-                  Travel & DA Expense Automation Hub
+                  {isAuthorized ? "Travel & DA Expense Automation Hub" : "My Travel & Expense Hub"}
                 </h1>
                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/70 font-black text-[10px] uppercase tracking-wider px-2.5 py-0.5 shadow-none">
                   Automated DA
                 </Badge>
               </div>
               <p className="text-muted-foreground text-xs sm:text-sm font-medium mt-1">
-                Designation-wise daily allowances, 20-day batch sheets & comprehensive audit workflows.
+                {isAuthorized
+                  ? "Designation-wise daily allowances, 20-day batch sheets & comprehensive audit workflows."
+                  : "Submit your 20-day travel batches, track daily DA eligibility, and upload supporting bills."}
               </p>
             </div>
           </div>
         </div>
 
         <div className="relative z-10 flex flex-wrap items-center gap-3">
+          {(isAdmin || isManager) && (
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-border text-xs font-bold shadow-inner">
+              <button
+                type="button"
+                onClick={() => setViewMode("admin")}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-xl transition-all",
+                  viewMode === "admin"
+                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm font-black"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Admin Hub
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("employee")}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-xl transition-all",
+                  viewMode === "employee"
+                    ? "bg-emerald-600 text-white shadow-sm font-black"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                My Employee View
+              </button>
+            </div>
+          )}
+
           <Button
             onClick={() => setIsCreateBatchOpen(true)}
             className="h-12 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black gap-2 shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all text-sm"
           >
             <Plus className="size-5" /> New 20-Day Batch Claim
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => exportMasterToExcel(masterList)}
-            className="h-12 px-5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-muted text-foreground border-2 border-border font-bold gap-2 text-sm shadow-sm"
-          >
-            <FileSpreadsheet className="size-4 text-emerald-600" /> Export Master (.xlsx)
-          </Button>
+          {isAuthorized && (
+            <Button
+              variant="outline"
+              onClick={() => exportMasterToExcel(masterList)}
+              className="h-12 px-5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-muted text-foreground border-2 border-border font-bold gap-2 text-sm shadow-sm"
+            >
+              <FileSpreadsheet className="size-4 text-emerald-600" /> Export Master (.xlsx)
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Primary KPI Ribbon */}
+      {/* Notice Banner when Admin is viewing in Employee Mode */}
+      {(isAdmin || isManager) && viewMode === "employee" && (
+        <div className="p-4 px-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold animate-in fade-in duration-300">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="size-5 text-emerald-600 shrink-0" />
+            <span>
+              <strong>Employee Portal Active:</strong> Showing only your personal claims ({myEmployee?.full_name || "Self"}). All other employees' DA rates, claim batches, and Master Excel records are hidden.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setViewMode("admin")}
+            className="h-8 rounded-xl font-black text-xs border-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-100 shrink-0"
+          >
+            Switch to Admin Hub
+          </Button>
+        </div>
+      )}
+
+      {/* Primary KPI Ribbon - Strict Role Scoping */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Wallet className="size-3.5 text-indigo-500" /> Total Claim Volume
+            <Wallet className="size-3.5 text-indigo-500" /> {isAuthorized ? "Total Claim Volume" : "My Total Claims"}
           </p>
           <p className="text-2xl font-black mt-2 text-foreground">₹{batchAggregates.totalClaimVolume.toLocaleString("en-IN")}</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">{batches.length} submitted batches</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
+            {accessibleBatches.length} {isAuthorized ? "submitted batches" : "batches submitted"}
+          </p>
         </Card>
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5 text-emerald-500" /> Eligible Daily DA
+            <CheckCircle2 className="size-3.5 text-emerald-500" /> {isAuthorized ? "Eligible Daily DA" : "My Eligible DA"}
           </p>
           <p className="text-2xl font-black mt-2 text-emerald-600 dark:text-emerald-400">
             ₹{batchAggregates.totalEligibleDA.toLocaleString("en-IN")}
           </p>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">Rule A & B automated allowance</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
+            {isAuthorized ? "Rule A & B automated allowance" : "Calculated daily allowance"}
+          </p>
         </Card>
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Plane className="size-3.5 text-blue-500" /> Outstation Travel & Hotel
+            <Plane className="size-3.5 text-blue-500" /> {isAuthorized ? "Outstation Travel & Hotel" : "My Outstation Expenses"}
           </p>
           <p className="text-2xl font-black mt-2 text-foreground">
             ₹{batchAggregates.totalOtherExpenses.toLocaleString("en-IN")}
@@ -823,51 +900,82 @@ function ExpensesPage() {
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <AlertTriangle className="size-3.5 text-amber-500" /> Missing Bills
+            <AlertTriangle className="size-3.5 text-amber-500" /> {isAuthorized ? "Missing Bills" : "My Missing Bills"}
           </p>
           <p className={cn("text-2xl font-black mt-2", batchAggregates.totalMissingBills > 0 ? "text-amber-600" : "text-foreground")}>
             {batchAggregates.totalMissingBills}
           </p>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">Subject to remarks approval</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
+            {isAuthorized ? "Subject to remarks approval" : "Requires remarks explanation"}
+          </p>
         </Card>
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all col-span-2 md:col-span-1">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Clock className="size-3.5 text-indigo-500" /> Approvals Pending
+            <Clock className="size-3.5 text-indigo-500" /> {isAuthorized ? "Approvals Pending" : "Claim Status"}
           </p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-sm font-black px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">
-              RM: {batchAggregates.pendingRM}
-            </span>
-            <span className="text-sm font-black px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800">
-              HR: {batchAggregates.pendingHR}
-            </span>
-          </div>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">Multi-stage review queue</p>
+          {isAuthorized ? (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm font-black px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">
+                RM: {batchAggregates.pendingRM}
+              </span>
+              <span className="text-sm font-black px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800">
+                HR: {batchAggregates.pendingHR}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-2">
+              {batchAggregates.pendingRM > 0 ? (
+                <span className="text-sm font-black px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 inline-block">
+                  Under RM Review ({batchAggregates.pendingRM})
+                </span>
+              ) : batchAggregates.pendingHR > 0 ? (
+                <span className="text-sm font-black px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 inline-block">
+                  Under HR Review ({batchAggregates.pendingHR})
+                </span>
+              ) : (
+                <span className="text-sm font-black px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 inline-block">
+                  Up-to-Date
+                </span>
+              )}
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
+            {isAuthorized ? "Multi-stage review queue" : "Current submission workflow"}
+          </p>
         </Card>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation - Strict RBAC */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-3">
           <TabsList className="bg-muted/50 p-1.5 rounded-2xl border">
             <TabsTrigger value="batches" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-              <Calendar className="size-4" /> 20-Day Batch Claims
+              <Calendar className="size-4" /> {isAuthorized ? "20-Day Batch Claims" : "My 20-Day Claims"}
               <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
                 {filteredBatches.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="master" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-              <UsersIcon className="size-4" /> Employee Master DA Sheet
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
-                {masterList.length}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="summaries" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-              <TrendingUp className="size-4" /> Summaries & Analytics
-            </TabsTrigger>
+
+            {/* ONLY Admins and Managers can see the Employee Master DA Sheet */}
+            {isAuthorized && (
+              <TabsTrigger value="master" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
+                <UsersIcon className="size-4" /> Employee Master DA Sheet
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
+                  {masterList.length}
+                </span>
+              </TabsTrigger>
+            )}
+
+            {/* ONLY Admins and Managers can see company-wide Summaries & Analytics */}
+            {isAuthorized && (
+              <TabsTrigger value="summaries" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
+                <TrendingUp className="size-4" /> Summaries & Analytics
+              </TabsTrigger>
+            )}
+
             <TabsTrigger value="individual" className="rounded-xl font-black text-xs gap-2 py-2 px-4">
-              <Receipt className="size-4" /> Single Ad-Hoc Claims
+              <Receipt className="size-4" /> {isAuthorized ? "Single Ad-Hoc Claims" : "My Single Claims"}
             </TabsTrigger>
           </TabsList>
 
@@ -899,13 +1007,15 @@ function ExpensesPage() {
           )}
         </div>
 
-        {/* TAB 1: 20-DAY BATCH CLAIMS */}
+        {/* TAB 1: 20-DAY BATCH CLAIMS (Strictly Scoped) */}
         <TabsContent value="batches" className="space-y-6">
           <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
             <Table>
               <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                 <TableRow>
-                  <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">Batch & Employee</TableHead>
+                  <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">
+                    {isAuthorized ? "Batch & Employee" : "My Batch Number"}
+                  </TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Period (20 Days)</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Eligible DA</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Outstation Exp</TableHead>
@@ -922,10 +1032,12 @@ function ExpensesPage() {
                         <Calendar className="size-10 text-muted-foreground/40" />
                         <p className="font-black text-sm text-foreground">No 20-Day Batch Claims Found</p>
                         <p className="text-xs text-muted-foreground max-w-sm">
-                          Create an automated 20-day travel & expense batch claim using the button above.
+                          {isAuthorized
+                            ? "No matching batch claims in this view."
+                            : "You have not submitted any 20-day batch claims yet. Click the button above to generate one."}
                         </p>
                         <Button onClick={() => setIsCreateBatchOpen(true)} className="rounded-xl font-bold gap-2 mt-2">
-                          <Plus className="size-4" /> Create First 20-Day Batch
+                          <Plus className="size-4" /> Create 20-Day Batch Claim
                         </Button>
                       </div>
                     </TableCell>
@@ -940,8 +1052,10 @@ function ExpensesPage() {
                           </div>
                           <div>
                             <p className="font-black text-sm text-foreground flex items-center gap-2">
-                              {b.employeeName}
-                              <span className="text-[10px] font-bold text-muted-foreground/60">{b.batchNumber}</span>
+                              {isAuthorized ? b.employeeName : b.batchNumber}
+                              <span className="text-[10px] font-bold text-muted-foreground/60">
+                                {isAuthorized ? b.batchNumber : `(${b.designation})`}
+                              </span>
                             </p>
                             <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                               {b.designation} • {b.department}
@@ -1014,7 +1128,7 @@ function ExpensesPage() {
                             <Download className="size-4" />
                           </Button>
 
-                          {/* Quick Approval Buttons for Managers / HR */}
+                          {/* Approval Actions for Managers & Admins */}
                           {isAuthorized && b.status === "pending_manager" && (
                             <Button
                               size="sm"
@@ -1061,234 +1175,240 @@ function ExpensesPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB 2: EMPLOYEE MASTER DA SHEET */}
-        <TabsContent value="master" className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30 p-5 rounded-3xl border">
-            <div>
-              <h3 className="font-black text-lg tracking-tight flex items-center gap-2">
-                <UsersIcon className="size-5 text-indigo-500" /> Excel Employee Master Data (Source of Truth)
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Designation-wise daily allowance rules and fixed DA rates used by the automatic calculation engine.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-48">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search master..."
-                  value={masterSearch}
-                  onChange={(e) => setMasterSearch(e.target.value)}
-                  className="h-9 pl-9 rounded-xl text-xs font-bold"
+        {/* TAB 2: EMPLOYEE MASTER DA SHEET (AUTHORIZED ONLY) */}
+        {isAuthorized && (
+          <TabsContent value="master" className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30 p-5 rounded-3xl border">
+              <div>
+                <h3 className="font-black text-lg tracking-tight flex items-center gap-2">
+                  <UsersIcon className="size-5 text-indigo-500" /> Excel Employee Master Data (Admin / HR View)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Designation-wise daily allowance rules and fixed DA rates. Restricted to management & HR only.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-48">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search master..."
+                    value={masterSearch}
+                    onChange={(e) => setMasterSearch(e.target.value)}
+                    className="h-9 pl-9 rounded-xl text-xs font-bold"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl font-bold text-xs gap-1.5"
+                  onClick={() => masterFileInputRef.current?.click()}
+                >
+                  <Upload className="size-3.5" /> Upload Excel
+                </Button>
+                <input
+                  type="file"
+                  ref={masterFileInputRef}
+                  className="hidden"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleUploadMasterExcel}
                 />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl font-bold text-xs gap-1.5"
+                  onClick={() => exportMasterToExcel(masterList)}
+                >
+                  <Download className="size-3.5" /> Export Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl font-bold text-xs gap-1.5 text-rose-600 hover:bg-rose-50"
+                  onClick={handleResetMaster}
+                >
+                  <RefreshCw className="size-3.5" /> Reset Default (41)
+                </Button>
+                <Button
+                  size="sm"
+                  className="rounded-xl font-black text-xs gap-1.5"
+                  onClick={() => setIsAddMasterOpen(true)}
+                >
+                  <Plus className="size-3.5" /> Add Employee
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl font-bold text-xs gap-1.5"
-                onClick={() => masterFileInputRef.current?.click()}
-              >
-                <Upload className="size-3.5" /> Upload Excel
-              </Button>
-              <input
-                type="file"
-                ref={masterFileInputRef}
-                className="hidden"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleUploadMasterExcel}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl font-bold text-xs gap-1.5"
-                onClick={() => exportMasterToExcel(masterList)}
-              >
-                <Download className="size-3.5" /> Export Excel
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl font-bold text-xs gap-1.5 text-rose-600 hover:bg-rose-50"
-                onClick={handleResetMaster}
-              >
-                <RefreshCw className="size-3.5" /> Reset Default (41)
-              </Button>
-              <Button
-                size="sm"
-                className="rounded-xl font-black text-xs gap-1.5"
-                onClick={() => setIsAddMasterOpen(true)}
-              >
-                <Plus className="size-3.5" /> Add Employee
-              </Button>
             </div>
-          </div>
 
-          <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
-            <Table>
-              <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
-                <TableRow>
-                  <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">SR NO</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee Name</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Department</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Designation</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Location</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Fixed Daily DA</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Applicable DA Rule</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMaster.map((m) => {
-                  const isPhleb = isPhlebotomist(m.designation);
-                  const isMissingDA = m.fixedDailyDA === null || m.fixedDailyDA === undefined;
-                  const isZeroDA = m.fixedDailyDA === 0;
+            <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card overflow-hidden">
+              <Table>
+                <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+                  <TableRow>
+                    <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">SR NO</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee Name</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Department</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Designation</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Location</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Fixed Daily DA</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Applicable DA Rule</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMaster.map((m) => {
+                    const isPhleb = isPhlebotomist(m.designation);
+                    const isMissingDA = m.fixedDailyDA === null || m.fixedDailyDA === undefined;
+                    const isZeroDA = m.fixedDailyDA === 0;
 
-                  return (
-                    <TableRow key={m.srNo} className="hover:bg-primary/5 transition-colors">
-                      <TableCell className="pl-6 font-bold text-xs text-muted-foreground">{m.srNo}</TableCell>
-                      <TableCell className="font-black text-sm text-foreground">
-                        {m.name}
-                        {isMissingDA && (
-                          <Badge variant="destructive" className="ml-2 text-[8px] font-black uppercase">
-                            DA Rate Missing
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-muted-foreground">{m.department}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "font-black text-[10px] uppercase",
-                            isPhleb ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-indigo-50 text-indigo-800 border-indigo-200"
+                    return (
+                      <TableRow key={m.srNo} className="hover:bg-primary/5 transition-colors">
+                        <TableCell className="pl-6 font-bold text-xs text-muted-foreground">{m.srNo}</TableCell>
+                        <TableCell className="font-black text-sm text-foreground">
+                          {m.name}
+                          {isMissingDA && (
+                            <Badge variant="destructive" className="ml-2 text-[8px] font-black uppercase">
+                              DA Rate Missing
+                            </Badge>
                           )}
-                        >
-                          {m.designation}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-muted-foreground">{m.location}</TableCell>
-                      <TableCell className="text-right">
-                        {isMissingDA ? (
-                          <span className="text-xs font-bold text-rose-500 italic">Rate Missing</span>
-                        ) : isZeroDA ? (
-                          <span className="text-xs font-bold text-muted-foreground">₹0</span>
-                        ) : (
-                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                            ₹{m.fixedDailyDA}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                            m.daRule === "Check-In/Check-Out"
-                              ? "bg-amber-100 text-amber-900 border border-amber-300"
-                              : "bg-blue-100 text-blue-900 border border-blue-200"
-                          )}
-                        >
-                          {m.daRule === "Check-In/Check-Out" ? "Check-In/Check-Out" : "Doctor Visit"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-8 rounded-xl text-indigo-600 hover:bg-indigo-50"
-                          onClick={() => setEditingMasterRecord(m)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        {/* TAB 3: SUMMARIES & ANALYTICS */}
-        <TabsContent value="summaries" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card p-6">
-              <h3 className="font-black text-base tracking-tight mb-4 flex items-center gap-2">
-                <UsersIcon className="size-4 text-indigo-500" /> Employee-Wise Expense Summary
-              </h3>
-              <div className="overflow-x-auto max-h-[400px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-[10px] font-black uppercase">Employee</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase text-right">Eligible DA</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase text-right">Other Exp</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase text-right">Total Claim</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {employeeWiseSummary.map((emp) => (
-                      <TableRow key={emp.employeeId}>
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-muted-foreground">{m.department}</TableCell>
                         <TableCell>
-                          <p className="font-bold text-xs text-foreground">{emp.name}</p>
-                          <p className="text-[9px] text-muted-foreground uppercase">{emp.designation}</p>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-black text-[10px] uppercase",
+                              isPhleb ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-indigo-50 text-indigo-800 border-indigo-200"
+                            )}
+                          >
+                            {m.designation}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-right text-xs font-bold text-emerald-600">
-                          ₹{emp.totalDA.toLocaleString("en-IN")}
+                        <TableCell className="text-xs font-bold text-muted-foreground">{m.location}</TableCell>
+                        <TableCell className="text-right">
+                          {isMissingDA ? (
+                            <span className="text-xs font-bold text-rose-500 italic">Rate Missing</span>
+                          ) : isZeroDA ? (
+                            <span className="text-xs font-bold text-muted-foreground">₹0</span>
+                          ) : (
+                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                              ₹{m.fixedDailyDA}
+                            </span>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right text-xs font-bold text-foreground">
-                          ₹{emp.totalOther.toLocaleString("en-IN")}
+                        <TableCell>
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                              m.daRule === "Check-In/Check-Out"
+                                ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                : "bg-blue-100 text-blue-900 border border-blue-200"
+                            )}
+                          >
+                            {m.daRule === "Check-In/Check-Out" ? "Check-In/Check-Out" : "Doctor Visit"}
+                          </span>
                         </TableCell>
-                        <TableCell className="text-right text-xs font-black text-foreground">
-                          ₹{emp.totalClaim.toLocaleString("en-IN")}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
-
-            <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card p-6">
-              <h3 className="font-black text-base tracking-tight mb-4 flex items-center gap-2">
-                <Calendar className="size-4 text-emerald-500" /> Date-Wise Expense Summary
-              </h3>
-              <div className="overflow-x-auto max-h-[400px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-[10px] font-black uppercase">Date</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase text-right">Daily DA</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase text-right">Outstation</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dateWiseSummary.map((d) => (
-                      <TableRow key={d.date}>
-                        <TableCell className="text-xs font-bold text-foreground">{d.date}</TableCell>
-                        <TableCell className="text-right text-xs font-bold text-emerald-600">
-                          ₹{d.totalDA.toLocaleString("en-IN")}
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-bold text-foreground">
-                          ₹{d.totalExpenses.toLocaleString("en-IN")}
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-black text-foreground">
-                          ₹{d.totalClaim.toLocaleString("en-IN")}
+                        <TableCell className="text-right pr-6">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 rounded-xl text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => setEditingMasterRecord(m)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </Card>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        )}
 
-        {/* TAB 4: INDIVIDUAL AD-HOC CLAIMS (Preserves Single Expense claims) */}
+        {/* TAB 3: SUMMARIES & ANALYTICS (AUTHORIZED ONLY) */}
+        {isAuthorized && (
+          <TabsContent value="summaries" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card p-6">
+                <h3 className="font-black text-base tracking-tight mb-4 flex items-center gap-2">
+                  <UsersIcon className="size-4 text-indigo-500" /> Employee-Wise Expense Summary
+                </h3>
+                <div className="overflow-x-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-[10px] font-black uppercase">Employee</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase text-right">Eligible DA</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase text-right">Other Exp</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase text-right">Total Claim</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {employeeWiseSummary.map((emp) => (
+                        <TableRow key={emp.employeeId}>
+                          <TableCell>
+                            <p className="font-bold text-xs text-foreground">{emp.name}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase">{emp.designation}</p>
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-emerald-600">
+                            ₹{emp.totalDA.toLocaleString("en-IN")}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-foreground">
+                            ₹{emp.totalOther.toLocaleString("en-IN")}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-black text-foreground">
+                            ₹{emp.totalClaim.toLocaleString("en-IN")}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+
+              <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card p-6">
+                <h3 className="font-black text-base tracking-tight mb-4 flex items-center gap-2">
+                  <Calendar className="size-4 text-emerald-500" /> Date-Wise Expense Summary
+                </h3>
+                <div className="overflow-x-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-[10px] font-black uppercase">Date</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase text-right">Daily DA</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase text-right">Outstation</TableHead>
+                        <TableHead className="text-[10px] font-black uppercase text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dateWiseSummary.map((d) => (
+                        <TableRow key={d.date}>
+                          <TableCell className="text-xs font-bold text-foreground">{d.date}</TableCell>
+                          <TableCell className="text-right text-xs font-bold text-emerald-600">
+                            ₹{d.totalDA.toLocaleString("en-IN")}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-foreground">
+                            ₹{d.totalExpenses.toLocaleString("en-IN")}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-black text-foreground">
+                            ₹{d.totalClaim.toLocaleString("en-IN")}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* TAB 4: INDIVIDUAL AD-HOC CLAIMS */}
         <TabsContent value="individual" className="space-y-6">
           <div className="flex justify-between items-center bg-muted/30 p-4 rounded-2xl border">
             <div>
-              <h3 className="font-black text-sm tracking-tight">Ad-hoc Individual Claim Records</h3>
+              <h3 className="font-black text-sm tracking-tight">
+                {isAuthorized ? "Ad-hoc Individual Claim Records" : "My Ad-hoc Claims"}
+              </h3>
               <p className="text-xs text-muted-foreground">Single receipts and miscellaneous non-batch expense vouchers.</p>
             </div>
             {myEmployee && (
@@ -1303,7 +1423,9 @@ function ExpensesPage() {
               <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                 <TableRow>
                   <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">Title</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>
+                  {isAuthorized && (
+                    <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>
+                  )}
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Category</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Status</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Amount</TableHead>
@@ -1313,7 +1435,7 @@ function ExpensesPage() {
               <TableBody>
                 {dbClaims.filter((c: any) => c.category !== "travel_da_batch").length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-16 text-center text-xs text-muted-foreground">
+                    <TableCell colSpan={isAuthorized ? 6 : 5} className="py-16 text-center text-xs text-muted-foreground">
                       No ad-hoc claims found. Use the 20-Day Batch Claims tab for travel and daily DA.
                     </TableCell>
                   </TableRow>
@@ -1323,7 +1445,9 @@ function ExpensesPage() {
                     .map((c: any) => (
                       <TableRow key={c.id}>
                         <TableCell className="pl-6 font-bold text-sm">{c.title}</TableCell>
-                        <TableCell className="text-xs font-bold text-muted-foreground">{c.employees?.full_name}</TableCell>
+                        {isAuthorized && (
+                          <TableCell className="text-xs font-bold text-muted-foreground">{c.employees?.full_name}</TableCell>
+                        )}
                         <TableCell>
                           <Badge variant="outline" className="text-[10px] uppercase font-bold">{c.category}</Badge>
                         </TableCell>
@@ -1368,7 +1492,9 @@ function ExpensesPage() {
               <Calendar className="size-6 text-indigo-500" /> New 20-Day Batch Claim
             </DialogTitle>
             <DialogDescription>
-              Select employee and start date. The system will auto-populate attendance, doctor visits, and designation-wise DA calculations.
+              {isAuthorized
+                ? "Select employee and start date. The system auto-populates attendance, doctor visits, and designation-wise DA calculations."
+                : "Submit your 20-day travel & daily expense claim. Attendance and doctor visit records will be automatically verified."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1410,10 +1536,12 @@ function ExpensesPage() {
               />
             </div>
 
-            {newBatchEmployeeId && (
+            {(isAuthorized ? newBatchEmployeeId : myEmployee?.id) && (
               <div className="p-4 rounded-2xl bg-muted/40 border text-xs space-y-1">
                 {(() => {
-                  const emp = allEmployees.find((e) => e.id === newBatchEmployeeId);
+                  const emp = isAuthorized
+                    ? allEmployees.find((e) => e.id === newBatchEmployeeId)
+                    : myEmployee;
                   const m = emp ? findEmployeeInMaster(emp.full_name, emp.designation, masterList) : null;
                   if (!m) {
                     return (
@@ -1455,6 +1583,18 @@ function ExpensesPage() {
       <Dialog open={isBatchEditorOpen} onOpenChange={setIsBatchEditorOpen}>
         <DialogContent className="max-w-[96vw] w-[96vw] h-[92vh] rounded-[2rem] p-0 overflow-hidden flex flex-col border-none shadow-2xl bg-card">
           {selectedBatch && (
+            !isAuthorized && myEmployee && selectedBatch.employeeId !== myEmployee.id ? (
+              <div className="flex flex-col items-center justify-center h-full p-12 text-center space-y-4">
+                <AlertTriangle className="size-12 text-rose-500" />
+                <h3 className="font-black text-xl text-foreground">Access Restricted</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  You are only permitted to view and manage your own expense claims. Another employee's claim details cannot be displayed.
+                </p>
+                <Button onClick={() => setIsBatchEditorOpen(false)} className="rounded-xl font-bold">
+                  Return to My Expenses
+                </Button>
+              </div>
+            ) : (
             <div className="flex flex-col h-full">
               {/* Header - Daylight Theme */}
               <div className="p-6 bg-white dark:bg-slate-900 text-foreground shrink-0 border-b border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1578,12 +1718,11 @@ function ExpensesPage() {
                   <TableBody>
                     {selectedBatch.rows.map((r, rowIdx) => {
                       const isEligible = r.daEligibility === "Eligible";
+                      const isBatchEditable = selectedBatch.status === "draft";
                       return (
                         <TableRow key={r.date} className="hover:bg-muted/40 transition-colors">
-                          {/* Date */}
                           <TableCell className="font-black text-xs whitespace-nowrap">{r.date}</TableCell>
 
-                          {/* Attendance Check-in / Check-out */}
                           <TableCell className="text-center text-xs">
                             <div className="flex flex-col items-center">
                               <span className={cn("font-bold text-[11px]", r.checkInValid ? "text-emerald-600" : "text-rose-500")}>
@@ -1595,7 +1734,6 @@ function ExpensesPage() {
                             </div>
                           </TableCell>
 
-                          {/* Doctor Visits Count */}
                           <TableCell className="text-center">
                             <span
                               className={cn(
@@ -1607,7 +1745,6 @@ function ExpensesPage() {
                             </span>
                           </TableCell>
 
-                          {/* DA Rule & Fixed Rate */}
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span className="text-[9px] font-black text-muted-foreground uppercase">{r.daRule}</span>
@@ -1617,7 +1754,6 @@ function ExpensesPage() {
                             </div>
                           </TableCell>
 
-                          {/* DA Payable */}
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center">
                               <span
@@ -1634,11 +1770,11 @@ function ExpensesPage() {
                             </div>
                           </TableCell>
 
-                          {/* Outstation Expense Inputs */}
                           <TableCell className="text-right p-1">
                             <Input
                               type="number"
                               min="0"
+                              disabled={!isBatchEditable}
                               value={r.airFare || ""}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
@@ -1657,6 +1793,7 @@ function ExpensesPage() {
                             <Input
                               type="number"
                               min="0"
+                              disabled={!isBatchEditable}
                               value={r.railFare || ""}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
@@ -1675,6 +1812,7 @@ function ExpensesPage() {
                             <Input
                               type="number"
                               min="0"
+                              disabled={!isBatchEditable}
                               value={r.petrolRoad || ""}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
@@ -1693,6 +1831,7 @@ function ExpensesPage() {
                             <Input
                               type="number"
                               min="0"
+                              disabled={!isBatchEditable}
                               value={r.localTravel || ""}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
@@ -1711,6 +1850,7 @@ function ExpensesPage() {
                             <Input
                               type="number"
                               min="0"
+                              disabled={!isBatchEditable}
                               value={r.lunchDinner || ""}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
@@ -1729,6 +1869,7 @@ function ExpensesPage() {
                             <Input
                               type="number"
                               min="0"
+                              disabled={!isBatchEditable}
                               value={r.lodging || ""}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
@@ -1747,6 +1888,7 @@ function ExpensesPage() {
                             <Input
                               type="number"
                               min="0"
+                              disabled={!isBatchEditable}
                               value={r.otherExpenses || ""}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
@@ -1761,12 +1903,10 @@ function ExpensesPage() {
                             />
                           </TableCell>
 
-                          {/* Daily Total Expense */}
                           <TableCell className="text-right font-black text-sm text-foreground whitespace-nowrap">
                             ₹{r.totalExpense}
                           </TableCell>
 
-                          {/* Bills / Attachment */}
                           <TableCell className="text-center p-1">
                             <Button
                               size="sm"
@@ -1788,10 +1928,10 @@ function ExpensesPage() {
                             </Button>
                           </TableCell>
 
-                          {/* Remarks */}
                           <TableCell className="p-1">
                             <div className="space-y-1">
                               <Input
+                                disabled={!isBatchEditable}
                                 value={r.remarks || ""}
                                 onChange={(e) => {
                                   const updatedRows = [...selectedBatch.rows];
@@ -1820,7 +1960,7 @@ function ExpensesPage() {
                 </Table>
               </div>
             </div>
-          )}
+          ))}
         </DialogContent>
       </Dialog>
 
@@ -1984,71 +2124,154 @@ function ExpensesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* EDIT MASTER RECORD DIALOG */}
-      <Dialog open={!!editingMasterRecord} onOpenChange={(v) => !v && setEditingMasterRecord(null)}>
-        <DialogContent className="rounded-3xl p-6 border-2 border-primary/5 shadow-elegant max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black tracking-tight">
-              Edit Master DA Record
-            </DialogTitle>
-            <DialogDescription>
-              Update Fixed Daily DA rate or applicable DA rule for this employee.
-            </DialogDescription>
-          </DialogHeader>
+      {/* EDIT MASTER RECORD DIALOG (AUTHORIZED ONLY) */}
+      {isAuthorized && (
+        <Dialog open={!!editingMasterRecord} onOpenChange={(v) => !v && setEditingMasterRecord(null)}>
+          <DialogContent className="rounded-3xl p-6 border-2 border-primary/5 shadow-elegant max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black tracking-tight">
+                Edit Master DA Record
+              </DialogTitle>
+              <DialogDescription>
+                Update Fixed Daily DA rate or applicable DA rule for this employee.
+              </DialogDescription>
+            </DialogHeader>
 
-          {editingMasterRecord && (
+            {editingMasterRecord && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const rawDA = fd.get("fixedDailyDA");
+                  const fixedDAVal = rawDA === "" ? null : Number(rawDA);
+                  handleSaveMasterRecord({
+                    ...editingMasterRecord,
+                    department: String(fd.get("department")),
+                    designation: String(fd.get("designation")),
+                    location: String(fd.get("location")),
+                    fixedDailyDA: fixedDAVal,
+                    daRule: fd.get("daRule") as DARuleType,
+                  });
+                }}
+                className="space-y-4 py-3"
+              >
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Employee Name</Label>
+                  <Input defaultValue={editingMasterRecord.name} disabled className="rounded-xl bg-muted" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Designation</Label>
+                    <Input name="designation" defaultValue={editingMasterRecord.designation} required className="rounded-xl" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Location</Label>
+                    <Input name="location" defaultValue={editingMasterRecord.location} required className="rounded-xl" />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground">Department</Label>
+                  <Input name="department" defaultValue={editingMasterRecord.department} required className="rounded-xl" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Fixed Daily DA (₹)</Label>
+                    <Input
+                      name="fixedDailyDA"
+                      type="number"
+                      defaultValue={editingMasterRecord.fixedDailyDA ?? ""}
+                      placeholder="Rate missing"
+                      className="rounded-xl font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground">DA Rule</Label>
+                    <Select name="daRule" defaultValue={editingMasterRecord.daRule}>
+                      <SelectTrigger className="rounded-xl text-xs font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="Doctor Visit">Doctor Visit</SelectItem>
+                        <SelectItem value="Check-In/Check-Out">Check-In/Check-Out</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2 pt-2">
+                  <Button type="button" variant="ghost" className="rounded-xl font-bold" onClick={() => setEditingMasterRecord(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white">
+                    Save Master Record
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ADD MASTER EMPLOYEE DIALOG (AUTHORIZED ONLY) */}
+      {isAuthorized && (
+        <Dialog open={isAddMasterOpen} onOpenChange={setIsAddMasterOpen}>
+          <DialogContent className="rounded-3xl p-6 border-2 border-primary/5 shadow-elegant max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black tracking-tight">
+                Add Employee to Master DA Sheet
+              </DialogTitle>
+            </DialogHeader>
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
+                const desig = String(fd.get("designation"));
+                const rule = fd.get("daRule") as DARuleType || determineDARule(desig);
                 const rawDA = fd.get("fixedDailyDA");
-                const fixedDAVal = rawDA === "" ? null : Number(rawDA);
-                handleSaveMasterRecord({
-                  ...editingMasterRecord,
+                handleAddNewMasterRecord({
+                  name: String(fd.get("name")),
                   department: String(fd.get("department")),
-                  designation: String(fd.get("designation")),
+                  designation: desig,
                   location: String(fd.get("location")),
-                  fixedDailyDA: fixedDAVal,
-                  daRule: fd.get("daRule") as DARuleType,
+                  fixedDailyDA: rawDA === "" ? null : Number(rawDA),
+                  daRule: rule,
                 });
               }}
               className="space-y-4 py-3"
             >
               <div className="space-y-1">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground">Employee Name</Label>
-                <Input defaultValue={editingMasterRecord.name} disabled className="rounded-xl bg-muted" />
+                <Input name="name" required placeholder="Full Name..." className="rounded-xl" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground">Designation</Label>
-                  <Input name="designation" defaultValue={editingMasterRecord.designation} required className="rounded-xl" />
+                  <Input name="designation" required placeholder="ASM, Phlebotomist..." className="rounded-xl" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground">Location</Label>
-                  <Input name="location" defaultValue={editingMasterRecord.location} required className="rounded-xl" />
+                  <Input name="location" required placeholder="MUMBAI, DELHI..." className="rounded-xl" />
                 </div>
               </div>
 
               <div className="space-y-1">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground">Department</Label>
-                <Input name="department" defaultValue={editingMasterRecord.department} required className="rounded-xl" />
+                <Input name="department" defaultValue="Sales & Marketing" required className="rounded-xl" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground">Fixed Daily DA (₹)</Label>
-                  <Input
-                    name="fixedDailyDA"
-                    type="number"
-                    defaultValue={editingMasterRecord.fixedDailyDA ?? ""}
-                    placeholder="Rate missing"
-                    className="rounded-xl font-bold"
-                  />
+                  <Input name="fixedDailyDA" type="number" placeholder="400" className="rounded-xl font-bold" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground">DA Rule</Label>
-                  <Select name="daRule" defaultValue={editingMasterRecord.daRule}>
+                  <Select name="daRule" defaultValue="Doctor Visit">
                     <SelectTrigger className="rounded-xl text-xs font-bold">
                       <SelectValue />
                     </SelectTrigger>
@@ -2061,98 +2284,19 @@ function ExpensesPage() {
               </div>
 
               <DialogFooter className="gap-2 pt-2">
-                <Button type="button" variant="ghost" className="rounded-xl font-bold" onClick={() => setEditingMasterRecord(null)}>
+                <Button type="button" variant="ghost" className="rounded-xl font-bold" onClick={() => setIsAddMasterOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" className="rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white">
-                  Save Master Record
+                  Add to Master
                 </Button>
               </DialogFooter>
             </form>
-          )}
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
-      {/* ADD MASTER EMPLOYEE DIALOG */}
-      <Dialog open={isAddMasterOpen} onOpenChange={setIsAddMasterOpen}>
-        <DialogContent className="rounded-3xl p-6 border-2 border-primary/5 shadow-elegant max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black tracking-tight">
-              Add Employee to Master DA Sheet
-            </DialogTitle>
-          </DialogHeader>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
-              const desig = String(fd.get("designation"));
-              const rule = fd.get("daRule") as DARuleType || determineDARule(desig);
-              const rawDA = fd.get("fixedDailyDA");
-              handleAddNewMasterRecord({
-                name: String(fd.get("name")),
-                department: String(fd.get("department")),
-                designation: desig,
-                location: String(fd.get("location")),
-                fixedDailyDA: rawDA === "" ? null : Number(rawDA),
-                daRule: rule,
-              });
-            }}
-            className="space-y-4 py-3"
-          >
-            <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">Employee Name</Label>
-              <Input name="name" required placeholder="Full Name..." className="rounded-xl" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Designation</Label>
-                <Input name="designation" required placeholder="ASM, Phlebotomist..." className="rounded-xl" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Location</Label>
-                <Input name="location" required placeholder="MUMBAI, DELHI..." className="rounded-xl" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">Department</Label>
-              <Input name="department" defaultValue="Sales & Marketing" required className="rounded-xl" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">Fixed Daily DA (₹)</Label>
-                <Input name="fixedDailyDA" type="number" placeholder="400" className="rounded-xl font-bold" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">DA Rule</Label>
-                <Select name="daRule" defaultValue="Doctor Visit">
-                  <SelectTrigger className="rounded-xl text-xs font-bold">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="Doctor Visit">Doctor Visit</SelectItem>
-                    <SelectItem value="Check-In/Check-Out">Check-In/Check-Out</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <DialogFooter className="gap-2 pt-2">
-              <Button type="button" variant="ghost" className="rounded-xl font-bold" onClick={() => setIsAddMasterOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white">
-                Add to Master
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* AD-HOC SINGLE CLAIM MODAL (LEGACY SUPPORT) */}
+      {/* AD-HOC SINGLE CLAIM MODAL */}
       <Dialog open={openLegacyClaim} onOpenChange={setOpenLegacyClaim}>
         <DialogContent className="rounded-3xl p-6 border-2 border-primary/5 shadow-elegant max-w-md">
           <DialogHeader>
