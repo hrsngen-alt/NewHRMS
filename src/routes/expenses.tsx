@@ -202,7 +202,13 @@ function ExpensesPage() {
               dbBatches.push({
                 ...parsed,
                 id: c.id,
-                status: c.status === "approved" ? "approved" : c.status === "rejected" ? "rejected" : parsed.status || "pending_manager",
+                status: c.status === "approved"
+                  ? "approved"
+                  : c.status === "rejected"
+                  ? "rejected"
+                  : c.status === "draft"
+                  ? "draft"
+                  : parsed.status || "pending_manager",
               });
             }
           } catch {
@@ -214,8 +220,8 @@ function ExpensesPage() {
       if (dbBatches.length > 0) {
         const local = loadAllBatches();
         const mergedMap = new Map<string, BatchExpenseClaim>();
-        local.forEach((b) => mergedMap.set(b.id, b));
-        dbBatches.forEach((b) => mergedMap.set(b.id, b));
+        local.forEach((b) => mergedMap.set(b.batchNumber || b.id, b));
+        dbBatches.forEach((b) => mergedMap.set(b.batchNumber || b.id, b));
         const mergedList = Array.from(mergedMap.values()).sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
@@ -223,6 +229,45 @@ function ExpensesPage() {
       }
     }
   }, [dbClaims]);
+
+  // Auto-sync any unsynced local batches to Supabase cloud
+  useEffect(() => {
+    if (!myEmployee) return;
+    const local = loadAllBatches();
+    const myLocal = local.filter((b) => b.employeeId === myEmployee.id);
+    if (myLocal.length === 0) return;
+
+    myLocal.forEach(async (b) => {
+      const existsInDb = dbClaims.some(
+        (c: any) => c.id === b.id || (c.notes && c.notes.includes(b.batchNumber))
+      );
+      if (!existsInDb) {
+        try {
+          const title = `20-Day Expense Claim (${b.batchNumber}) - ${b.employeeName}`;
+          const { data: inserted } = await supabase
+            .from("expense_claims" as any)
+            .insert({
+              employee_id: b.employeeId,
+              title,
+              amount: b.totalClaimAmount,
+              category: "travel_da_batch",
+              notes: JSON.stringify(b),
+              status: b.status === "approved" ? "approved" : b.status === "pending_manager" ? "pending" : "draft",
+            })
+            .select()
+            .single();
+
+          if (inserted) {
+            b.id = inserted.id;
+            saveBatch(b);
+            qc.invalidateQueries({ queryKey: ["expense-claims"] });
+          }
+        } catch (err) {
+          console.warn("Auto-syncing local batch to cloud:", err);
+        }
+      }
+    });
+  }, [myEmployee, dbClaims]);
 
   // Set default employee for new batch
   useEffect(() => {
@@ -464,12 +509,39 @@ function ExpensesPage() {
       });
 
       // Save locally
-      const updatedBatches = saveBatch(newBatch);
+      let updatedBatches = saveBatch(newBatch);
       setBatches(updatedBatches);
       setSelectedBatch(newBatch);
       setIsCreateBatchOpen(false);
       setIsBatchEditorOpen(true);
       toast.success("20-Day Daily Expense Claim Sheet generated!");
+
+      // Sync immediately to Supabase database so Admin and all devices can access it
+      try {
+        const title = `20-Day Expense Claim (${newBatch.batchNumber}) - ${newBatch.employeeName}`;
+        const { data: inserted } = await supabase
+          .from("expense_claims" as any)
+          .insert({
+            employee_id: newBatch.employeeId,
+            title,
+            amount: newBatch.totalClaimAmount,
+            category: "travel_da_batch",
+            notes: JSON.stringify(newBatch),
+            status: "draft",
+          })
+          .select()
+          .single();
+
+        if (inserted) {
+          const synced = { ...newBatch, id: inserted.id };
+          updatedBatches = saveBatch(synced);
+          setBatches(updatedBatches);
+          setSelectedBatch(synced);
+          qc.invalidateQueries({ queryKey: ["expense-claims"] });
+        }
+      } catch (cloudErr) {
+        console.warn("Could not immediately sync new draft batch to Supabase:", cloudErr);
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to generate batch claim.");
@@ -500,26 +572,43 @@ function ExpensesPage() {
       setBatches(allUpdated);
       setSelectedBatch(updated);
 
-      // Save to Supabase `expense_claims` table
+      // Save/update in Supabase `expense_claims` table
       const title = `20-Day Expense Claim (${updated.batchNumber}) - ${updated.employeeName}`;
-      const { data: inserted, error: insertError } = await supabase
-        .from("expense_claims" as any)
-        .insert({
-          employee_id: updated.employeeId,
-          title,
-          amount: updated.totalClaimAmount,
-          category: "travel_da_batch",
-          notes: JSON.stringify(updated),
-          status: "pending",
-        })
-        .select()
-        .single();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(updated.id);
+      let syncSuccess = false;
 
-      if (insertError) {
-        console.warn("Could not sync batch claim to Supabase table, cached locally:", insertError);
-      } else if (inserted) {
-        updated.id = inserted.id;
-        saveBatch(updated);
+      if (isUuid) {
+        const { error: updateError } = await supabase
+          .from("expense_claims" as any)
+          .update({
+            amount: updated.totalClaimAmount,
+            notes: JSON.stringify(updated),
+            status: "pending",
+          })
+          .eq("id", updated.id);
+        if (!updateError) syncSuccess = true;
+      }
+
+      if (!syncSuccess) {
+        const { data: inserted, error: insertError } = await supabase
+          .from("expense_claims" as any)
+          .insert({
+            employee_id: updated.employeeId,
+            title,
+            amount: updated.totalClaimAmount,
+            category: "travel_da_batch",
+            notes: JSON.stringify(updated),
+            status: "pending",
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.warn("Could not sync batch claim to Supabase table, cached locally:", insertError);
+        } else if (inserted) {
+          updated.id = inserted.id;
+          saveBatch(updated);
+        }
       }
 
       // Notify Managers & Admins
