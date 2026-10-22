@@ -2333,29 +2333,29 @@ function ExpensesPage() {
         open={attachmentRowIndex !== null}
         onOpenChange={(v) => !v && setAttachmentRowIndex(null)}
       >
-        <DialogContent className="rounded-3xl p-6 border-2 border-primary/5 shadow-elegant max-w-md">
-          <DialogHeader>
+        <DialogContent className="w-[94vw] max-w-lg rounded-3xl p-6 border border-border/80 shadow-2xl bg-card text-card-foreground overflow-hidden sm:max-w-lg z-[60]">
+          <DialogHeader className="space-y-1">
             <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-2">
               <Paperclip className="size-5 text-indigo-500" /> Supporting Bills & Receipts
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs">
               {selectedBatch && attachmentRowIndex !== null && (
-                <>Attach bills for {selectedBatch.rows[attachmentRowIndex]?.date}</>
+                <>Attach bills for <span className="font-bold text-foreground">{selectedBatch.rows[attachmentRowIndex]?.date}</span></>
               )}
             </DialogDescription>
           </DialogHeader>
 
           {selectedBatch && attachmentRowIndex !== null && (
-            <div className="space-y-4 py-3">
-              <div className="space-y-2">
+            <div className="space-y-4 py-2 min-w-0 w-full">
+              <div className="space-y-1.5 min-w-0 w-full">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   Expense Category
                 </Label>
                 <Select value={attachmentExpenseType} onValueChange={setAttachmentExpenseType}>
-                  <SelectTrigger className="h-10 rounded-xl text-xs font-bold">
-                    <SelectValue />
+                  <SelectTrigger className="h-10 rounded-xl text-xs font-bold w-full min-w-0 overflow-hidden [&>span]:truncate [&>span]:block [&>span]:text-left">
+                    <SelectValue placeholder="Select expense category..." />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectContent className="rounded-xl max-w-[90vw]">
                     <SelectItem value="airFare">Air Fare ({OUTSTATION_DOCUMENT_REQUIREMENTS.airFare})</SelectItem>
                     <SelectItem value="railFare">Rail Fare ({OUTSTATION_DOCUMENT_REQUIREMENTS.railFare})</SelectItem>
                     <SelectItem value="petrolRoad">Road Fare / Petrol ({OUTSTATION_DOCUMENT_REQUIREMENTS.petrolRoad})</SelectItem>
@@ -2369,7 +2369,7 @@ function ExpensesPage() {
 
               {/* Upload Dropzone */}
               <div
-                className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                className="flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-5 bg-muted/30 hover:bg-muted/50 border-border hover:border-primary/50 transition-all cursor-pointer min-w-0 w-full group text-center"
                 onClick={() => billFileInputRef.current?.click()}
               >
                 <input
@@ -2379,36 +2379,53 @@ function ExpensesPage() {
                   accept="image/*,application/pdf"
                   onChange={handleUploadBillForRow}
                 />
-                <Upload className="size-8 text-muted-foreground mb-1" />
+                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                  <Upload className="size-5 text-primary" />
+                </div>
                 <p className="text-xs font-bold text-foreground">Click to upload bill / receipt</p>
-                <p className="text-[10px] text-muted-foreground/60">Image or PDF (Flight ticket, hotel invoice, train ticket, etc.)</p>
+                <p className="text-[10px] text-muted-foreground/80 mt-0.5">Image or PDF (Flight ticket, hotel invoice, train ticket, etc.)</p>
               </div>
 
               {/* Existing Attachments */}
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-52 overflow-y-auto pr-0.5 min-w-0 w-full">
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
                   Attached Documents ({(selectedBatch.rows[attachmentRowIndex]?.attachments || []).length})
                 </p>
                 {(selectedBatch.rows[attachmentRowIndex]?.attachments || []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground/60 italic">No documents attached yet.</p>
+                  <p className="text-xs text-muted-foreground/60 italic py-2 text-center bg-muted/20 rounded-xl border border-dashed border-border/60">
+                    No documents attached yet for this day.
+                  </p>
                 ) : (
                   (selectedBatch.rows[attachmentRowIndex]?.attachments || []).map((att, i) => (
-                    <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border text-xs">
-                      <div className="flex items-center gap-2 truncate flex-1">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors border border-border/60 text-xs min-w-0 w-full"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                         <FileText className="size-4 text-primary shrink-0" />
-                        <span className="font-bold truncate">{att.name}</span>
-                        <Badge variant="outline" className="text-[8px] uppercase">{att.expenseType}</Badge>
+                        <span className="font-semibold truncate min-w-0 flex-1 text-xs" title={att.name}>
+                          {att.name}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] font-bold uppercase tracking-wider shrink-0 bg-primary/10 text-primary border-primary/20"
+                        >
+                          {att.expenseType}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <div className="flex items-center gap-1 shrink-0 ml-1">
                         {att.url && (
-                          <Button size="icon" variant="ghost" className="size-7" asChild>
-                            <a href={att.url} target="_blank" rel="noreferrer"><Eye className="size-3.5" /></a>
+                          <Button size="icon" variant="ghost" className="size-7 hover:bg-background" asChild>
+                            <a href={att.url} target="_blank" rel="noreferrer" title="Preview receipt">
+                              <Eye className="size-3.5 text-muted-foreground hover:text-foreground" />
+                            </a>
                           </Button>
                         )}
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="size-7 text-rose-500 hover:bg-rose-50"
+                          className="size-7 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                          title="Remove receipt"
                           onClick={() => {
                             const updatedRows = [...selectedBatch.rows];
                             const curAtts = updatedRows[attachmentRowIndex].attachments || [];
@@ -2428,8 +2445,11 @@ function ExpensesPage() {
             </div>
           )}
 
-          <DialogFooter>
-            <Button className="w-full rounded-xl font-bold" onClick={() => setAttachmentRowIndex(null)}>
+          <DialogFooter className="w-full sm:justify-stretch pt-2">
+            <Button
+              className="w-full rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground h-10 shadow-md"
+              onClick={() => setAttachmentRowIndex(null)}
+            >
               Done
             </Button>
           </DialogFooter>
