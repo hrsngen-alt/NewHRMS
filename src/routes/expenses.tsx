@@ -73,9 +73,9 @@ function ExpensesPage() {
   const { user, role } = useAuth();
   const isAdmin = role === "admin";
   const isManager = role === "manager";
-  // View mode switcher: allows admins/managers to preview and test the exact employee experience
-  const [viewMode, setViewMode] = useState<"admin" | "employee">(isAdmin || isManager ? "admin" : "employee");
-  const isAuthorized = (isAdmin || isManager) && viewMode === "admin";
+  // View mode switcher: allows admins to preview and test the exact employee experience
+  const [viewMode, setViewMode] = useState<"admin" | "employee">(isAdmin ? "admin" : "employee");
+  const isAuthorized = isAdmin && viewMode === "admin";
   const { myEmployee } = useMyEmployee();
 
   // Navigation tab (Strict RBAC: non-authorized users only have access to "batches" and "individual")
@@ -177,13 +177,7 @@ function ExpensesPage() {
         .select("*, employees(full_name, department, designation, phone, email)")
         .order("created_at", { ascending: false });
 
-      if (isManager && viewMode === "admin" && myEmployee) {
-        if (departmentEmployees.length > 0) {
-          query = query.in("employee_id", departmentEmployees);
-        } else {
-          query = query.eq("employee_id", myEmployee.id);
-        }
-      } else if (!isAdmin || viewMode === "employee") {
+      if (!isAdmin || viewMode === "employee") {
         if (!myEmployee) return [];
         // Strict employee isolation: only own claims!
         query = query.eq("employee_id", myEmployee.id);
@@ -242,17 +236,12 @@ function ExpensesPage() {
   // ==========================================
   const accessibleBatches = useMemo(() => {
     if (isAdmin && viewMode === "admin") return batches;
-    if (isManager && viewMode === "admin" && myEmployee) {
-      return batches.filter(
-        (b) => b.employeeId === myEmployee.id || departmentEmployees.includes(b.employeeId)
-      );
-    }
     if (myEmployee) {
       // Regular employees (or admin in employee view) can ONLY see their own batches!
       return batches.filter((b) => b.employeeId === myEmployee.id);
     }
     return [];
-  }, [batches, isAdmin, isManager, viewMode, myEmployee, departmentEmployees]);
+  }, [batches, isAdmin, viewMode, myEmployee]);
 
   // Filtered Batches List based on user search and status
   const filteredBatches = useMemo(() => {
@@ -804,7 +793,7 @@ function ExpensesPage() {
         </div>
 
         <div className="relative z-10 flex flex-wrap items-center gap-3">
-          {(isAdmin || isManager) && (
+          {isAdmin && (
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-border text-xs font-bold shadow-inner">
               <button
                 type="button"
@@ -852,7 +841,7 @@ function ExpensesPage() {
       </div>
 
       {/* Notice Banner when Admin is viewing in Employee Mode */}
-      {(isAdmin || isManager) && viewMode === "employee" && (
+      {isAdmin && viewMode === "employee" && (
         <div className="p-4 px-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold animate-in fade-in duration-300">
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="size-5 text-emerald-600 shrink-0" />
