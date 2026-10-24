@@ -409,76 +409,41 @@ function AttendancePage() {
   const isMarketing = targetEmployee?.department?.toLowerCase() === "marketing";
 
   const { data: records = [], isLoading } = useQuery({
-    queryKey: ["attendance", role, myEmployee?.id, targetEmployeeId, visibleEmployees.map((e: any) => e.id).join(",")],
+    queryKey: ["attendance", role, targetEmployeeId, selMonth, selYear],
     queryFn: async () => {
-      if (!isAdmin && !isManager && myEmployee) {
-        const { data, error } = await supabase
-          .from("attendance" as any)
-          .select("*, employees(full_name, employee_code, department)")
-          .eq("employee_id", myEmployee.id)
-          .order("date", { ascending: false })
-          .order("check_in", { ascending: false, nullsFirst: false })
-          .limit(1000);
-        if (error) {
-          console.error("[MonthlyAttendance] employee records error:", error);
-          throw error;
-        }
-        return (data as any) || [];
-      } else if (isManager && myEmployee) {
-        // Collect all IDs: all team members + manager self + target employee if selected
-        const teamIdSet = new Set<string>();
-        visibleEmployees.forEach((e: any) => teamIdSet.add(e.id));
-        if (myEmployee.id) teamIdSet.add(myEmployee.id);
-        if (targetEmployeeId) teamIdSet.add(targetEmployeeId);
+      if (!targetEmployeeId) return [];
 
-        let teamIds = Array.from(teamIdSet);
-        if (teamIds.length === 0) teamIds = [myEmployee.id];
+      const year = Number(selYear === "all" ? new Date().getFullYear() : selYear);
+      let query = supabase
+        .from("attendance" as any)
+        .select("*, employees(full_name, employee_code, department)")
+        .eq("employee_id", targetEmployeeId);
 
-        const allRecords: any[] = [];
-        const pageSize = 1000;
-        for (let page = 0; page < 5; page++) {
-          const from = page * pageSize;
-          const to = from + pageSize - 1;
-          const { data, error } = await supabase
-            .from("attendance" as any)
-            .select("*, employees(full_name, employee_code, department)")
-            .in("employee_id", teamIds)
-            .order("date", { ascending: false })
-            .order("check_in", { ascending: false, nullsFirst: false })
-            .range(from, to);
-          if (error) {
-            console.error("[MonthlyAttendance] manager records error:", error);
-            throw error;
-          }
-          if (!data || data.length === 0) break;
-          allRecords.push(...data);
-          if (data.length < pageSize) break;
-        }
-        return (allRecords as any) || [];
+      if (selMonth !== "all") {
+        const month = Number(selMonth);
+        const totalDays = new Date(year, month, 0).getDate();
+        const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
+        const endStr = `${year}-${String(month).padStart(2, "0")}-${String(totalDays).padStart(2, "0")}`;
+        query = query.gte("date", startStr).lte("date", endStr);
       } else {
-        const allRecords: any[] = [];
-        const pageSize = 1000;
-        for (let page = 0; page < 5; page++) {
-          const from = page * pageSize;
-          const to = from + pageSize - 1;
-          const { data, error } = await supabase
-            .from("attendance" as any)
-            .select("*, employees(full_name, employee_code, department)")
-            .order("date", { ascending: false })
-            .order("check_in", { ascending: false, nullsFirst: false })
-            .range(from, to);
-          if (error) {
-            console.error("[MonthlyAttendance] admin records error:", error);
-            throw error;
-          }
-          if (!data || data.length === 0) break;
-          allRecords.push(...data);
-          if (data.length < pageSize) break;
-        }
-        return (allRecords as any) || [];
+        const startStr = `${year}-01-01`;
+        const endStr = `${year}-12-31`;
+        query = query.gte("date", startStr).lte("date", endStr);
       }
+
+      const { data, error } = await query
+        .order("date", { ascending: false })
+        .order("check_in", { ascending: false, nullsFirst: false });
+
+      if (error) {
+        console.error("[MonthlyAttendance] records query error:", error);
+        throw error;
+      }
+      return (data as any) || [];
     },
-    enabled: !!user && (isAuthorized || !!myEmployee),
+    enabled: !!user && (isAuthorized || !!myEmployee) && !!targetEmployeeId,
+    placeholderData: (previousData) => previousData,
+    staleTime: 30000,
   });
 
   useEffect(() => {
@@ -486,6 +451,7 @@ function AttendancePage() {
       .channel('attendance_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => {
         qc.invalidateQueries({ queryKey: ["attendance"] });
+        qc.invalidateQueries({ queryKey: ["late-arrivals-records"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -724,21 +690,47 @@ function AttendancePage() {
     return isAdmin ? matchesSearch : (r.employee_id === myEmployee?.id && matchesSearch);
   });
 
-  const availableYears = Array.from(new Set(records.map((r: any) => new Date(r.date).getFullYear()))).sort((a: any, b: any) => b - a);
+  const currentYearNum = new Date().getFullYear();
+  const availableYears = [currentYearNum, currentYearNum - 1, currentYearNum - 2, currentYearNum - 3];
+
+  const { data: lateArrivalRecords = [] } = useQuery({
+    queryKey: ["late-arrivals-records", filterDate, isAdmin, isManager, myEmployee?.id],
+    queryFn: async () => {
+      if (!filterDate) return [];
+      let query = supabase
+        .from("attendance" as any)
+        .select("*, employees(full_name, employee_code, department)")
+        .eq("date", filterDate)
+        .order("check_in", { ascending: true });
+
+      if (!isAdmin && isManager && myEmployee) {
+        const teamIds = visibleEmployees.map((e: any) => e.id);
+        if (teamIds.length > 0) {
+          query = query.in("employee_id", teamIds);
+        }
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error("late arrivals error:", error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!filterDate && isAuthorized,
+  });
 
   const lateCheckIns = useMemo(() => {
     if (!filterDate || !filterTime) return [];
-    return records.filter((a: any) => {
+    return lateArrivalRecords.filter((a: any) => {
       if (!a.check_in || !a.date) return false;
-      if (a.date !== filterDate) return false;
-      
       const checkInDate = new Date(a.check_in);
       const hours = checkInDate.getHours().toString().padStart(2, '0');
       const minutes = checkInDate.getMinutes().toString().padStart(2, '0');
       const timeStr = `${hours}:${minutes}`;
       return timeStr > filterTime;
     });
-  }, [records, filterDate, filterTime]);
+  }, [lateArrivalRecords, filterDate, filterTime]);
 
   if (loading && !role) {
     return (
