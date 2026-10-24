@@ -29,32 +29,9 @@ export const Route = createFileRoute("/monthly-attendance")({ component: () => <
 function AttendancePage() {
   const qc = useQueryClient();
   const { user, role, loading } = useAuth();
-  const isAdmin = role === "admin";
-  const isManager = role === "manager";
-  const isAuthorized = isAdmin || isManager;
-
-  if (loading && !role) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
-        <Clock className="size-10 text-primary animate-spin" />
-        <h2 className="text-xl font-bold tracking-tight text-foreground">Loading attendance...</h2>
-        <p className="text-xs text-muted-foreground font-medium">Verifying authorization and records...</p>
-      </div>
-    );
-  }
-
-  if (!isAuthorized) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
-        <AlertTriangle className="size-12 text-destructive animate-pulse" />
-        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
-        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin or Manager users. If you believe this is an error, please contact support.</p>
-      </div>
-    );
-  }
+  const { myEmployee, isLoading: empLoading } = useMyEmployee();
 
   const [q, setQ] = useState("");
-  const { myEmployee, isLoading: empLoading } = useMyEmployee();
   const [selectedEmpId, setSelectedEmpId] = useState<string>("");
   const [selectedDept, setSelectedDept] = useState<string>("all");
   const [viewingEmpId, setViewingEmpId] = useState<string>("");
@@ -64,8 +41,41 @@ function AttendancePage() {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [downloadingDetailed, setDownloadingDetailed] = useState(false);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterTime, setFilterTime] = useState("10:00");
+
+  const { data: allEmployees = [] } = useQuery({
+    queryKey: ["employees", "list"],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department, reporting_manager").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
+      if (error) return [];
+      return data;
+    }
+  });
+
+  const isAdmin = role === "admin";
+  const visibleEmployees = useMemo(() => {
+    if (isAdmin) return allEmployees;
+    if (myEmployee) {
+      const mName = myEmployee.full_name?.trim().toLowerCase();
+      const mId = myEmployee.id?.trim().toLowerCase();
+      const mCode = myEmployee.employee_code?.trim().toLowerCase();
+      const mEmail = myEmployee.email?.trim().toLowerCase();
+      return allEmployees.filter((e: any) => {
+        if (e.id === myEmployee.id) return true;
+        const rm = e.reporting_manager ? String(e.reporting_manager).trim().toLowerCase() : "";
+        if (!rm) return false;
+        return (mName && rm === mName) || (mId && rm === mId) || (mCode && rm === mCode) || (mEmail && rm === mEmail);
+      });
+    }
+    return [];
+  }, [allEmployees, isAdmin, myEmployee]);
+
+  const hasTeam = visibleEmployees.some((e: any) => e.id !== myEmployee?.id);
+  const isManager = role === "manager" || hasTeam;
+  const isAuthorized = isAdmin || isManager;
 
   const downloadMonthlyAttendanceReport = async () => {
     setDownloadingReport(true);
@@ -273,8 +283,6 @@ function AttendancePage() {
     }
   };
 
-  const [downloadingDetailed, setDownloadingDetailed] = useState(false);
-
   const downloadDetailedAttendanceReport = async () => {
     setDownloadingDetailed(true);
     const loadingToast = toast.loading("Compiling detailed attendance logs...");
@@ -382,27 +390,7 @@ function AttendancePage() {
     }
   };
 
-  const { data: allEmployees = [] } = useQuery({
-    queryKey: ["employees", "list"],
-    enabled: isAuthorized,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department, reporting_manager").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
-      if (error) return [];
-      return data;
-    }
-  });
 
-  const visibleEmployees = useMemo(() => {
-    if (isAdmin) return allEmployees;
-    if (isManager && myEmployee) {
-      const mName = myEmployee.full_name?.trim().toLowerCase();
-      return allEmployees.filter((e: any) => {
-        const rm = e.reporting_manager?.trim().toLowerCase();
-        return (mName && rm === mName) || e.id === myEmployee.id;
-      });
-    }
-    return [];
-  }, [allEmployees, isAdmin, isManager, myEmployee]);
 
   const suggestions = useMemo(() => {
     if (!q) return [];
@@ -748,10 +736,29 @@ function AttendancePage() {
       const hours = checkInDate.getHours().toString().padStart(2, '0');
       const minutes = checkInDate.getMinutes().toString().padStart(2, '0');
       const timeStr = `${hours}:${minutes}`;
-      
       return timeStr > filterTime;
     });
   }, [records, filterDate, filterTime]);
+
+  if (loading && !role) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <Clock className="size-10 text-primary animate-spin" />
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Loading attendance...</h2>
+        <p className="text-xs text-muted-foreground font-medium">Verifying authorization and records...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <AlertTriangle className="size-12 text-destructive animate-pulse" />
+        <h2 className="text-2xl font-black tracking-tight text-foreground">Access Denied</h2>
+        <p className="text-sm text-muted-foreground font-medium">This page is restricted to Admin or Manager users. If you believe this is an error, please contact support.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 p-4 md:p-8">
@@ -1026,10 +1033,12 @@ function AttendancePage() {
                 
                 if (type === "present" && sessions) {
                   const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-                  const firstIn = new Date(sorted[0].check_in);
-                  const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
+                  const validCheckIns = sorted.filter((s: any) => !!s.check_in);
+                  const firstIn = validCheckIns.length > 0 ? new Date(validCheckIns[0].check_in) : null;
+                  const validCheckOuts = sorted.filter((s: any) => !!s.check_out);
+                  const lastOut = validCheckOuts.length > 0 ? new Date(validCheckOuts[validCheckOuts.length - 1].check_out) : null;
                   
-                  const availHours = lastOut ? (lastOut.getTime() - firstIn.getTime()) / 3600000 : 0;
+                  const availHours = (firstIn && lastOut) ? Math.max(0, (lastOut.getTime() - firstIn.getTime()) / 3600000) : 0;
                   const prodHours = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
                   const breakHours = Math.max(0, availHours - prodHours);
                   
@@ -1051,7 +1060,7 @@ function AttendancePage() {
                             <span className="size-2 rounded-full bg-green-500 shrink-0" />
                           </span>
                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                            {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "ACTIVE"}
+                            {firstIn ? firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "NO TIME"} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "ACTIVE"}
                           </span>
                         </div>
                       </TableCell>
@@ -1153,10 +1162,12 @@ function AttendancePage() {
 
             if (type === "present" && sessions) {
               const sorted = [...sessions].sort((a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime());
-              const firstIn = new Date(sorted[0].check_in);
-              const lastOut = sorted[sorted.length - 1].check_out ? new Date(sorted[sorted.length - 1].check_out) : null;
+              const validCheckIns = sorted.filter((s: any) => !!s.check_in);
+              const firstIn = validCheckIns.length > 0 ? new Date(validCheckIns[0].check_in) : null;
+              const validCheckOuts = sorted.filter((s: any) => !!s.check_out);
+              const lastOut = validCheckOuts.length > 0 ? new Date(validCheckOuts[validCheckOuts.length - 1].check_out) : null;
               
-              const availHours = lastOut ? (lastOut.getTime() - firstIn.getTime()) / 3600000 : 0;
+              const availHours = (firstIn && lastOut) ? Math.max(0, (lastOut.getTime() - firstIn.getTime()) / 3600000) : 0;
               const prodHours = sessions.reduce((s: number, r: any) => s + (Number(r.hours_worked) || 0), 0);
               const breakHours = Math.max(0, availHours - prodHours);
               const isShiftComplete = prodHours >= 8;
@@ -1177,7 +1188,7 @@ function AttendancePage() {
                         <span className="size-2 rounded-full bg-green-500 shrink-0" />
                       </h4>
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                        {firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "ACTIVE"}
+                        {firstIn ? firstIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "NO TIME"} — {lastOut ? lastOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "ACTIVE"}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">

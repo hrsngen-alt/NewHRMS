@@ -62,6 +62,8 @@ async function fetchRole(userId: string, email: string): Promise<Role> {
     const { data: empData } = await (supabase.from("employees") as any)
       .select(`
         id,
+        full_name,
+        employee_code,
         employee_custom_roles (
           custom_roles (
             name
@@ -81,6 +83,25 @@ async function fetchRole(userId: string, email: string): Promise<Role> {
         if (roleName.includes("manager")) {
           if (!basicRoles.includes("manager")) basicRoles.push("manager");
         }
+      }
+    }
+
+    // Check if this employee is configured as a Reporting Manager for any team members
+    if (empData?.full_name || empData?.id) {
+      const matchConditions = [
+        empData.full_name ? `reporting_manager.eq."${empData.full_name}"` : null,
+        empData.id ? `reporting_manager.eq."${empData.id}"` : null,
+        empData.employee_code ? `reporting_manager.eq."${empData.employee_code}"` : null
+      ].filter(Boolean).join(",");
+
+      const { data: directReports } = await supabase
+        .from("employees")
+        .select("id")
+        .or(matchConditions)
+        .limit(1);
+
+      if (directReports && directReports.length > 0) {
+        if (!basicRoles.includes("manager")) basicRoles.push("manager");
       }
     }
 

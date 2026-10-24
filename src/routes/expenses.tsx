@@ -72,12 +72,42 @@ const getEmailUrl = (email: string, employeeName: string, title: string, amount:
 function ExpensesPage() {
   const qc = useQueryClient();
   const { user, role } = useAuth();
+  const { myEmployee } = useMyEmployee();
+
+  // Query employees for selection (Admins see all; Managers see direct reports + self; employees see only themselves)
+  const { data: rawEmployees = [] } = useQuery({
+    queryKey: ["all-employees-for-expenses-raw"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, full_name, designation, department, employee_code, email, phone, reporting_manager")
+        .order("full_name");
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const hasTeam = useMemo(() => {
+    if (!myEmployee) return false;
+    const mName = myEmployee.full_name?.trim().toLowerCase();
+    const mId = myEmployee.id?.trim().toLowerCase();
+    const mCode = myEmployee.employee_code?.trim().toLowerCase();
+    const mEmail = myEmployee.email?.trim().toLowerCase();
+    return rawEmployees.some((e) => {
+      if (e.id === myEmployee.id) return false;
+      const rm = e.reporting_manager ? String(e.reporting_manager).trim().toLowerCase() : "";
+      if (!rm) return false;
+      return (mName && rm === mName) || (mId && rm === mId) || (mCode && rm === mCode) || (mEmail && rm === mEmail);
+    });
+  }, [rawEmployees, myEmployee]);
+
   const isAdmin = role === "admin";
-  const isManager = role === "manager";
+  const isManager = role === "manager" || hasTeam;
+
   // View mode switcher: allows admins to preview and test the exact employee experience
   const [viewMode, setViewMode] = useState<"admin" | "employee">(isAdmin ? "admin" : "employee");
   const isAuthorized = isAdmin && viewMode === "admin";
-  const { myEmployee } = useMyEmployee();
 
   // Navigation tab (Strict RBAC: non-authorized users only have access to "batches" and "individual")
   const [activeTab, setActiveTab] = useState<"batches" | "master" | "summaries" | "individual">("batches");
@@ -133,39 +163,29 @@ function ExpensesPage() {
   const [singleClaimFileName, setSingleClaimFileName] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Query employees for selection (Admins see all; Managers see direct reports + self; employees see only themselves)
-  const { data: allEmployees = [] } = useQuery({
-    queryKey: ["all-employees-for-expenses", isAuthorized, isManager, myEmployee?.id, myEmployee?.full_name],
-    queryFn: async () => {
-      let query = supabase
-        .from("employees")
-        .select("id, full_name, designation, department, employee_code, email, phone, reporting_manager")
-        .order("full_name");
 
-      if (!isAdmin && !isManager) {
-        if (!myEmployee) return [];
-        query = query.eq("id", myEmployee.id);
-      }
 
-      const { data, error } = await query;
-      if (error) return [];
-      
-      let list = data || [];
-      if (isManager && myEmployee?.full_name) {
-        // Strict reporting manager scope: only direct reports and manager self
-        list = list.filter((e) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id);
-      }
-      return list;
-    },
-    enabled: !!user && (isAuthorized || isManager || !!myEmployee),
-  });
+  const allEmployees = useMemo(() => {
+    if (isAdmin && viewMode === "admin") return rawEmployees;
+    if (isManager && myEmployee) {
+      const mName = myEmployee.full_name?.trim().toLowerCase();
+      const mId = myEmployee.id?.trim().toLowerCase();
+      const mCode = myEmployee.employee_code?.trim().toLowerCase();
+      const mEmail = myEmployee.email?.trim().toLowerCase();
+      return rawEmployees.filter((e) => {
+        if (e.id === myEmployee.id) return true;
+        const rm = e.reporting_manager ? String(e.reporting_manager).trim().toLowerCase() : "";
+        if (!rm) return false;
+        return (mName && rm === mName) || (mId && rm === mId) || (mCode && rm === mCode) || (mEmail && rm === mEmail);
+      });
+    }
+    return myEmployee ? [myEmployee] : [];
+  }, [rawEmployees, isAdmin, viewMode, isManager, myEmployee]);
 
   // Team Employee IDs for Manager (Direct reports + self)
   const teamEmployeeIds = useMemo(() => {
     if (isManager && myEmployee) {
-      const ids = allEmployees
-        .filter((e) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
-        .map((e) => e.id);
+      const ids = allEmployees.map((e) => e.id);
       if (!ids.includes(myEmployee.id)) ids.push(myEmployee.id);
       return ids;
     }
@@ -174,7 +194,7 @@ function ExpensesPage() {
 
   // Query Claims from Supabase strictly filtered by permission
   const { data: dbClaims = [] as any[] } = useQuery({
-    queryKey: ["expense-claims", role, viewMode, myEmployee?.id, teamEmployeeIds],
+    queryKey: ["expense-claims", role, viewMode, myEmployee?.id, teamEmployeeIds.join(",")],
     queryFn: async () => {
       let query = supabase
         .from("expense_claims" as any)
