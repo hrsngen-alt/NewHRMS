@@ -513,10 +513,19 @@ function AttendancePage() {
       const locations = data as any[] | null;
       if (locations && locations.length > 0) {
         let isWithinRange = false;
+        let closestDist = Infinity;
+        let closestName = "";
+        let allowedRadius = 200;
         for (const loc of locations) {
           if (loc.lat && loc.lng) {
             const dist = calculateDistance(lat, lng, loc.lat, loc.lng);
-            if (dist <= 150) {
+            const radius = loc.radius_meters || 200;
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestName = loc.name;
+              allowedRadius = radius;
+            }
+            if (dist <= radius) {
               isWithinRange = true;
               break;
             }
@@ -524,7 +533,7 @@ function AttendancePage() {
         }
         if (!isWithinRange) {
           setIsPunching(false);
-          return toast.error("You must be within 150 meters of an office location to scan the QR code.");
+          return toast.error(`You are ${Math.round(closestDist)} meters away from ${closestName || "an office location"}. You must be within ${allowedRadius} meters to scan the QR code.`);
         }
       } else {
         setIsPunching(false);

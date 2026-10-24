@@ -7,18 +7,18 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function updateLocation() {
   const { data, error } = await supabase
-    .from('company_settings')
-    .upsert({
-      id: 1,
-      office_lat: 23.0366,
-      office_lng: 72.5615,
-      updated_at: new Date().toISOString()
-    });
+    .from('company_locations')
+    .update({
+      lat: 23.03922,
+      lng: 72.56188,
+      radius_meters: 250
+    })
+    .eq('name', 'Ahmedabad HQ');
 
   if (error) {
     console.error('Error updating location:', error);
   } else {
-    console.log('Office location updated successfully to Navrangpura, Ahmedabad!');
+    console.log('Office location updated successfully for Ahmedabad HQ!');
   }
 }
 

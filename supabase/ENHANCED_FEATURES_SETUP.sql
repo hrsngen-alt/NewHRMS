@@ -32,7 +32,7 @@ WHERE NOT EXISTS (SELECT 1 FROM company_settings);
 
 -- Seed locations
 INSERT INTO company_locations (name, address, lat, lng)
-SELECT 'Ahmedabad HQ', 'Kahan Residency, Navrangpura, Ahmedabad', 23.0366, 72.5615
+SELECT 'Ahmedabad HQ', 'Kahan Residency, Navrangpura, Ahmedabad', 23.03922, 72.56188
 WHERE NOT EXISTS (SELECT 1 FROM company_locations WHERE name = 'Ahmedabad HQ');
 
 INSERT INTO company_locations (name, address, lat, lng)
