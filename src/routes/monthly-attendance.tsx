@@ -88,8 +88,12 @@ function AttendancePage() {
       const { data: rawEmployees, error: empErr } = await empQuery;
       if (empErr) throw empErr;
 
+      const mName = myEmployee?.full_name?.trim().toLowerCase();
       const employees = isManager && myEmployee
-        ? (rawEmployees || []).filter((e: any) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
+        ? (rawEmployees || []).filter((e: any) => {
+            const rm = e.reporting_manager?.trim().toLowerCase();
+            return (mName && rm === mName) || e.id === myEmployee.id;
+          })
         : (rawEmployees || []);
 
       if (!employees || employees.length === 0) {
@@ -289,8 +293,12 @@ function AttendancePage() {
       const { data: rawEmployees, error: empErr } = await empQuery;
       if (empErr) throw empErr;
 
+      const mName = myEmployee?.full_name?.trim().toLowerCase();
       const employees = isManager && myEmployee
-        ? (rawEmployees || []).filter((e: any) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
+        ? (rawEmployees || []).filter((e: any) => {
+            const rm = e.reporting_manager?.trim().toLowerCase();
+            return (mName && rm === mName) || e.id === myEmployee.id;
+          })
         : (rawEmployees || []);
 
       if (!employees || employees.length === 0) {
@@ -387,9 +395,11 @@ function AttendancePage() {
   const visibleEmployees = useMemo(() => {
     if (isAdmin) return allEmployees;
     if (isManager && myEmployee) {
-      return allEmployees.filter((e: any) => 
-        e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id
-      );
+      const mName = myEmployee.full_name?.trim().toLowerCase();
+      return allEmployees.filter((e: any) => {
+        const rm = e.reporting_manager?.trim().toLowerCase();
+        return (mName && rm === mName) || e.id === myEmployee.id;
+      });
     }
     return [];
   }, [allEmployees, isAdmin, isManager, myEmployee]);
@@ -411,41 +421,47 @@ function AttendancePage() {
   const isMarketing = targetEmployee?.department?.toLowerCase() === "marketing";
 
   const { data: records = [], isLoading } = useQuery({
-    queryKey: ["attendance", role, myEmployee?.id, myEmployee?.full_name],
+    queryKey: ["attendance", role, myEmployee?.id, targetEmployeeId, visibleEmployees.map((e: any) => e.id).join(",")],
     queryFn: async () => {
       if (!isAdmin && !isManager && myEmployee) {
         const { data, error } = await supabase
           .from("attendance" as any)
           .select("*, employees(full_name, employee_code, department)")
           .eq("employee_id", myEmployee.id)
-          .order("check_in", { ascending: false })
-          .limit(500);
-        if (error) throw error;
+          .order("date", { ascending: false })
+          .order("check_in", { ascending: false, nullsFirst: false })
+          .limit(1000);
+        if (error) {
+          console.error("[MonthlyAttendance] employee records error:", error);
+          throw error;
+        }
         return (data as any) || [];
       } else if (isManager && myEmployee) {
-        const { data: teamEmps } = await supabase
-          .from("employees")
-          .select("id, reporting_manager")
-          .in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
-        
-        let teamIds = (teamEmps || [])
-          .filter((e: any) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
-          .map((e: any) => e.id);
+        // Collect all IDs: all team members + manager self + target employee if selected
+        const teamIdSet = new Set<string>();
+        visibleEmployees.forEach((e: any) => teamIdSet.add(e.id));
+        if (myEmployee.id) teamIdSet.add(myEmployee.id);
+        if (targetEmployeeId) teamIdSet.add(targetEmployeeId);
 
+        let teamIds = Array.from(teamIdSet);
         if (teamIds.length === 0) teamIds = [myEmployee.id];
 
         const allRecords: any[] = [];
         const pageSize = 1000;
-        for (let page = 0; page < 3; page++) {
+        for (let page = 0; page < 5; page++) {
           const from = page * pageSize;
           const to = from + pageSize - 1;
           const { data, error } = await supabase
             .from("attendance" as any)
             .select("*, employees(full_name, employee_code, department)")
             .in("employee_id", teamIds)
-            .order("check_in", { ascending: false })
+            .order("date", { ascending: false })
+            .order("check_in", { ascending: false, nullsFirst: false })
             .range(from, to);
-          if (error) throw error;
+          if (error) {
+            console.error("[MonthlyAttendance] manager records error:", error);
+            throw error;
+          }
           if (!data || data.length === 0) break;
           allRecords.push(...data);
           if (data.length < pageSize) break;
@@ -454,15 +470,19 @@ function AttendancePage() {
       } else {
         const allRecords: any[] = [];
         const pageSize = 1000;
-        for (let page = 0; page < 3; page++) {
+        for (let page = 0; page < 5; page++) {
           const from = page * pageSize;
           const to = from + pageSize - 1;
           const { data, error } = await supabase
             .from("attendance" as any)
             .select("*, employees(full_name, employee_code, department)")
-            .order("check_in", { ascending: false })
+            .order("date", { ascending: false })
+            .order("check_in", { ascending: false, nullsFirst: false })
             .range(from, to);
-          if (error) throw error;
+          if (error) {
+            console.error("[MonthlyAttendance] admin records error:", error);
+            throw error;
+          }
           if (!data || data.length === 0) break;
           allRecords.push(...data);
           if (data.length < pageSize) break;
@@ -515,8 +535,21 @@ function AttendancePage() {
     const currentYear = Number(selYear === "all" ? new Date().getFullYear() : selYear);
 
     const monthRecords = records.filter((r: any) => {
-      const d = new Date(r.date);
-      return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear && r.employee_id === targetEmployeeId;
+      if (r.employee_id !== targetEmployeeId) return false;
+      let m = 0, y = 0;
+      if (r.date) {
+        const parts = String(r.date).split("-").map(Number);
+        if (parts.length >= 2) {
+          y = parts[0];
+          m = parts[1];
+        }
+      }
+      if (!m || !y) {
+        const d = new Date(r.date || r.check_in);
+        m = d.getMonth() + 1;
+        y = d.getFullYear();
+      }
+      return m === currentMonth && y === currentYear;
     });
 
     const totalProdHours = monthRecords.reduce((acc: number, r: any) => {
