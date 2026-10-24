@@ -5,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyEmployee } from "@/hooks/useMyEmployee";
 import {
   Briefcase, Mail, Phone, CalendarDays, Wallet, Clock,
   User, Award, Activity, FileText, Share2, Printer, Pencil, Plus, Trash2, Check, ChevronsUpDown,
@@ -39,11 +40,18 @@ function Employee360Page() {
   const queryClient = useQueryClient();
   const search = Route.useSearch();
   const { role, user } = useAuth();
+  const { myEmployee } = useMyEmployee();
   const isAdmin = role === "admin" || role === "manager";
   const [selectedEmpId, setSelectedEmpId] = useState<string>(search.id || "");
   const [isEmpComboboxOpen, setIsEmpComboboxOpen] = useState(false);
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!selectedEmpId && myEmployee?.id) {
+      setSelectedEmpId(myEmployee.id);
+    }
+  }, [myEmployee, selectedEmpId]);
 
   const handleRefreshInsights = async () => {
     if (!selectedEmpId) return;
@@ -64,12 +72,20 @@ function Employee360Page() {
   };
 
   const { data: employees = [] } = useQuery({
-    queryKey: ["employees-360-list"],
+    queryKey: ["employees-360-list", role, myEmployee?.id, myEmployee?.full_name],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees" as any).select("id, full_name, employee_code, department, designation").eq("status", "active").order("full_name");
+      const { data, error } = await supabase
+        .from("employees" as any)
+        .select("id, full_name, employee_code, department, designation, reporting_manager")
+        .eq("status", "active")
+        .order("full_name");
       if (error) throw error;
-      return (data as any[]) || [];
+      let list = (data as any[]) || [];
+      if (role === "manager" && myEmployee?.full_name) {
+        list = list.filter((e: any) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id);
+      }
+      return list;
     }
   });
 

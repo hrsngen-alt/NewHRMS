@@ -67,18 +67,20 @@ function AttendancePage() {
       const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
       const endStr = `${year}-${String(month).padStart(2, "0")}-${totalDays}`;
 
-      // 1. Fetch active employees (filtered by department if manager or department selected)
+      // 1. Fetch active employees (filtered by team if manager, or department if selected)
       let empQuery = supabase
         .from("employees")
         .select("*")
         .in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
-      if (isManager && myEmployee) {
-        empQuery = empQuery.eq("department", myEmployee.department);
-      } else if (selectedDept && selectedDept !== "all") {
+      if (selectedDept && selectedDept !== "all") {
         empQuery = empQuery.eq("department", selectedDept);
       }
-      const { data: employees, error: empErr } = await empQuery;
+      const { data: rawEmployees, error: empErr } = await empQuery;
       if (empErr) throw empErr;
+
+      const employees = isManager && myEmployee
+        ? (rawEmployees || []).filter((e: any) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
+        : (rawEmployees || []);
 
       if (!employees || employees.length === 0) {
         toast.error("No active employees found.");
@@ -270,14 +272,16 @@ function AttendancePage() {
       const endStr = `${year}-${String(month).padStart(2, "0")}-${totalDays}`;
 
       // 1. Fetch active employees
-      let empQuery = supabase.from("employees").select("id, full_name, employee_code, department").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
-      if (isManager && myEmployee) {
-        empQuery = empQuery.eq("department", myEmployee.department);
-      } else if (selectedDept && selectedDept !== "all") {
+      let empQuery = supabase.from("employees").select("id, full_name, employee_code, department, reporting_manager").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
+      if (selectedDept && selectedDept !== "all") {
         empQuery = empQuery.eq("department", selectedDept);
       }
-      const { data: employees, error: empErr } = await empQuery;
+      const { data: rawEmployees, error: empErr } = await empQuery;
       if (empErr) throw empErr;
+
+      const employees = isManager && myEmployee
+        ? (rawEmployees || []).filter((e: any) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
+        : (rawEmployees || []);
 
       if (!employees || employees.length === 0) {
         toast.error("No active employees found.");
@@ -364,7 +368,7 @@ function AttendancePage() {
     queryKey: ["employees", "list"],
     enabled: isAuthorized,
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
+      const { data, error } = await supabase.from("employees").select("id, full_name, employee_code, department, reporting_manager").in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
       if (error) return [];
       return data;
     }
@@ -373,7 +377,9 @@ function AttendancePage() {
   const visibleEmployees = useMemo(() => {
     if (isAdmin) return allEmployees;
     if (isManager && myEmployee) {
-      return allEmployees.filter((e: any) => e.department === myEmployee.department);
+      return allEmployees.filter((e: any) => 
+        e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id
+      );
     }
     return [];
   }, [allEmployees, isAdmin, isManager, myEmployee]);
@@ -395,7 +401,7 @@ function AttendancePage() {
   const isMarketing = targetEmployee?.department?.toLowerCase() === "marketing";
 
   const { data: records = [], isLoading } = useQuery({
-    queryKey: ["attendance", role, myEmployee?.id],
+    queryKey: ["attendance", role, myEmployee?.id, myEmployee?.full_name],
     queryFn: async () => {
       if (!isAdmin && !isManager && myEmployee) {
         const { data, error } = await supabase
@@ -406,6 +412,35 @@ function AttendancePage() {
           .limit(500);
         if (error) throw error;
         return (data as any) || [];
+      } else if (isManager && myEmployee) {
+        const { data: teamEmps } = await supabase
+          .from("employees")
+          .select("id, reporting_manager")
+          .in("status", ["active", "Active", "ACTIVE", "resigned", "Resigned", "RESIGNED"]);
+        
+        let teamIds = (teamEmps || [])
+          .filter((e: any) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
+          .map((e: any) => e.id);
+
+        if (teamIds.length === 0) teamIds = [myEmployee.id];
+
+        const allRecords: any[] = [];
+        const pageSize = 1000;
+        for (let page = 0; page < 3; page++) {
+          const from = page * pageSize;
+          const to = from + pageSize - 1;
+          const { data, error } = await supabase
+            .from("attendance" as any)
+            .select("*, employees(full_name, employee_code, department)")
+            .in("employee_id", teamIds)
+            .order("check_in", { ascending: false })
+            .range(from, to);
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          allRecords.push(...data);
+          if (data.length < pageSize) break;
+        }
+        return (allRecords as any) || [];
       } else {
         const allRecords: any[] = [];
         const pageSize = 1000;

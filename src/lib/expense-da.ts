@@ -68,7 +68,7 @@ export interface BatchExpenseClaim {
   totalClaimAmount: number;
   missingBillsCount: number;
   exceptionsCount: number;
-  status: "draft" | "pending_manager" | "manager_approved" | "approved" | "rejected";
+  status: "draft" | "pending" | "pending_manager" | "manager_approved" | "approved" | "rejected";
   managerApproval?: {
     approvedBy: string;
     approvedAt: string;

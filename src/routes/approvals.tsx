@@ -12,6 +12,8 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+import { useMyEmployee } from '@/hooks/useMyEmployee';
+
 export const Route = createFileRoute('/approvals')({
   component: () => (
     <AppShell>
@@ -22,6 +24,7 @@ export const Route = createFileRoute('/approvals')({
 
 function ApprovalsPage() {
   const { user, role } = useAuth();
+  const { myEmployee } = useMyEmployee();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
@@ -31,7 +34,7 @@ function ApprovalsPage() {
   const isManagerOrAdmin = role === 'admin' || role === 'manager' || role === 'hr';
 
   const { data: requests = [], isLoading } = useQuery({
-    queryKey: ['manual-attendance-approvals'],
+    queryKey: ['manual-attendance-approvals', role, myEmployee?.id, myEmployee?.full_name],
     enabled: isManagerOrAdmin,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -42,7 +45,12 @@ function ApprovalsPage() {
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      
+      let list = (data as any[]) || [];
+      if (role === 'manager' && myEmployee?.full_name) {
+        list = list.filter((r: any) => r.employees?.reporting_manager === myEmployee.full_name);
+      }
+      return list;
     },
   });
 

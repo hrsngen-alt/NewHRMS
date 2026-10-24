@@ -245,7 +245,7 @@ function ExpensesPage() {
       if (!existsInDb) {
         try {
           const title = `20-Day Expense Claim (${b.batchNumber}) - ${b.employeeName}`;
-          const { data: inserted } = await supabase
+          const { data: inserted } = (await supabase
             .from("expense_claims" as any)
             .insert({
               employee_id: b.employeeId,
@@ -256,7 +256,7 @@ function ExpensesPage() {
               status: b.status === "approved" ? "approved" : b.status === "pending_manager" ? "pending" : "draft",
             })
             .select()
-            .single();
+            .single()) as any;
 
           if (inserted) {
             b.id = inserted.id;
@@ -520,7 +520,7 @@ function ExpensesPage() {
       // Sync immediately to Supabase database so Admin and all devices can access it
       try {
         const title = `20-Day Expense Claim (${newBatch.batchNumber}) - ${newBatch.employeeName}`;
-        const { data: inserted } = await supabase
+        const { data: inserted } = (await supabase
           .from("expense_claims" as any)
           .insert({
             employee_id: newBatch.employeeId,
@@ -531,7 +531,7 @@ function ExpensesPage() {
             status: "draft",
           })
           .select()
-          .single();
+          .single()) as any;
 
         if (inserted) {
           const synced = { ...newBatch, id: inserted.id };
@@ -591,7 +591,7 @@ function ExpensesPage() {
       }
 
       if (!syncSuccess) {
-        const { data: inserted, error: insertError } = await supabase
+        const { data: inserted, error: insertError } = (await supabase
           .from("expense_claims" as any)
           .insert({
             employee_id: updated.employeeId,
@@ -602,7 +602,7 @@ function ExpensesPage() {
             status: "pending",
           })
           .select()
-          .single();
+          .single()) as any;
 
         if (insertError) {
           console.warn("Could not sync batch claim to Supabase table, cached locally:", insertError);
@@ -667,7 +667,7 @@ function ExpensesPage() {
 
       if (!syncSuccess) {
         const title = `20-Day Expense Claim (${recalculated.batchNumber}) - ${recalculated.employeeName}`;
-        const { data: inserted } = await supabase
+        const { data: inserted } = (await supabase
           .from("expense_claims" as any)
           .insert({
             employee_id: recalculated.employeeId,
@@ -678,7 +678,7 @@ function ExpensesPage() {
             status: recalculated.status === "draft" ? "draft" : recalculated.status === "approved" ? "approved" : recalculated.status === "rejected" ? "rejected" : "pending",
           })
           .select()
-          .single();
+          .single()) as any;
 
         if (inserted) {
           const synced = { ...recalculated, id: inserted.id };
@@ -900,6 +900,7 @@ function ExpensesPage() {
     switch (status) {
       case "draft":
         return <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 font-black text-[10px] uppercase">Draft</Badge>;
+      case "pending":
       case "pending_manager":
         return <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 font-black text-[10px] uppercase">Pending RM Approval</Badge>;
       case "manager_approved":
