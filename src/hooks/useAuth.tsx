@@ -34,7 +34,8 @@ const ADMIN_EMAILS = [
 ];
 
 async function fetchRole(userId: string, email: string): Promise<Role> {
-  if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+  const cleanEmail = (email || "").trim().toLowerCase();
+  if (ADMIN_EMAILS.some((e) => e.toLowerCase() === cleanEmail)) {
     return "admin";
   }
   try {
@@ -45,6 +46,17 @@ async function fetchRole(userId: string, email: string): Promise<Role> {
 
     const basicRoles = (userRolesData ?? []).map((r) => r.role as Role);
     if (basicRoles.includes("admin")) return "admin";
+
+    // Check profiles table as well
+    const { data: profData } = await (supabase.from("profiles") as any)
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profData?.role === "admin") return "admin";
+    if (profData?.role === "manager" && !basicRoles.includes("manager")) {
+      basicRoles.push("manager");
+    }
 
     // Also check the new Enterprise Access Control custom roles
     const { data: empData } = await (supabase.from("employees") as any)
@@ -75,6 +87,12 @@ async function fetchRole(userId: string, email: string): Promise<Role> {
     return basicRoles.includes("manager") ? "manager" : basicRoles[0] ?? "employee";
   } catch (err) {
     console.error("[Auth] fetchRole error:", err);
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("cached_role") as Role;
+        if (cached) return cached;
+      } catch {}
+    }
     return "employee";
   }
 }
@@ -194,9 +212,24 @@ async function syncUserRecords(user: User): Promise<string | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role | null>(null);
+  const [role, setRole] = useState<Role | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("cached_role") as Role;
+        if (cached && ["admin", "manager", "employee", "hr"].includes(cached)) return cached;
+      } catch {}
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
-  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [employeeId, setEmployeeId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("cached_employee_id") || null;
+      } catch {}
+    }
+    return null;
+  });
 
   useEffect(() => {
     console.log("[Auth] Provider mounted. Starting initial checks...");
@@ -205,6 +238,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Safety valve: Ensure loading is always set to false after 5 seconds max
     const safetyTimeout = setTimeout(() => {
       console.warn("[Auth] Initialization taking too long, forcing loading false");
+      setRole((prev) => {
+        if (prev) return prev;
+        if (typeof window !== "undefined") {
+          try {
+            const cached = localStorage.getItem("cached_role") as Role;
+            if (cached) return cached;
+          } catch {}
+        }
+        return "employee";
+      });
       setLoading(false);
     }, 5000);
 
@@ -216,31 +259,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setEmployeeId(null);
         setLoading(false);
         activeSessionUserId = null;
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("cached_role");
+            localStorage.removeItem("cached_employee_id");
+          } catch {}
+        }
         return;
       }
-
-      // Skip if already initializing or initialized for this user
-      if (activeSessionUserId === s.user.id) return;
-      activeSessionUserId = s.user.id;
 
       setSession(s);
       setUser(s.user);
 
+      // Skip full re-sync if session is already initialized for this user
+      if (activeSessionUserId === s.user.id) {
+        setLoading(false);
+        return;
+      }
+      activeSessionUserId = s.user.id;
+
       try {
         console.log("[Auth] Initializing user session for:", s.user.email);
 
-        // Fetch role and employee ID in parallel without race timeouts that discard results
-        const [empId, r] = await Promise.all([
-          syncUserRecords(s.user),
-          fetchRole(s.user.id, s.user.email ?? "")
-        ]);
-
-        console.log("[Auth] Initialized successfully. Role:", r, "EmployeeId:", empId);
+        // 1. Fetch role immediately (fast path - avoids blocking on employee DB sync)
+        const r = await fetchRole(s.user.id, s.user.email ?? "");
+        console.log("[Auth] Initialized successfully. Role:", r);
         setRole(r);
-        setEmployeeId(empId);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("cached_role", r);
+          } catch {}
+        }
+
+        // Release loading immediately once role and user are set!
+        setLoading(false);
+        clearTimeout(safetyTimeout);
+
+        // 2. Fetch/link employee ID in background without blocking role or UI render
+        syncUserRecords(s.user)
+          .then((empId) => {
+            if (empId) {
+              setEmployeeId(empId);
+              if (typeof window !== "undefined") {
+                try {
+                  localStorage.setItem("cached_employee_id", empId);
+                } catch {}
+              }
+            }
+          })
+          .catch((syncErr) => {
+            console.warn("[Auth] Background employee sync warning:", syncErr);
+          });
       } catch (err) {
         console.error("[Auth] Initial session check failed:", err);
-      } finally {
         setLoading(false);
         clearTimeout(safetyTimeout);
       }
@@ -250,6 +321,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         handleSessionInit(session);
+      } else {
+        setLoading(false);
       }
     });
 
@@ -388,6 +461,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setEmployeeId(null);
+    setRole(null);
+    setUser(null);
+    setSession(null);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("cached_role");
+        localStorage.removeItem("cached_employee_id");
+      } catch {}
+    }
     await supabase.auth.signOut();
   };
 

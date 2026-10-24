@@ -23,7 +23,7 @@ export const Route = createFileRoute('/approvals')({
 });
 
 function ApprovalsPage() {
-  const { user, role } = useAuth();
+  const { user, role, loading } = useAuth();
   const { myEmployee } = useMyEmployee();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -115,6 +115,10 @@ function ApprovalsPage() {
       qc.invalidateQueries({ queryKey: ['manual-attendance-approvals'] });
     }
   });
+
+  if (loading && !role) {
+    return <div className="p-8 text-center text-muted-foreground font-bold">Verifying authorization...</div>;
+  }
 
   if (!isManagerOrAdmin) {
     return <div className="p-8 text-center text-red-500 font-bold">Access Denied. Only Managers and Admins can view this page.</div>;

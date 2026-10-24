@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileDown, Printer, Calendar, Users, Wallet, TrendingUp, Filter, AlertTriangle, MapPin } from "lucide-react";
+import { FileDown, Printer, Calendar, Users, Wallet, TrendingUp, Filter, AlertTriangle, MapPin, Clock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
@@ -20,10 +20,19 @@ export const Route = createFileRoute("/reports")({
 });
 
 function ReportsPage() {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
   const isAdmin = role === "admin";
   const isManager = role === "manager";
   const isAuthorized = isAdmin || isManager;
+
+  if (loading && !role) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <Clock className="size-10 text-primary animate-spin" />
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Loading reports...</h2>
+      </div>
+    );
+  }
 
   if (!isAuthorized) {
     return (

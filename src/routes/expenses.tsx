@@ -84,10 +84,10 @@ function ExpensesPage() {
 
   // Prevent non-authorized employees from staying on Master or Summaries tab
   useEffect(() => {
-    if (!isAuthorized && (activeTab === "master" || activeTab === "summaries")) {
+    if (!isAuthorized && !isManager && (activeTab === "master" || activeTab === "summaries")) {
       setActiveTab("batches");
     }
-  }, [isAuthorized, activeTab]);
+  }, [isAuthorized, isManager, activeTab]);
 
   // Master Data State (Available to Admins/Managers)
   const [masterList, setMasterList] = useState<EmployeeMasterDARecord[]>(() => loadEmployeeMasterDA());
@@ -133,54 +133,63 @@ function ExpensesPage() {
   const [singleClaimFileName, setSingleClaimFileName] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Query employees for selection (Admins/Managers see all; employees see only themselves)
+  // Query employees for selection (Admins see all; Managers see direct reports + self; employees see only themselves)
   const { data: allEmployees = [] } = useQuery({
-    queryKey: ["all-employees-for-expenses", isAuthorized, myEmployee?.id],
+    queryKey: ["all-employees-for-expenses", isAuthorized, isManager, myEmployee?.id, myEmployee?.full_name],
     queryFn: async () => {
       let query = supabase
         .from("employees")
-        .select("id, full_name, designation, department, employee_code, email, phone")
+        .select("id, full_name, designation, department, employee_code, email, phone, reporting_manager")
         .order("full_name");
 
-      // Non-authorized employees can only retrieve their own record
-      if (!isAuthorized) {
+      if (!isAdmin && !isManager) {
         if (!myEmployee) return [];
         query = query.eq("id", myEmployee.id);
       }
 
       const { data, error } = await query;
       if (error) return [];
-      return data || [];
+      
+      let list = data || [];
+      if (isManager && myEmployee?.full_name) {
+        // Strict reporting manager scope: only direct reports and manager self
+        list = list.filter((e) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id);
+      }
+      return list;
     },
-    enabled: !!user && (isAuthorized || !!myEmployee),
+    enabled: !!user && (isAuthorized || isManager || !!myEmployee),
   });
 
-  // Query Department Employees for Managers
-  const { data: departmentEmployees = [] } = useQuery({
-    queryKey: ["department-employees-expenses", myEmployee?.department],
-    enabled: role === "manager" && !!myEmployee?.department,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("department", myEmployee!.department);
-      if (error) throw error;
-      return (data || []).map((e) => e.id);
-    },
-  });
+  // Team Employee IDs for Manager (Direct reports + self)
+  const teamEmployeeIds = useMemo(() => {
+    if (isManager && myEmployee) {
+      const ids = allEmployees
+        .filter((e) => e.reporting_manager === myEmployee.full_name || e.id === myEmployee.id)
+        .map((e) => e.id);
+      if (!ids.includes(myEmployee.id)) ids.push(myEmployee.id);
+      return ids;
+    }
+    return myEmployee?.id ? [myEmployee.id] : [];
+  }, [allEmployees, isManager, myEmployee]);
 
   // Query Claims from Supabase strictly filtered by permission
   const { data: dbClaims = [] as any[] } = useQuery({
-    queryKey: ["expense-claims", role, viewMode, myEmployee?.id, departmentEmployees],
+    queryKey: ["expense-claims", role, viewMode, myEmployee?.id, teamEmployeeIds],
     queryFn: async () => {
       let query = supabase
         .from("expense_claims" as any)
         .select("*, employees(full_name, department, designation, phone, email)")
         .order("created_at", { ascending: false });
 
-      if (!isAdmin || viewMode === "employee") {
+      if (isAdmin && viewMode === "admin") {
+        // Admin view sees all claims
+      } else if (isManager && myEmployee) {
+        // RM strictly sees only their team's and their own claims
+        if (teamEmployeeIds.length === 0) return [];
+        query = query.in("employee_id", teamEmployeeIds);
+      } else {
         if (!myEmployee) return [];
-        // Strict employee isolation: only own claims!
+        // Regular employee: only own claims!
         query = query.eq("employee_id", myEmployee.id);
       }
 
@@ -282,12 +291,17 @@ function ExpensesPage() {
   // ==========================================
   const accessibleBatches = useMemo(() => {
     if (isAdmin && viewMode === "admin") return batches;
+    if (isManager && myEmployee) {
+      // RM strictly sees only their direct reports' and their own batches!
+      const teamSet = new Set(teamEmployeeIds);
+      return batches.filter((b) => teamSet.has(b.employeeId));
+    }
     if (myEmployee) {
-      // Regular employees (or admin in employee view) can ONLY see their own batches!
+      // Regular employees can ONLY see their own batches!
       return batches.filter((b) => b.employeeId === myEmployee.id);
     }
     return [];
-  }, [batches, isAdmin, viewMode, myEmployee]);
+  }, [batches, isAdmin, isManager, viewMode, myEmployee, teamEmployeeIds]);
 
   // Filtered Batches List based on user search and status
   const filteredBatches = useMemo(() => {
@@ -338,9 +352,9 @@ function ExpensesPage() {
     };
   }, [accessibleBatches]);
 
-  // Employee-wise Summary for Tab 3 (Authorized only)
+  // Employee-wise Summary for Tab 3 (Authorized or Manager for their team)
   const employeeWiseSummary = useMemo(() => {
-    if (!isAuthorized) return [];
+    if (!isAuthorized && !isManager) return [];
     const map: Record<string, any> = {};
     accessibleBatches.forEach((b) => {
       if (!map[b.employeeId]) {
@@ -367,11 +381,11 @@ function ExpensesPage() {
       }
     });
     return Object.values(map).sort((a: any, b: any) => b.totalClaim - a.totalClaim);
-  }, [accessibleBatches, isAuthorized]);
+  }, [accessibleBatches, isAuthorized, isManager]);
 
-  // Date-wise Summary for Tab 3 (Authorized only)
+  // Date-wise Summary for Tab 3 (Authorized or Manager for their team)
   const dateWiseSummary = useMemo(() => {
-    if (!isAuthorized) return [];
+    if (!isAuthorized && !isManager) return [];
     const dateMap: Record<string, { date: string; totalDA: number; totalExpenses: number; totalClaim: number; count: number }> = {};
     accessibleBatches.forEach((b) => {
       b.rows.forEach((r) => {
@@ -385,12 +399,19 @@ function ExpensesPage() {
       });
     });
     return Object.values(dateMap).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
-  }, [accessibleBatches, isAuthorized]);
+  }, [accessibleBatches, isAuthorized, isManager]);
 
-  // Filtered Master List (Authorized only)
+  // Filtered Master List (Authorized or Manager - strictly scoped to team for managers)
   const filteredMaster = useMemo(() => {
-    if (!isAuthorized) return [];
-    return masterList.filter((m) => {
+    if (!isAuthorized && !isManager) return [];
+
+    let allowedList = masterList;
+    if (!isAuthorized && isManager) {
+      const allowedNames = new Set(allEmployees.map((e) => e.full_name.trim().toLowerCase()));
+      allowedList = masterList.filter((m) => allowedNames.has(m.name.trim().toLowerCase()));
+    }
+
+    return allowedList.filter((m) => {
       const q = masterSearch.toLowerCase();
       return (
         m.name.toLowerCase().includes(q) ||
@@ -399,7 +420,7 @@ function ExpensesPage() {
         m.location.toLowerCase().includes(q)
       );
     });
-  }, [masterList, masterSearch, isAuthorized]);
+  }, [masterList, masterSearch, isAuthorized, isManager, allEmployees]);
 
   // Save Master changes to localStorage
   const handleSaveMasterRecord = (rec: EmployeeMasterDARecord) => {
@@ -448,11 +469,11 @@ function ExpensesPage() {
 
   // Create New 20-Day Batch
   const handleGenerateBatch = async () => {
-    const targetEmpId = isAuthorized ? newBatchEmployeeId : myEmployee?.id;
+    const targetEmpId = (isAuthorized || isManager) ? (newBatchEmployeeId || myEmployee?.id) : myEmployee?.id;
     if (!targetEmpId) {
       return toast.error("Please select an employee.");
     }
-    const emp = isAuthorized
+    const emp = (isAuthorized || isManager)
       ? allEmployees.find((e) => e.id === targetEmpId)
       : myEmployee;
 
@@ -927,7 +948,7 @@ function ExpensesPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-                  {isAuthorized ? "Travel & DA Expense Automation Hub" : "My Travel & Expense Hub"}
+                  {isAuthorized ? "Travel & DA Expense Automation Hub" : isManager ? "Team Travel & Expense Hub" : "My Travel & Expense Hub"}
                 </h1>
                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/70 font-black text-[10px] uppercase tracking-wider px-2.5 py-0.5 shadow-none">
                   Automated DA
@@ -1058,9 +1079,9 @@ function ExpensesPage() {
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all col-span-2 md:col-span-1">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Clock className="size-3.5 text-indigo-500" /> {isAuthorized ? "Approvals Pending" : "Claim Status"}
+            <Clock className="size-3.5 text-indigo-500" /> {(isAuthorized || isManager) ? "Approvals Pending" : "Claim Status"}
           </p>
-          {isAuthorized ? (
+          {(isAuthorized || isManager) ? (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm font-black px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800">
                 RM: {batchAggregates.pendingRM}
@@ -1087,7 +1108,7 @@ function ExpensesPage() {
             </div>
           )}
           <p className="text-[10px] text-muted-foreground/60 mt-1">
-            {isAuthorized ? "Multi-stage review queue" : "Current submission workflow"}
+            {(isAuthorized || isManager) ? "Multi-stage review queue" : "Current submission workflow"}
           </p>
         </Card>
       </div>
@@ -1098,31 +1119,31 @@ function ExpensesPage() {
           <div className="w-full sm:w-auto overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
             <TabsList className="bg-muted/50 p-1.5 rounded-2xl border inline-flex w-max flex-nowrap shrink-0">
               <TabsTrigger value="batches" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
-                <Calendar className="size-4" /> {isAuthorized ? "20-Day Batch Claims" : "My 20-Day Claims"}
+                <Calendar className="size-4" /> {isAuthorized ? "20-Day Batch Claims" : isManager ? "Team 20-Day Claims" : "My 20-Day Claims"}
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
                   {filteredBatches.length}
                 </span>
               </TabsTrigger>
 
-              {/* ONLY Admins and Managers can see the Employee Master DA Sheet */}
-              {isAuthorized && (
+              {/* Admins and Managers can see the Employee Master DA Sheet */}
+              {(isAuthorized || isManager) && (
                 <TabsTrigger value="master" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
-                  <UsersIcon className="size-4" /> Employee Master DA Sheet
+                  <UsersIcon className="size-4" /> {isManager ? "Team Master DA Sheet" : "Employee Master DA Sheet"}
                   <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-primary/10 text-primary">
-                    {masterList.length}
+                    {filteredMaster.length}
                   </span>
                 </TabsTrigger>
               )}
 
-              {/* ONLY Admins and Managers can see company-wide Summaries & Analytics */}
-              {isAuthorized && (
+              {/* Admins and Managers can see Summaries & Analytics */}
+              {(isAuthorized || isManager) && (
                 <TabsTrigger value="summaries" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
-                  <TrendingUp className="size-4" /> Summaries & Analytics
+                  <TrendingUp className="size-4" /> {isManager ? "Team Summaries & Analytics" : "Summaries & Analytics"}
                 </TabsTrigger>
               )}
 
               <TabsTrigger value="individual" className="rounded-xl font-black text-xs gap-2 py-2 px-3.5 whitespace-nowrap">
-                <Receipt className="size-4" /> {isAuthorized ? "Single Ad-Hoc Claims" : "My Single Claims"}
+                <Receipt className="size-4" /> {isAuthorized ? "Single Ad-Hoc Claims" : isManager ? "Team Single Claims" : "My Single Claims"}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1187,9 +1208,9 @@ function ExpensesPage() {
                         </div>
                         <div>
                           <p className="font-black text-sm text-foreground flex items-center gap-1.5 flex-wrap">
-                            {isAuthorized ? b.employeeName : b.batchNumber}
+                            {(isAuthorized || isManager) ? b.employeeName : b.batchNumber}
                             <span className="text-[10px] font-bold text-muted-foreground">
-                              {isAuthorized ? `(${b.batchNumber})` : `(${b.designation})`}
+                              {(isAuthorized || isManager) ? `(${b.batchNumber})` : `(${b.designation})`}
                             </span>
                           </p>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -1262,7 +1283,8 @@ function ExpensesPage() {
                       >
                         <Download className="size-4" />
                       </Button>
-                      {isAuthorized && b.status === "pending_manager" && (
+                      {/* Verify RM: visible to Admins OR Managers (for their team members) */}
+                      {((isAuthorized || isManager) && b.status === "pending_manager" && b.employeeId !== myEmployee?.id) && (
                         <Button
                           size="sm"
                           className="h-9 rounded-xl font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1 shrink-0"
@@ -1308,7 +1330,7 @@ function ExpensesPage() {
                     <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                       <TableRow>
                         <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">
-                          {isAuthorized ? "Batch & Employee" : "My Batch Number"}
+                          {(isAuthorized || isManager) ? "Batch & Employee" : "My Batch Number"}
                         </TableHead>
                         <TableHead className="font-black uppercase text-[10px] tracking-widest">Period (20 Days)</TableHead>
                         <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Eligible DA</TableHead>
@@ -1328,9 +1350,9 @@ function ExpensesPage() {
                               </div>
                               <div>
                                 <p className="font-black text-sm text-foreground flex items-center gap-2">
-                                  {isAuthorized ? b.employeeName : b.batchNumber}
+                                  {(isAuthorized || isManager) ? b.employeeName : b.batchNumber}
                                   <span className="text-[10px] font-bold text-muted-foreground/60">
-                                    {isAuthorized ? b.batchNumber : `(${b.designation})`}
+                                    {(isAuthorized || isManager) ? b.batchNumber : `(${b.designation})`}
                                   </span>
                                 </p>
                                 <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
@@ -1405,7 +1427,7 @@ function ExpensesPage() {
                               </Button>
 
                               {/* Approval Actions for Managers & Admins */}
-                              {isAuthorized && b.status === "pending_manager" && (
+                              {((isAuthorized || isManager) && b.status === "pending_manager" && b.employeeId !== myEmployee?.id) && (
                                 <Button
                                   size="sm"
                                   className="h-8 rounded-xl font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1"
@@ -1453,16 +1475,18 @@ function ExpensesPage() {
           )}
         </TabsContent>
 
-        {/* TAB 2: EMPLOYEE MASTER DA SHEET (AUTHORIZED ONLY) */}
-        {isAuthorized && (
+        {/* TAB 2: EMPLOYEE MASTER DA SHEET */}
+        {(isAuthorized || isManager) && (
           <TabsContent value="master" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30 p-5 rounded-3xl border">
               <div>
                 <h3 className="font-black text-lg tracking-tight flex items-center gap-2">
-                  <UsersIcon className="size-5 text-indigo-500" /> Excel Employee Master Data (Admin / HR View)
+                  <UsersIcon className="size-5 text-indigo-500" /> {isManager ? "Excel Employee Master Data (Team View)" : "Excel Employee Master Data (Admin / HR View)"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Designation-wise daily allowance rules and fixed DA rates. Restricted to management & HR only.
+                  {isManager
+                    ? "Designation-wise daily allowance rules and fixed DA rates for your direct reports and yourself."
+                    : "Designation-wise daily allowance rules and fixed DA rates. Restricted to management & HR only."}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -1475,44 +1499,52 @@ function ExpensesPage() {
                     className="h-9 pl-9 rounded-xl text-xs font-bold"
                   />
                 </div>
+                {isAuthorized && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl font-bold text-xs gap-1.5"
+                      onClick={() => masterFileInputRef.current?.click()}
+                    >
+                      <Upload className="size-3.5" /> Upload Excel
+                    </Button>
+                    <input
+                      type="file"
+                      ref={masterFileInputRef}
+                      className="hidden"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleUploadMasterExcel}
+                    />
+                  </>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   className="rounded-xl font-bold text-xs gap-1.5"
-                  onClick={() => masterFileInputRef.current?.click()}
-                >
-                  <Upload className="size-3.5" /> Upload Excel
-                </Button>
-                <input
-                  type="file"
-                  ref={masterFileInputRef}
-                  className="hidden"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleUploadMasterExcel}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl font-bold text-xs gap-1.5"
-                  onClick={() => exportMasterToExcel(masterList)}
+                  onClick={() => exportMasterToExcel(filteredMaster)}
                 >
                   <Download className="size-3.5" /> Export Excel
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl font-bold text-xs gap-1.5 text-rose-600 hover:bg-rose-50"
-                  onClick={handleResetMaster}
-                >
-                  <RefreshCw className="size-3.5" /> Reset Default (41)
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-xl font-black text-xs gap-1.5"
-                  onClick={() => setIsAddMasterOpen(true)}
-                >
-                  <Plus className="size-3.5" /> Add Employee
-                </Button>
+                {isAuthorized && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl font-bold text-xs gap-1.5 text-rose-600 hover:bg-rose-50"
+                      onClick={handleResetMaster}
+                    >
+                      <RefreshCw className="size-3.5" /> Reset Default (41)
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-xl font-black text-xs gap-1.5"
+                      onClick={() => setIsAddMasterOpen(true)}
+                    >
+                      <Plus className="size-3.5" /> Add Employee
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1528,7 +1560,9 @@ function ExpensesPage() {
                       <TableHead className="font-black uppercase text-[10px] tracking-widest">Location</TableHead>
                       <TableHead className="font-black uppercase text-[10px] tracking-widest text-right">Fixed Daily DA</TableHead>
                       <TableHead className="font-black uppercase text-[10px] tracking-widest">Applicable DA Rule</TableHead>
-                      <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Action</TableHead>
+                      {isAuthorized && (
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-right pr-6">Action</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1577,23 +1611,25 @@ function ExpensesPage() {
                               className={cn(
                                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
                                 m.daRule === "Check-In/Check-Out"
-                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                   ? "bg-amber-100 text-amber-900 border border-amber-300"
                                   : "bg-blue-100 text-blue-900 border border-blue-200"
                               )}
                             >
                               {m.daRule === "Check-In/Check-Out" ? "Check-In/Check-Out" : "Doctor Visit"}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right pr-6">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-8 rounded-xl text-indigo-600 hover:bg-indigo-50"
-                              onClick={() => setEditingMasterRecord(m)}
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                          </TableCell>
+                          {isAuthorized && (
+                            <TableCell className="text-right pr-6">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-8 rounded-xl text-indigo-600 hover:bg-indigo-50"
+                                onClick={() => setEditingMasterRecord(m)}
+                              >
+                                <Pencil className="size-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
@@ -1604,13 +1640,13 @@ function ExpensesPage() {
           </TabsContent>
         )}
 
-        {/* TAB 3: SUMMARIES & ANALYTICS (AUTHORIZED ONLY) */}
-        {isAuthorized && (
+        {/* TAB 3: SUMMARIES & ANALYTICS */}
+        {(isAuthorized || isManager) && (
           <TabsContent value="summaries" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card p-6">
                 <h3 className="font-black text-base tracking-tight mb-4 flex items-center gap-2">
-                  <UsersIcon className="size-4 text-indigo-500" /> Employee-Wise Expense Summary
+                  <UsersIcon className="size-4 text-indigo-500" /> {isManager ? "Team Employee-Wise Expense Summary" : "Employee-Wise Expense Summary"}
                 </h3>
                 <div className="overflow-x-auto max-h-[400px]">
                   <Table>
@@ -1647,7 +1683,7 @@ function ExpensesPage() {
 
               <Card className="rounded-[2.5rem] border-2 border-primary/5 shadow-card p-6">
                 <h3 className="font-black text-base tracking-tight mb-4 flex items-center gap-2">
-                  <Calendar className="size-4 text-emerald-500" /> Date-Wise Expense Summary
+                  <Calendar className="size-4 text-emerald-500" /> {isManager ? "Team Date-Wise Expense Summary" : "Date-Wise Expense Summary"}
                 </h3>
                 <div className="overflow-x-auto max-h-[400px]">
                   <Table>
@@ -1687,7 +1723,7 @@ function ExpensesPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/30 p-4 rounded-2xl border">
             <div>
               <h3 className="font-black text-sm tracking-tight">
-                {isAuthorized ? "Ad-hoc Individual Claim Records" : "My Ad-hoc Claims"}
+                {isAuthorized ? "Ad-hoc Individual Claim Records" : isManager ? "Team Ad-hoc Claim Records" : "My Ad-hoc Claims"}
               </h3>
               <p className="text-xs text-muted-foreground">Single receipts and miscellaneous non-batch expense vouchers.</p>
             </div>
@@ -1712,7 +1748,7 @@ function ExpensesPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-black text-sm text-foreground">{c.title}</p>
-                        {isAuthorized && (
+                        {(isAuthorized || isManager) && (
                           <p className="text-xs text-muted-foreground font-medium">{c.employees?.full_name}</p>
                         )}
                       </div>
@@ -1754,7 +1790,7 @@ function ExpensesPage() {
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                   <TableRow>
                     <TableHead className="pl-6 font-black uppercase text-[10px] tracking-widest">Title</TableHead>
-                    {isAuthorized && (
+                    {(isAuthorized || isManager) && (
                       <TableHead className="font-black uppercase text-[10px] tracking-widest">Employee</TableHead>
                     )}
                     <TableHead className="font-black uppercase text-[10px] tracking-widest">Category</TableHead>
@@ -1766,7 +1802,7 @@ function ExpensesPage() {
                 <TableBody>
                   {dbClaims.filter((c: any) => c.category !== "travel_da_batch").length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isAuthorized ? 6 : 5} className="py-16 text-center text-xs text-muted-foreground">
+                      <TableCell colSpan={(isAuthorized || isManager) ? 6 : 5} className="py-16 text-center text-xs text-muted-foreground">
                         No ad-hoc claims found. Use the 20-Day Batch Claims tab for travel and daily DA.
                       </TableCell>
                     </TableRow>
@@ -1776,7 +1812,7 @@ function ExpensesPage() {
                       .map((c: any) => (
                         <TableRow key={c.id}>
                           <TableCell className="pl-6 font-bold text-sm">{c.title}</TableCell>
-                          {isAuthorized && (
+                          {(isAuthorized || isManager) && (
                             <TableCell className="text-xs font-bold text-muted-foreground">{c.employees?.full_name}</TableCell>
                           )}
                           <TableCell>
@@ -1835,7 +1871,7 @@ function ExpensesPage() {
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 Employee
               </Label>
-              {isAuthorized ? (
+              {(isAuthorized || isManager) ? (
                 <Select value={newBatchEmployeeId} onValueChange={setNewBatchEmployeeId}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
                     <SelectValue placeholder="Select Employee..." />
@@ -1868,10 +1904,10 @@ function ExpensesPage() {
               />
             </div>
 
-            {(isAuthorized ? newBatchEmployeeId : myEmployee?.id) && (
+            {((isAuthorized || isManager) ? newBatchEmployeeId : myEmployee?.id) && (
               <div className="p-4 rounded-2xl bg-muted/40 border text-xs space-y-1">
                 {(() => {
-                  const emp = isAuthorized
+                  const emp = (isAuthorized || isManager)
                     ? allEmployees.find((e) => e.id === newBatchEmployeeId)
                     : myEmployee;
                   const m = emp ? findEmployeeInMaster(emp.full_name, emp.designation, masterList) : null;
@@ -1915,15 +1951,15 @@ function ExpensesPage() {
       <Dialog open={isBatchEditorOpen} onOpenChange={setIsBatchEditorOpen}>
         <DialogContent className="max-w-[96vw] w-[96vw] h-[92vh] rounded-[2rem] p-0 overflow-hidden flex flex-col border-none shadow-2xl bg-card">
           {selectedBatch && (
-            !isAuthorized && myEmployee && selectedBatch.employeeId !== myEmployee.id ? (
+            !isAuthorized && (!isManager || !teamEmployeeIds.includes(selectedBatch.employeeId)) && selectedBatch.employeeId !== myEmployee?.id ? (
               <div className="flex flex-col items-center justify-center h-full p-12 text-center space-y-4">
                 <AlertTriangle className="size-12 text-rose-500" />
                 <h3 className="font-black text-xl text-foreground">Access Restricted</h3>
                 <p className="text-sm text-muted-foreground max-w-md">
-                  You are only permitted to view and manage your own expense claims. Another employee's claim details cannot be displayed.
+                  You are only permitted to view and manage your own expense claims and your direct reports' claims. Other employees' claim details cannot be displayed.
                 </p>
                 <Button onClick={() => setIsBatchEditorOpen(false)} className="rounded-xl font-bold">
-                  Return to My Expenses
+                  Return to Expenses
                 </Button>
               </div>
             ) : (
@@ -1944,7 +1980,7 @@ function ExpensesPage() {
                 </div>
 
                 {(() => {
-                  const isBatchEditable = isAuthorized || selectedBatch.status === "draft" || selectedBatch.status === "pending_manager" || selectedBatch.status === "pending";
+                  const isBatchEditable = isAuthorized || (selectedBatch.employeeId === myEmployee?.id && (selectedBatch.status === "draft" || selectedBatch.status === "pending_manager" || selectedBatch.status === "pending"));
                   return (
                     <div className="flex items-center gap-2 shrink-0 flex-wrap">
                       <Button
@@ -1977,7 +2013,7 @@ function ExpensesPage() {
                         </Button>
                       )}
 
-                      {isAuthorized && selectedBatch.status === "pending_manager" && (
+                      {((isAuthorized || isManager) && selectedBatch.status === "pending_manager" && selectedBatch.employeeId !== myEmployee?.id) && (
                         <Button
                           size="sm"
                           className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs gap-1.5"

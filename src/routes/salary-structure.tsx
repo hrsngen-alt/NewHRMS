@@ -7,7 +7,7 @@ import {
   IndianRupee, CheckCircle2, AlertTriangle, Info, TrendingUp,
   Building2, User, BookOpen, ShieldCheck, Calculator, ChevronRight,
   BadgeCheck, AlertCircle, Search, ChevronDown, Zap, Printer,
-  RotateCcw, ArrowRight,
+  RotateCcw, ArrowRight, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +53,16 @@ const Badge = ({
    MAIN PAGE
    ═══════════════════════════════════════════════════════════ */
 function SalaryStructurePage() {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
+
+  if (loading && !role) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <Clock className="size-10 text-primary animate-spin" />
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Loading salary structures...</h2>
+      </div>
+    );
+  }
 
   if (role !== "admin") {
     return (

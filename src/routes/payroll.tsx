@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
-import { Lock, Play, FileDown, Wallet, AlertTriangle } from "lucide-react";
+import { Lock, Play, FileDown, Wallet, AlertTriangle, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { generatePayslipPDF } from "@/lib/payslip";
 import { cn } from "../lib/utils";
@@ -19,7 +19,16 @@ const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 function PayrollPage() {
   const qc = useQueryClient();
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
+
+  if (loading && !role) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <Clock className="size-10 text-primary animate-spin" />
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Loading payroll...</h2>
+      </div>
+    );
+  }
 
   if (role !== "admin") {
     return (

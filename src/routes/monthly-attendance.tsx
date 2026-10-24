@@ -28,10 +28,20 @@ export const Route = createFileRoute("/monthly-attendance")({ component: () => <
 
 function AttendancePage() {
   const qc = useQueryClient();
-  const { user, role } = useAuth();
+  const { user, role, loading } = useAuth();
   const isAdmin = role === "admin";
   const isManager = role === "manager";
   const isAuthorized = isAdmin || isManager;
+
+  if (loading && !role) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-card border rounded-2xl p-8 max-w-md mx-auto shadow-elegant">
+        <Clock className="size-10 text-primary animate-spin" />
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Loading attendance...</h2>
+        <p className="text-xs text-muted-foreground font-medium">Verifying authorization and records...</p>
+      </div>
+    );
+  }
 
   if (!isAuthorized) {
     return (
