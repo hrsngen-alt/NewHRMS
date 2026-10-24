@@ -58,3 +58,16 @@ export function normalizeDepartment(raw?: string | null): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 }
+
+/**
+ * Standardize and clean designation titles, fixing common database typos like "HUMAN RECOURSE"
+ */
+export function normalizeDesignation(raw?: string | null): string {
+  if (!raw) return "Employee";
+  const trimmed = raw.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "human recourse" || lower === "human resources" || lower === "hr") {
+    return "HR";
+  }
+  return trimmed;
+}

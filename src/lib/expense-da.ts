@@ -572,7 +572,23 @@ export function loadAllBatches(): BatchExpenseClaim[] {
       const raw = window.localStorage.getItem(BATCHES_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          // Automatic deduplication: keep only 1 legitimate batch per batchNumber or (employeeId + startDate)
+          const seen = new Set<string>();
+          const deduped: BatchExpenseClaim[] = [];
+          for (const item of parsed) {
+            const key = item.batchNumber || (item.employeeId && item.startDate ? `${item.employeeId}_${item.startDate}` : item.id);
+            if (!key || !seen.has(key)) {
+              if (key) seen.add(key);
+              deduped.push(item);
+            }
+          }
+          // Self-heal localStorage immediately if duplicates were detected
+          if (deduped.length !== parsed.length) {
+            window.localStorage.setItem(BATCHES_STORAGE_KEY, JSON.stringify(deduped));
+          }
+          return deduped;
+        }
       }
     }
   } catch (err) {
@@ -583,27 +599,51 @@ export function loadAllBatches(): BatchExpenseClaim[] {
 
 export function saveBatch(batch: BatchExpenseClaim): BatchExpenseClaim[] {
   const all = loadAllBatches();
-  const idx = all.findIndex((b) => b.id === batch.id);
+  const batchKey = batch.batchNumber || (batch.employeeId && batch.startDate ? `${batch.employeeId}_${batch.startDate}` : batch.id);
+
+  const idx = all.findIndex((b) => {
+    if (b.id === batch.id) return true;
+    if (batch.batchNumber && b.batchNumber === batch.batchNumber) return true;
+    if (batch.employeeId && batch.startDate && b.employeeId === batch.employeeId && b.startDate === batch.startDate) return true;
+    return false;
+  });
+
   let updated: BatchExpenseClaim[];
   if (idx >= 0) {
     updated = [...all];
-    updated[idx] = batch;
+    updated[idx] = { ...updated[idx], ...batch };
   } else {
     updated = [batch, ...all];
   }
+
+  // Ensure no other stray duplicate exists with the same batchKey
+  const seen = new Set<string>();
+  const strictlyDeduped: BatchExpenseClaim[] = [];
+  for (const b of updated) {
+    const k = b.batchNumber || (b.employeeId && b.startDate ? `${b.employeeId}_${b.startDate}` : b.id);
+    if (!k || !seen.has(k)) {
+      if (k) seen.add(k);
+      strictlyDeduped.push(b);
+    }
+  }
+
   try {
     if (typeof window !== "undefined" && window.localStorage) {
-      window.localStorage.setItem(BATCHES_STORAGE_KEY, JSON.stringify(updated));
+      window.localStorage.setItem(BATCHES_STORAGE_KEY, JSON.stringify(strictlyDeduped));
     }
   } catch (err) {
     console.error("Failed to save batch:", err);
   }
-  return updated;
+  return strictlyDeduped;
 }
 
-export function deleteBatch(batchId: string): BatchExpenseClaim[] {
+export function deleteBatch(batchIdOrNumber: string): BatchExpenseClaim[] {
   const all = loadAllBatches();
-  const filtered = all.filter((b) => b.id !== batchId);
+  const target = all.find((b) => b.id === batchIdOrNumber || b.batchNumber === batchIdOrNumber);
+  const targetBatchNumber = target?.batchNumber || batchIdOrNumber;
+  const filtered = all.filter(
+    (b) => b.id !== batchIdOrNumber && b.batchNumber !== targetBatchNumber && b.batchNumber !== batchIdOrNumber
+  );
   try {
     if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.setItem(BATCHES_STORAGE_KEY, JSON.stringify(filtered));

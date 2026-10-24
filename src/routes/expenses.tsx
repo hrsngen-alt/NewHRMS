@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyEmployee } from "@/hooks/useMyEmployee";
 import { cn } from "../lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { normalizeDepartment } from "@/lib/departments";
+import { normalizeDepartment, normalizeDesignation } from "@/lib/departments";
 import {
   EmployeeMasterDARecord,
   DailyExpenseClaimRow,
@@ -230,8 +230,14 @@ function ExpensesPage() {
       if (dbBatches.length > 0) {
         const local = loadAllBatches();
         const mergedMap = new Map<string, BatchExpenseClaim>();
-        local.forEach((b) => mergedMap.set(b.batchNumber || b.id, b));
-        dbBatches.forEach((b) => mergedMap.set(b.batchNumber || b.id, b));
+        local.forEach((b) => {
+          const key = b.batchNumber || (b.employeeId && b.startDate ? `${b.employeeId}_${b.startDate}` : b.id);
+          mergedMap.set(key, b);
+        });
+        dbBatches.forEach((b) => {
+          const key = b.batchNumber || (b.employeeId && b.startDate ? `${b.employeeId}_${b.startDate}` : b.id);
+          mergedMap.set(key, b);
+        });
         const mergedList = Array.from(mergedMap.values()).sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
@@ -240,44 +246,35 @@ function ExpensesPage() {
     }
   }, [dbClaims]);
 
-  // Auto-sync any unsynced local batches to Supabase cloud
+  // Clean up any historical duplicate travel_da_batch claims from Supabase cloud
   useEffect(() => {
-    if (!myEmployee) return;
-    const local = loadAllBatches();
-    const myLocal = local.filter((b) => b.employeeId === myEmployee.id);
-    if (myLocal.length === 0) return;
-
-    myLocal.forEach(async (b) => {
-      const existsInDb = dbClaims.some(
-        (c: any) => c.id === b.id || (c.notes && c.notes.includes(b.batchNumber))
-      );
-      if (!existsInDb) {
-        try {
-          const title = `20-Day Expense Claim (${b.batchNumber}) - ${b.employeeName}`;
-          const { data: inserted } = (await supabase
-            .from("expense_claims" as any)
-            .insert({
-              employee_id: b.employeeId,
-              title,
-              amount: b.totalClaimAmount,
-              category: "travel_da_batch",
-              notes: JSON.stringify(b),
-              status: b.status === "approved" ? "approved" : b.status === "pending_manager" ? "pending" : "draft",
-            })
-            .select()
-            .single()) as any;
-
-          if (inserted) {
-            b.id = inserted.id;
-            saveBatch(b);
-            qc.invalidateQueries({ queryKey: ["expense-claims"] });
-          }
-        } catch (err) {
-          console.warn("Auto-syncing local batch to cloud:", err);
-        }
+    if (!isAdmin || dbClaims.length === 0) return;
+    const batchClaims = dbClaims.filter((c: any) => c.category === "travel_da_batch");
+    const seen = new Set<string>();
+    const duplicateIds: string[] = [];
+    batchClaims.forEach((c: any) => {
+      const key = c.title || (c.notes ? c.notes.slice(0, 50) : c.id);
+      if (seen.has(key)) {
+        duplicateIds.push(c.id);
+      } else {
+        seen.add(key);
       }
     });
-  }, [myEmployee, dbClaims]);
+
+    if (duplicateIds.length > 0) {
+      // Delete in chunks to avoid URL length issues
+      const chunk = duplicateIds.slice(0, 50);
+      supabase
+        .from("expense_claims" as any)
+        .delete()
+        .in("id", chunk)
+        .then(({ error }) => {
+          if (!error) {
+            qc.invalidateQueries({ queryKey: ["expense-claims"] });
+          }
+        });
+    }
+  }, [dbClaims, isAdmin, qc]);
 
   // Set default employee for new batch
   useEffect(() => {
@@ -290,17 +287,28 @@ function ExpensesPage() {
   // STRICT DATA ISOLATION / RBAC FILTERING
   // ==========================================
   const accessibleBatches = useMemo(() => {
-    if (isAdmin && viewMode === "admin") return batches;
-    if (isManager && myEmployee) {
+    let raw: BatchExpenseClaim[] = [];
+    if (isAdmin && viewMode === "admin") raw = batches;
+    else if (isManager && myEmployee) {
       // RM strictly sees only their direct reports' and their own batches!
       const teamSet = new Set(teamEmployeeIds);
-      return batches.filter((b) => teamSet.has(b.employeeId));
-    }
-    if (myEmployee) {
+      raw = batches.filter((b) => teamSet.has(b.employeeId));
+    } else if (myEmployee) {
       // Regular employees can ONLY see their own batches!
-      return batches.filter((b) => b.employeeId === myEmployee.id);
+      raw = batches.filter((b) => b.employeeId === myEmployee.id);
     }
-    return [];
+
+    // Strictly deduplicate by batchNumber or (employeeId + startDate)
+    const seen = new Set<string>();
+    const deduped: BatchExpenseClaim[] = [];
+    for (const b of raw) {
+      const key = b.batchNumber || (b.employeeId && b.startDate ? `${b.employeeId}_${b.startDate}` : b.id);
+      if (!key || !seen.has(key)) {
+        if (key) seen.add(key);
+        deduped.push(b);
+      }
+    }
+    return deduped;
   }, [batches, isAdmin, isManager, viewMode, myEmployee, teamEmployeeIds]);
 
   // Filtered Batches List based on user search and status
@@ -1210,11 +1218,11 @@ function ExpensesPage() {
                           <p className="font-black text-sm text-foreground flex items-center gap-1.5 flex-wrap">
                             {(isAuthorized || isManager) ? b.employeeName : b.batchNumber}
                             <span className="text-[10px] font-bold text-muted-foreground">
-                              {(isAuthorized || isManager) ? `(${b.batchNumber})` : `(${b.designation})`}
+                              {(isAuthorized || isManager) ? `(${b.batchNumber})` : `(${normalizeDesignation(b.designation)})`}
                             </span>
                           </p>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            {b.designation} • {b.department}
+                            {normalizeDesignation(b.designation)} • {normalizeDepartment(b.department)}
                           </p>
                         </div>
                       </div>
@@ -1307,10 +1315,19 @@ function ExpensesPage() {
                           size="icon"
                           variant="ghost"
                           className="size-9 rounded-xl text-rose-500 hover:bg-rose-50 shrink-0"
-                          onClick={() => {
-                            if (confirm("Delete this draft batch?")) {
+                          onClick={async () => {
+                            if (confirm(`Delete draft batch ${b.batchNumber || ""}?`)) {
                               const updated = deleteBatch(b.id);
                               setBatches(updated);
+                              try {
+                                await supabase
+                                  .from("expense_claims" as any)
+                                  .delete()
+                                  .or(`id.eq.${b.id},notes.ilike.%${b.batchNumber}%`);
+                                qc.invalidateQueries({ queryKey: ["expense-claims"] });
+                              } catch {
+                                // cloud delete fallback
+                              }
                               toast.success("Draft batch deleted.");
                             }
                           }}
@@ -1352,11 +1369,11 @@ function ExpensesPage() {
                                 <p className="font-black text-sm text-foreground flex items-center gap-2">
                                   {(isAuthorized || isManager) ? b.employeeName : b.batchNumber}
                                   <span className="text-[10px] font-bold text-muted-foreground/60">
-                                    {(isAuthorized || isManager) ? b.batchNumber : `(${b.designation})`}
+                                    {(isAuthorized || isManager) ? b.batchNumber : `(${normalizeDesignation(b.designation)})`}
                                   </span>
                                 </p>
                                 <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                                  {b.designation} • {b.department}
+                                  {normalizeDesignation(b.designation)} • {normalizeDepartment(b.department)}
                                 </p>
                               </div>
                             </div>
@@ -1452,10 +1469,19 @@ function ExpensesPage() {
                                   size="icon"
                                   variant="ghost"
                                   className="size-8 rounded-xl text-rose-500 hover:bg-rose-50"
-                                  onClick={() => {
-                                    if (confirm("Delete this draft batch?")) {
+                                  onClick={async () => {
+                                    if (confirm(`Delete draft batch ${b.batchNumber || ""}?`)) {
                                       const updated = deleteBatch(b.id);
                                       setBatches(updated);
+                                      try {
+                                        await supabase
+                                          .from("expense_claims" as any)
+                                          .delete()
+                                          .or(`id.eq.${b.id},notes.ilike.%${b.batchNumber}%`);
+                                        qc.invalidateQueries({ queryKey: ["expense-claims"] });
+                                      } catch {
+                                        // cloud delete fallback
+                                      }
                                       toast.success("Draft batch deleted.");
                                     }
                                   }}
