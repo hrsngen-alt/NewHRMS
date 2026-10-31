@@ -23,7 +23,6 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const ADMIN_EMAILS = [
-  "admin@pulsehr.com",
   "admin@admin.com",
   "admin1@admin.com",
   "hr@pulsehr.com",
@@ -367,16 +366,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     setLoading(true);
     const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Authenticate with Supabase Auth first
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+    });
+
+    if (authError) {
+      setLoading(false);
+      return { error: authError.message };
+    }
+
+    // 2. Now that the user is authenticated, check their employee record if not an admin
     const isAdminEmail = ADMIN_EMAILS.includes(cleanEmail);
 
-    if (!isAdminEmail) {
+    if (!isAdminEmail && authData?.user) {
       try {
         const { data: emp } = await (supabase.from("employees") as any)
           .select("id, status, login_enabled")
-          .ilike("email", cleanEmail)
+          .or(`user_id.eq.${authData.user.id},email.ilike.${cleanEmail}`)
           .maybeSingle();
 
         if (!emp) {
+          await supabase.auth.signOut();
           setLoading(false);
           return {
             error: `Access Denied: The email "${email.trim()}" is not registered in this system. Please use your official registered company email (e.g. your @sngenelab.com account) or contact HR.`
@@ -384,27 +397,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (emp.status === "Terminated") {
+          await supabase.auth.signOut();
           setLoading(false);
           return { error: "Your employment has been marked as Terminated. Login is disabled. Please contact HR." };
         }
         if (emp.status === "Resigned") {
+          await supabase.auth.signOut();
           setLoading(false);
           return { error: "Your account is deactivated due to resignation. Please contact HR." };
         }
         if (emp.login_enabled === false) {
+          await supabase.auth.signOut();
           setLoading(false);
           return { error: "Your login access has been disabled by HR." };
         }
       } catch (checkErr) {
-        console.error("[Auth] Pre-login employee check error:", checkErr);
+        console.error("[Auth] Post-login employee check error:", checkErr);
       }
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-    if (error) {
-      setLoading(false);
-      return { error: error.message };
-    }
+    setLoading(false);
     return { error: null };
   };
 

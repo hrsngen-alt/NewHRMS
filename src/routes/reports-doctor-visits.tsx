@@ -13,6 +13,7 @@ import { Download, FileDown, Search, Map, MapPin, ArrowLeft, Navigation, Calenda
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { useMyEmployee } from '@/hooks/useMyEmployee';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -63,7 +64,68 @@ export const Route = createFileRoute('/reports-doctor-visits')({
 
 function DoctorVisitsReportPage() {
   const { role, user } = useAuth();
-  const isAdminOrHR = role === 'admin' || role === 'manager'; // Treating manager as HR in this context
+  const { myEmployee, isLoading: empLoading } = useMyEmployee();
+
+  // Query employees to resolve reporting manager's direct reports hierarchy
+  const { data: allEmployees = [] } = useQuery({
+    queryKey: ['all-employees-for-doctor-visits-hierarchy'],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, full_name, employee_code, email, reporting_manager, department')
+        .order('full_name');
+      if (error) return [];
+      return data || [];
+    },
+  });
+
+  const isAdmin = role === 'admin';
+
+  const hasTeam = useMemo(() => {
+    if (!myEmployee) return false;
+    const mName = myEmployee.full_name?.trim().toLowerCase();
+    const mId = myEmployee.id?.trim().toLowerCase();
+    const mCode = myEmployee.employee_code?.trim().toLowerCase();
+    const mEmail = myEmployee.email?.trim().toLowerCase();
+    return allEmployees.some((e: any) => {
+      if (e.id === myEmployee.id) return false;
+      const rm = e.reporting_manager ? String(e.reporting_manager).trim().toLowerCase() : "";
+      if (!rm) return false;
+      return (mName && rm === mName) || (mId && rm === mId) || (mCode && rm === mCode) || (mEmail && rm === mEmail);
+    });
+  }, [allEmployees, myEmployee]);
+
+  const isManager = role === 'manager' || hasTeam;
+  const isAuthorized = isAdmin || isManager;
+
+  const teamEmployeeIds = useMemo(() => {
+    if (isAdmin) return null; // Admin sees all employees
+    if (!myEmployee) return new Set<string>();
+
+    const mName = myEmployee.full_name?.trim().toLowerCase();
+    const mId = myEmployee.id?.trim().toLowerCase();
+    const mCode = myEmployee.employee_code?.trim().toLowerCase();
+    const mEmail = myEmployee.email?.trim().toLowerCase();
+
+    const ids = new Set<string>();
+    if (myEmployee.id) ids.add(myEmployee.id);
+
+    allEmployees.forEach((e: any) => {
+      const rm = e.reporting_manager ? String(e.reporting_manager).trim().toLowerCase() : "";
+      if (!rm) return;
+      if (
+        (mName && rm === mName) ||
+        (mId && rm === mId) ||
+        (mCode && rm === mCode) ||
+        (mEmail && rm === mEmail)
+      ) {
+        if (e.id) ids.add(e.id);
+      }
+    });
+
+    return ids;
+  }, [allEmployees, myEmployee, isAdmin]);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -91,22 +153,66 @@ function DoctorVisitsReportPage() {
     return [String(curYear - 2), String(curYear - 1), String(curYear), String(curYear + 1)];
   }, []);
 
-  // Fetch all doctor visits with employee info
-  const { data: visits = [], isLoading } = useQuery({
-    queryKey: ['admin-doctor-visits'],
-    enabled: isAdminOrHR,
+  // Fetch doctor visits with employee info (Strictly scoped to team if reporting manager)
+  const { data: rawVisits = [], isLoading: isVisitsLoading } = useQuery({
+    queryKey: ['admin-doctor-visits', isAdmin, Array.from(teamEmployeeIds || []).sort().join(',')],
+    enabled: isAuthorized && (!empLoading || isAdmin),
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('doctor_visits')
         .select(`
           *,
           employees (id, full_name, department, designation, reporting_manager)
         `)
         .order('created_at', { ascending: false });
+
+      if (!isAdmin && teamEmployeeIds) {
+        const ids = Array.from(teamEmployeeIds);
+        if (ids.length > 0) {
+          query = query.in('employee_id', ids);
+        } else if (myEmployee?.id) {
+          query = query.eq('employee_id', myEmployee.id);
+        } else {
+          return [];
+        }
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
+
+  // Strict scoping: Reporting manager only sees visits from their team members and themselves
+  const visits = useMemo(() => {
+    if (isAdmin) return rawVisits;
+    if (!myEmployee) return [];
+
+    const mName = myEmployee.full_name?.trim().toLowerCase();
+    const mId = myEmployee.id?.trim().toLowerCase();
+    const mCode = myEmployee.employee_code?.trim().toLowerCase();
+    const mEmail = myEmployee.email?.trim().toLowerCase();
+
+    return rawVisits.filter((v: any) => {
+      // Manager's own visits
+      if (v.employee_id === myEmployee.id || v.employees?.id === myEmployee.id) return true;
+      // In pre-calculated team ID set
+      if (teamEmployeeIds && (teamEmployeeIds.has(v.employee_id) || teamEmployeeIds.has(v.employees?.id))) {
+        return true;
+      }
+      // Reporting manager string on joined employee object
+      const rm = v.employees?.reporting_manager ? String(v.employees.reporting_manager).trim().toLowerCase() : "";
+      if (!rm) return false;
+      return (
+        (mName && rm === mName) ||
+        (mId && rm === mId) ||
+        (mCode && rm === mCode) ||
+        (mEmail && rm === mEmail)
+      );
+    });
+  }, [rawVisits, isAdmin, myEmployee, teamEmployeeIds]);
+
+  const isLoading = isVisitsLoading || (empLoading && !isAdmin);
 
   // Filter Data for current page view
   const filteredData = useMemo(() => {
@@ -414,8 +520,8 @@ function DoctorVisitsReportPage() {
     toast.success(`Downloaded ${fileName} (${exportData.length} records)`);
   };
 
-  if (!isAdminOrHR) {
-    return <div className="p-8 text-center text-red-500">Access Denied</div>;
+  if (!isAuthorized) {
+    return <div className="p-8 text-center text-red-500 font-bold">Access Denied: Only Admins and Reporting Managers can access this report.</div>;
   }
 
   const isToday = selectedDate === todayStr;
@@ -436,7 +542,14 @@ function DoctorVisitsReportPage() {
       </Button>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{reportTitle}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{reportTitle}</h1>
+            {isManager && !isAdmin && (
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                Team Scope ({myEmployee?.full_name ? `${myEmployee.full_name}'s Team` : 'Direct Reports'})
+              </span>
+            )}
+          </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             {/* View Mode Toggle: Daily vs Monthly */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">

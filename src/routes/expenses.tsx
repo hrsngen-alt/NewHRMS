@@ -308,14 +308,24 @@ function ExpensesPage() {
   // ==========================================
   const accessibleBatches = useMemo(() => {
     let raw: BatchExpenseClaim[] = [];
-    if (isAdmin && viewMode === "admin") raw = batches;
-    else if (isManager && myEmployee) {
+    if (isAdmin && viewMode === "admin") {
+      raw = batches;
+    } else if (isManager && myEmployee) {
       // RM strictly sees only their direct reports' and their own batches!
-      const teamSet = new Set(teamEmployeeIds);
-      raw = batches.filter((b) => teamSet.has(b.employeeId));
+      const teamIdSet = new Set(teamEmployeeIds);
+      const teamNameSet = new Set(allEmployees.map((e) => e.full_name?.trim().toLowerCase()).filter(Boolean));
+      const teamCodeSet = new Set(allEmployees.map((e) => e.employee_code?.trim().toLowerCase()).filter(Boolean));
+      raw = batches.filter((b) => {
+        if (!b) return false;
+        if (b.employeeId && teamIdSet.has(b.employeeId)) return true;
+        if (b.employeeName && teamNameSet.has(b.employeeName.trim().toLowerCase())) return true;
+        if (b.employeeId && teamCodeSet.has(b.employeeId.trim().toLowerCase())) return true;
+        return false;
+      });
     } else if (myEmployee) {
       // Regular employees can ONLY see their own batches!
-      raw = batches.filter((b) => b.employeeId === myEmployee.id);
+      const myName = myEmployee.full_name?.trim().toLowerCase();
+      raw = batches.filter((b) => b.employeeId === myEmployee.id || (myName && b.employeeName?.trim().toLowerCase() === myName));
     }
 
     // Strictly deduplicate by batchNumber or (employeeId + startDate)
@@ -329,7 +339,18 @@ function ExpensesPage() {
       }
     }
     return deduped;
-  }, [batches, isAdmin, isManager, viewMode, myEmployee, teamEmployeeIds]);
+  }, [batches, isAdmin, isManager, viewMode, myEmployee, teamEmployeeIds, allEmployees]);
+
+  // Strictly filter Single Ad-Hoc Claims to team for Managers, and self for Employees
+  const accessibleSingleClaims = useMemo(() => {
+    const nonBatch = dbClaims.filter((c: any) => c.category !== "travel_da_batch");
+    if (isAdmin && viewMode === "admin") return nonBatch;
+    if (isManager && myEmployee) {
+      const teamSet = new Set(teamEmployeeIds);
+      return nonBatch.filter((c: any) => teamSet.has(c.employee_id));
+    }
+    return nonBatch.filter((c: any) => c.employee_id === myEmployee?.id);
+  }, [dbClaims, isAdmin, viewMode, isManager, myEmployee, teamEmployeeIds]);
 
   // Filtered Batches List based on user search and status
   const filteredBatches = useMemo(() => {
@@ -433,10 +454,40 @@ function ExpensesPage() {
   const filteredMaster = useMemo(() => {
     if (!isAuthorized && !isManager) return [];
 
-    let allowedList = masterList;
-    if (!isAuthorized && isManager) {
-      const allowedNames = new Set(allEmployees.map((e) => e.full_name.trim().toLowerCase()));
-      allowedList = masterList.filter((m) => allowedNames.has(m.name.trim().toLowerCase()));
+    let allowedList: EmployeeMasterDARecord[] = [];
+
+    if (isAuthorized) {
+      allowedList = masterList;
+    } else if (isManager) {
+      // For managers: STRICTLY scoped to their direct reports + themselves!
+      // If team members are in masterList, use their master records.
+      // If team members are not yet in masterList, include them with their calculated DA rule and rates.
+      const teamList: EmployeeMasterDARecord[] = [];
+      const seenNames = new Set<string>();
+
+      allEmployees.forEach((emp, idx) => {
+        const cleanEmpName = (emp.full_name || "").trim().toLowerCase();
+        if (seenNames.has(cleanEmpName)) return;
+        seenNames.add(cleanEmpName);
+
+        const existingMaster = findEmployeeInMaster(emp.full_name, emp.designation, masterList);
+        if (existingMaster) {
+          teamList.push(existingMaster);
+        } else {
+          teamList.push({
+            srNo: idx + 1,
+            name: emp.full_name,
+            department: emp.department || "Sales & Marketing",
+            designation: emp.designation || "Executive",
+            location: "Head Office",
+            fixedDailyDA: null,
+            daRule: determineDARule(emp.designation),
+            employeeCode: emp.employee_code,
+            employeeId: emp.id,
+          });
+        }
+      });
+      allowedList = teamList;
     }
 
     return allowedList.filter((m) => {
@@ -1059,11 +1110,23 @@ function ExpensesPage() {
         </div>
       )}
 
+      {/* Notice Banner when Reporting Manager is viewing */}
+      {!isAdmin && isManager && (
+        <div className="p-4 px-6 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/40 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-200 flex items-center justify-between gap-3 text-xs font-bold animate-in fade-in duration-300">
+          <div className="flex items-center gap-2.5">
+            <UsersIcon className="size-5 text-indigo-600 shrink-0" />
+            <span>
+              <strong>Reporting Manager Team Scoping Active:</strong> Strictly viewing expense batches, DA eligibility, and ad-hoc claims for you and your direct reporting team ({allEmployees.length > 1 ? `${allEmployees.length - 1} team member${allEmployees.length - 1 > 1 ? 's' : ''}` : "no direct reports"}). Other teams' and departments' claims are hidden.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Primary KPI Ribbon - Strict Role Scoping */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Wallet className="size-3.5 text-indigo-500" /> {isAuthorized ? "Total Claim Volume" : "My Total Claims"}
+            <Wallet className="size-3.5 text-indigo-500" /> {isAuthorized ? "Total Claim Volume" : isManager ? "Team & Own Claims" : "My Total Claims"}
           </p>
           <p className="text-2xl font-black mt-2 text-foreground">₹{batchAggregates.totalClaimVolume.toLocaleString("en-IN")}</p>
           <p className="text-[10px] text-muted-foreground/60 mt-1">
@@ -1073,7 +1136,7 @@ function ExpensesPage() {
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5 text-emerald-500" /> {isAuthorized ? "Eligible Daily DA" : "My Eligible DA"}
+            <CheckCircle2 className="size-3.5 text-emerald-500" /> {isAuthorized ? "Eligible Daily DA" : isManager ? "Team Eligible DA" : "My Eligible DA"}
           </p>
           <p className="text-2xl font-black mt-2 text-emerald-600 dark:text-emerald-400">
             ₹{batchAggregates.totalEligibleDA.toLocaleString("en-IN")}
@@ -1085,7 +1148,7 @@ function ExpensesPage() {
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <Plane className="size-3.5 text-blue-500" /> {isAuthorized ? "Outstation Travel & Hotel" : "My Outstation Expenses"}
+            <Plane className="size-3.5 text-blue-500" /> {isAuthorized ? "Outstation Travel & Hotel" : isManager ? "Team Outstation Expenses" : "My Outstation Expenses"}
           </p>
           <p className="text-2xl font-black mt-2 text-foreground">
             ₹{batchAggregates.totalOtherExpenses.toLocaleString("en-IN")}
@@ -1095,7 +1158,7 @@ function ExpensesPage() {
 
         <Card className="p-5 rounded-3xl border-2 border-primary/5 bg-card shadow-sm hover:shadow-md transition-all">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <AlertTriangle className="size-3.5 text-amber-500" /> {isAuthorized ? "Missing Bills" : "My Missing Bills"}
+            <AlertTriangle className="size-3.5 text-amber-500" /> {isAuthorized ? "Missing Bills" : isManager ? "Team Missing Bills" : "My Missing Bills"}
           </p>
           <p className={cn("text-2xl font-black mt-2", batchAggregates.totalMissingBills > 0 ? "text-amber-600" : "text-foreground")}>
             {batchAggregates.totalMissingBills}
@@ -1311,8 +1374,8 @@ function ExpensesPage() {
                       >
                         <Download className="size-4" />
                       </Button>
-                      {/* Verify RM: visible to Admins OR Managers (for their team members) */}
-                      {((isAuthorized || isManager) && b.status === "pending_manager" && b.employeeId !== myEmployee?.id) && (
+                      {/* Verify RM: visible to Admins OR Managers (strictly for their direct reports) */}
+                      {((isAuthorized || (isManager && teamEmployeeIds.includes(b.employeeId))) && b.status === "pending_manager" && b.employeeId !== myEmployee?.id) && (
                         <Button
                           size="sm"
                           className="h-9 rounded-xl font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1 shrink-0"
@@ -1464,7 +1527,7 @@ function ExpensesPage() {
                               </Button>
 
                               {/* Approval Actions for Managers & Admins */}
-                              {((isAuthorized || isManager) && b.status === "pending_manager" && b.employeeId !== myEmployee?.id) && (
+                              {((isAuthorized || (isManager && teamEmployeeIds.includes(b.employeeId))) && b.status === "pending_manager" && b.employeeId !== myEmployee?.id) && (
                                 <Button
                                   size="sm"
                                   className="h-8 rounded-xl font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1"
@@ -1782,13 +1845,12 @@ function ExpensesPage() {
 
           {/* Mobile View: Clean Cards for Small Screens (block md:hidden) */}
           <div className="block md:hidden space-y-3">
-            {dbClaims.filter((c: any) => c.category !== "travel_da_batch").length === 0 ? (
+            {accessibleSingleClaims.length === 0 ? (
               <Card className="p-8 rounded-2xl text-center text-xs text-muted-foreground border">
                 No ad-hoc claims found. Use the 20-Day Batch Claims tab for travel and daily DA.
               </Card>
             ) : (
-              dbClaims
-                .filter((c: any) => c.category !== "travel_da_batch")
+              accessibleSingleClaims
                 .map((c: any) => (
                   <Card key={c.id} className="p-4 rounded-2xl border bg-card shadow-sm space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
@@ -1846,15 +1908,14 @@ function ExpensesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dbClaims.filter((c: any) => c.category !== "travel_da_batch").length === 0 ? (
+                  {accessibleSingleClaims.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={(isAuthorized || isManager) ? 6 : 5} className="py-16 text-center text-xs text-muted-foreground">
                         No ad-hoc claims found. Use the 20-Day Batch Claims tab for travel and daily DA.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    dbClaims
-                      .filter((c: any) => c.category !== "travel_da_batch")
+                    accessibleSingleClaims
                       .map((c: any) => (
                         <TableRow key={c.id}>
                           <TableCell className="pl-6 font-bold text-sm">{c.title}</TableCell>
@@ -2059,7 +2120,7 @@ function ExpensesPage() {
                         </Button>
                       )}
 
-                      {((isAuthorized || isManager) && selectedBatch.status === "pending_manager" && selectedBatch.employeeId !== myEmployee?.id) && (
+                      {((isAuthorized || (isManager && teamEmployeeIds.includes(selectedBatch.employeeId))) && selectedBatch.status === "pending_manager" && selectedBatch.employeeId !== myEmployee?.id) && (
                         <Button
                           size="sm"
                           className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs gap-1.5"
